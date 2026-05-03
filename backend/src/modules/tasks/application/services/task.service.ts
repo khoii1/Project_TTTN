@@ -80,7 +80,9 @@ export class TaskService {
     organizationId: string,
     page: number = 1,
     limit: number = 10,
-    status?: string
+    search?: string,
+    status?: string,
+    priority?: string
   ): Promise<PaginatedResponse<TaskResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
@@ -89,8 +91,16 @@ export class TaskService {
       deletedAt: null,
     };
 
+    if (search) {
+      where.subject = { contains: search, mode: 'insensitive' };
+    }
+
     if (status) {
       where.status = status;
+    }
+
+    if (priority) {
+      where.priority = priority;
     }
 
     const [tasks, total] = await Promise.all([

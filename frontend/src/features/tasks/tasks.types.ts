@@ -1,19 +1,19 @@
 export enum TaskStatus {
-  NOT_STARTED = 'NOT_STARTED',
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
+  NOT_STARTED = "NOT_STARTED",
+  IN_PROGRESS = "IN_PROGRESS",
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
 }
 
 export enum TaskPriority {
-  LOW = 'LOW',
-  NORMAL = 'NORMAL',
-  HIGH = 'HIGH',
+  LOW = "LOW",
+  NORMAL = "NORMAL",
+  HIGH = "HIGH",
 }
 
 export interface Task {
   id: string;
-  title: string;
+  subject: string; // Changed from 'title' to match backend
   description?: string;
   dueDate?: string;
   status: TaskStatus;
@@ -21,7 +21,10 @@ export interface Task {
   relatedType?: string; // LEAD, ACCOUNT, CONTACT, OPPORTUNITY, CASE
   relatedId?: string;
   organizationId: string;
-  assignedToId?: string;
+  ownerId: string;
+  assignedToId: string;
+  completedAt?: string;
+  deletedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

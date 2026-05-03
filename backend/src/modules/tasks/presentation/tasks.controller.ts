@@ -43,7 +43,9 @@ export class TasksController {
   @ApiOperation({ summary: 'Get all tasks with pagination and filtering' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'priority', required: false, type: String })
   @ApiResponse({
     status: 200,
     description: 'Tasks list',
@@ -53,9 +55,11 @@ export class TasksController {
     @CurrentUser() user: TokenPayload,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
-    @Query('status') status?: string
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('priority') priority?: string
   ): Promise<PaginatedResponse<TaskResponseDto>> {
-    return this.taskService.findAll(user.organizationId, page || 1, limit || 10, status);
+    return this.taskService.findAll(user.organizationId, page || 1, limit || 10, search, status, priority);
   }
 
   @Get(':id')

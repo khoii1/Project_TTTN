@@ -4,11 +4,8 @@ export interface Note {
   relatedType: string; // LEAD, ACCOUNT, CONTACT, OPPORTUNITY, CASE
   relatedId: string;
   organizationId: string;
-  authorId: string;
-  author?: {
-    firstName: string;
-    lastName: string;
-  };
+  ownerId: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 }

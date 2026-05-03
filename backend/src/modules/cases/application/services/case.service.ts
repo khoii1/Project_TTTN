@@ -100,7 +100,9 @@ export class CaseService {
     organizationId: string,
     page: number = 1,
     limit: number = 10,
-    status?: string
+    search?: string,
+    status?: string,
+    priority?: string
   ): Promise<PaginatedResponse<CaseResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
@@ -109,8 +111,16 @@ export class CaseService {
       deletedAt: null,
     };
 
+    if (search) {
+      where.subject = { contains: search, mode: 'insensitive' };
+    }
+
     if (status) {
       where.status = status;
+    }
+
+    if (priority) {
+      where.priority = priority;
     }
 
     const [cases, total] = await Promise.all([

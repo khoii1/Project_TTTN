@@ -31,6 +31,7 @@ Use this checklist to manually verify the CRM frontend before any major release.
 - [ ] Verify List pages (Leads, Accounts, Contacts, Opportunities, Tasks, Cases, Users) load data using `?page=1&limit=10`
 - [ ] Test Search input correctly updates URL params and re-fetches on all modules
 - [ ] Test specific filters (Status, Stage, Priority, Role) correctly update URL params and re-fetch
+- [ ] Verify that the backend endpoints return `{ data, meta }` with `meta.total` and `meta.totalPages`. If the backend returns an array without pagination meta, the frontend will fallback to local pagination.
 
 ## 6. Role-Based Access Control (RBAC)
 - [ ] Login as `ADMIN`: Verify Users page allows creating/deleting users

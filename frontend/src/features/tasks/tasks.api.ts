@@ -1,17 +1,18 @@
-import { httpClient } from '@/lib/api/http-client';
-import { Task } from './tasks.types';
+import { httpClient } from "@/lib/api/http-client";
+import { toPaginatedArray } from "@/lib/api/pagination";
+import { Task } from "./tasks.types";
 
 export const tasksApi = {
-  getAll: async (params?: any) => {
-    const { data } = await httpClient.get('/tasks', { params });
-    return data;
+  getAll: async (params?: Record<string, string | number | undefined>) => {
+    const { data } = await httpClient.get("/tasks", { params });
+    return toPaginatedArray<Task>(data);
   },
   getById: async (id: string) => {
     const { data } = await httpClient.get<Task>(`/tasks/${id}`);
     return data;
   },
   create: async (payload: Partial<Task>) => {
-    const { data } = await httpClient.post<Task>('/tasks', payload);
+    const { data } = await httpClient.post<Task>("/tasks", payload);
     return data;
   },
   update: async (id: string, payload: Partial<Task>) => {
@@ -24,5 +25,5 @@ export const tasksApi = {
   },
   delete: async (id: string) => {
     await httpClient.delete(`/tasks/${id}`);
-  }
+  },
 };

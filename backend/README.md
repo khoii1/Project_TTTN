@@ -2,6 +2,11 @@
 
 Hệ thống CRM backend theo phong cách Salesforce, hỗ trợ multi-tenant, xây dựng bằng **NestJS 10**, **TypeScript 5**, **PostgreSQL 16** và **Prisma 5 ORM**.
 
+Tài liệu liên quan:
+
+- [API contract](../docs/api-contract.md)
+- [Full-stack QA checklist](../docs/fullstack-qa-checklist.md)
+
 ---
 
 ## Mục lục
@@ -26,18 +31,18 @@ Hệ thống CRM backend theo phong cách Salesforce, hỗ trợ multi-tenant, x
 
 ## Công nghệ sử dụng
 
-| Thành phần       | Công nghệ                          |
-| ---------------- | ----------------------------------- |
-| Framework        | NestJS 10                           |
-| Ngôn ngữ         | TypeScript 5                        |
-| Database         | PostgreSQL 16                       |
-| ORM              | Prisma 5                            |
-| Xác thực         | JWT (Access + Refresh tokens)       |
-| Hash mật khẩu    | bcrypt (10 rounds)                  |
-| Validation       | class-validator + class-transformer |
-| API Docs         | Swagger / OpenAPI 3.0               |
-| Testing          | Jest + ts-jest                      |
-| Container        | Docker + Docker Compose             |
+| Thành phần    | Công nghệ                           |
+| ------------- | ----------------------------------- |
+| Framework     | NestJS 10                           |
+| Ngôn ngữ      | TypeScript 5                        |
+| Database      | PostgreSQL 16                       |
+| ORM           | Prisma 5                            |
+| Xác thực      | JWT (Access + Refresh tokens)       |
+| Hash mật khẩu | bcrypt (10 rounds)                  |
+| Validation    | class-validator + class-transformer |
+| API Docs      | Swagger / OpenAPI 3.0               |
+| Testing       | Jest + ts-jest                      |
+| Container     | Docker + Docker Compose             |
 
 ---
 
@@ -123,20 +128,20 @@ npx prisma studio          # Mở Prisma Studio (visual DB browser)
 
 ## NPM Scripts
 
-| Script               | Lệnh                        | Mô tả                         |
-| -------------------- | ---------------------------- | ------------------------------ |
-| `start:dev`          | `nest start --watch`         | Dev server với hot reload      |
-| `build`              | `nest build`                 | Build production               |
-| `start:prod`         | `node dist/main`             | Chạy bản production            |
-| `test`               | `jest`                       | Chạy toàn bộ unit tests        |
-| `test:e2e`           | `jest --config jest-e2e.json`| Chạy E2E tests                 |
-| `test:cov`           | `jest --coverage`            | Báo cáo test coverage          |
-| `lint`               | `eslint --fix`               | Lint + auto-fix                |
-| `format`             | `prettier --write`           | Format code                    |
-| `prisma:migrate`     | `prisma migrate dev`         | Chạy migrations                |
-| `prisma:seed`        | `ts-node prisma/seed.ts`     | Seed dữ liệu                  |
-| `prisma:generate`    | `prisma generate`            | Generate Prisma client         |
-| `prisma:reset`       | `prisma migrate reset`       | Reset + re-seed                |
+| Script            | Lệnh                          | Mô tả                     |
+| ----------------- | ----------------------------- | ------------------------- |
+| `start:dev`       | `nest start --watch`          | Dev server với hot reload |
+| `build`           | `nest build`                  | Build production          |
+| `start:prod`      | `node dist/main`              | Chạy bản production       |
+| `test`            | `jest`                        | Chạy toàn bộ unit tests   |
+| `test:e2e`        | `jest --config jest-e2e.json` | Chạy E2E tests            |
+| `test:cov`        | `jest --coverage`             | Báo cáo test coverage     |
+| `lint`            | `eslint --fix`                | Lint + auto-fix           |
+| `format`          | `prettier --write`            | Format code               |
+| `prisma:migrate`  | `prisma migrate dev`          | Chạy migrations           |
+| `prisma:seed`     | `ts-node prisma/seed.ts`      | Seed dữ liệu              |
+| `prisma:generate` | `prisma generate`             | Generate Prisma client    |
+| `prisma:reset`    | `prisma migrate reset`        | Reset + re-seed           |
 
 ---
 
@@ -191,6 +196,7 @@ src/
 ```
 
 Mỗi module theo cấu trúc:
+
 ```
 modules/<feature>/
 ├── <feature>.module.ts
@@ -207,18 +213,18 @@ modules/<feature>/
 
 **11 models** trong `prisma/schema.prisma`:
 
-| Model          | Mô tả                                       |
-| -------------- | -------------------------------------------- |
-| Organization   | Tenant container — cách ly data giữa các tổ chức |
-| User           | 4 roles: ADMIN, MANAGER, SALES, SUPPORT      |
-| Lead           | 6 trạng thái, có thể convert thành Account+Contact+Opportunity |
-| Account        | Thông tin công ty khách hàng                  |
-| Contact        | Liên hệ cá nhân, thuộc về 1 Account          |
-| Opportunity    | 5 stages: QUALIFY → PROPOSE → NEGOTIATE → WON/LOST |
-| Task           | Công việc giao cho team, có dueDate + priority |
-| Note           | Ghi chú gắn vào bất kỳ entity nào            |
-| Case           | Ticket hỗ trợ với status + priority           |
-| AuditLog       | Nhật ký hành động: create, update, delete, conversion... |
+| Model        | Mô tả                                                          |
+| ------------ | -------------------------------------------------------------- |
+| Organization | Tenant container — cách ly data giữa các tổ chức               |
+| User         | 4 roles: ADMIN, MANAGER, SALES, SUPPORT                        |
+| Lead         | 6 trạng thái, có thể convert thành Account+Contact+Opportunity |
+| Account      | Thông tin công ty khách hàng                                   |
+| Contact      | Liên hệ cá nhân, thuộc về 1 Account                            |
+| Opportunity  | 5 stages: QUALIFY → PROPOSE → NEGOTIATE → WON/LOST             |
+| Task         | Công việc giao cho team, có dueDate + priority                 |
+| Note         | Ghi chú gắn vào bất kỳ entity nào                              |
+| Case         | Ticket hỗ trợ với status + priority                            |
+| AuditLog     | Nhật ký hành động: create, update, delete, conversion...       |
 
 **Tất cả entity đều có**: `id (UUID)`, `organization_id`, `owner_id`, `created_at`, `updated_at`, `deleted_at` (soft delete).
 
@@ -230,7 +236,7 @@ modules/<feature>/
 
 ### Auth (Public — không cần token)
 
-| Method | Endpoint         | Mô tả                             |
+| Method | Endpoint         | Mô tả                              |
 | ------ | ---------------- | ---------------------------------- |
 | POST   | `/auth/register` | Tạo organization + admin user      |
 | POST   | `/auth/login`    | Đăng nhập → access + refresh token |
@@ -239,94 +245,94 @@ modules/<feature>/
 
 ### Users (ADMIN mới có quyền write)
 
-| Method | Endpoint     | Mô tả            |
-| ------ | ------------ | ----------------- |
-| POST   | `/users`     | Tạo user          |
-| GET    | `/users`     | Danh sách users   |
-| GET    | `/users/:id` | Chi tiết user     |
-| PATCH  | `/users/:id` | Cập nhật user     |
-| DELETE | `/users/:id` | Soft delete user  |
+| Method | Endpoint     | Mô tả            | Query Params              |
+| ------ | ------------ | ---------------- | ------------------------- |
+| POST   | `/users`     | Tạo user         | —                         |
+| GET    | `/users`     | Danh sách users  | page, limit, search, role |
+| GET    | `/users/:id` | Chi tiết user    |
+| PATCH  | `/users/:id` | Cập nhật user    |
+| DELETE | `/users/:id` | Soft delete user |
 
 ### Leads
 
-| Method | Endpoint              | Query Params                |
-| ------ | --------------------- | --------------------------- |
-| POST   | `/leads`              | —                           |
-| GET    | `/leads`              | page, limit, search, status |
-| GET    | `/leads/:id`          | —                           |
-| PATCH  | `/leads/:id`          | —                           |
-| PATCH  | `/leads/:id/status`   | —                           |
-| POST   | `/leads/:id/convert`  | —                           |
-| DELETE | `/leads/:id`          | —                           |
+| Method | Endpoint             | Query Params                |
+| ------ | -------------------- | --------------------------- |
+| POST   | `/leads`             | —                           |
+| GET    | `/leads`             | page, limit, search, status |
+| GET    | `/leads/:id`         | —                           |
+| PATCH  | `/leads/:id`         | —                           |
+| PATCH  | `/leads/:id/status`  | —                           |
+| POST   | `/leads/:id/convert` | —                           |
+| DELETE | `/leads/:id`         | —                           |
 
 ### Accounts
 
-| Method | Endpoint         | Query Params        |
-| ------ | ---------------- | ------------------- |
-| POST   | `/accounts`      | —                   |
-| GET    | `/accounts`      | page, limit, search |
-| GET    | `/accounts/:id`  | —                   |
-| PATCH  | `/accounts/:id`  | —                   |
-| DELETE | `/accounts/:id`  | —                   |
+| Method | Endpoint        | Query Params        |
+| ------ | --------------- | ------------------- |
+| POST   | `/accounts`     | —                   |
+| GET    | `/accounts`     | page, limit, search |
+| GET    | `/accounts/:id` | —                   |
+| PATCH  | `/accounts/:id` | —                   |
+| DELETE | `/accounts/:id` | —                   |
 
 ### Contacts
 
-| Method | Endpoint         | Query Params        |
-| ------ | ---------------- | ------------------- |
-| POST   | `/contacts`      | —                   |
-| GET    | `/contacts`      | page, limit, search |
-| GET    | `/contacts/:id`  | —                   |
-| PATCH  | `/contacts/:id`  | —                   |
-| DELETE | `/contacts/:id`  | —                   |
+| Method | Endpoint        | Query Params        |
+| ------ | --------------- | ------------------- |
+| POST   | `/contacts`     | —                   |
+| GET    | `/contacts`     | page, limit, search |
+| GET    | `/contacts/:id` | —                   |
+| PATCH  | `/contacts/:id` | —                   |
+| DELETE | `/contacts/:id` | —                   |
 
 ### Opportunities
 
-| Method | Endpoint                    | Query Params                   |
-| ------ | --------------------------- | ------------------------------ |
-| POST   | `/opportunities`            | —                              |
-| GET    | `/opportunities`            | page, limit, search, stage     |
-| GET    | `/opportunities/:id`        | —                              |
-| PATCH  | `/opportunities/:id`        | —                              |
-| PATCH  | `/opportunities/:id/stage`  | —                              |
-| DELETE | `/opportunities/:id`        | —                              |
+| Method | Endpoint                   | Query Params               |
+| ------ | -------------------------- | -------------------------- |
+| POST   | `/opportunities`           | —                          |
+| GET    | `/opportunities`           | page, limit, search, stage |
+| GET    | `/opportunities/:id`       | —                          |
+| PATCH  | `/opportunities/:id`       | —                          |
+| PATCH  | `/opportunities/:id/stage` | —                          |
+| DELETE | `/opportunities/:id`       | —                          |
 
 ### Tasks
 
-| Method | Endpoint               | Query Params        |
-| ------ | ---------------------- | ------------------- |
-| POST   | `/tasks`               | —                   |
-| GET    | `/tasks`               | page, limit, status |
-| GET    | `/tasks/:id`           | —                   |
-| PATCH  | `/tasks/:id`           | —                   |
-| PATCH  | `/tasks/:id/complete`  | —                   |
-| DELETE | `/tasks/:id`           | —                   |
+| Method | Endpoint              | Query Params                          |
+| ------ | --------------------- | ------------------------------------- |
+| POST   | `/tasks`              | —                                     |
+| GET    | `/tasks`              | page, limit, search, status, priority |
+| GET    | `/tasks/:id`          | —                                     |
+| PATCH  | `/tasks/:id`          | —                                     |
+| PATCH  | `/tasks/:id/complete` | —                                     |
+| DELETE | `/tasks/:id`          | —                                     |
 
 ### Notes
 
-| Method | Endpoint      | Query Params             |
-| ------ | ------------- | ------------------------ |
-| POST   | `/notes`      | —                        |
-| GET    | `/notes`      | page, limit, relatedId   |
-| GET    | `/notes/:id`  | —                        |
-| PATCH  | `/notes/:id`  | —                        |
-| DELETE | `/notes/:id`  | —                        |
+| Method | Endpoint     | Query Params           |
+| ------ | ------------ | ---------------------- |
+| POST   | `/notes`     | —                      |
+| GET    | `/notes`     | page, limit, relatedId |
+| GET    | `/notes/:id` | —                      |
+| PATCH  | `/notes/:id` | —                      |
+| DELETE | `/notes/:id` | —                      |
 
 ### Cases
 
-| Method | Endpoint             | Query Params        |
-| ------ | -------------------- | ------------------- |
-| POST   | `/cases`             | —                   |
-| GET    | `/cases`             | page, limit, status |
-| GET    | `/cases/:id`         | —                   |
-| PATCH  | `/cases/:id`         | —                   |
-| PATCH  | `/cases/:id/status`  | —                   |
-| DELETE | `/cases/:id`         | —                   |
+| Method | Endpoint            | Query Params                          |
+| ------ | ------------------- | ------------------------------------- |
+| POST   | `/cases`            | —                                     |
+| GET    | `/cases`            | page, limit, search, status, priority |
+| GET    | `/cases/:id`        | —                                     |
+| PATCH  | `/cases/:id`        | —                                     |
+| PATCH  | `/cases/:id/status` | —                                     |
+| DELETE | `/cases/:id`        | —                                     |
 
 ### Organizations
 
-| Method | Endpoint             | Mô tả                  |
-| ------ | -------------------- | ----------------------- |
-| GET    | `/organizations/me`  | Lấy thông tin org hiện tại |
+| Method | Endpoint            | Mô tả                      |
+| ------ | ------------------- | -------------------------- |
+| GET    | `/organizations/me` | Lấy thông tin org hiện tại |
 
 **Tổng: 50+ endpoints**
 
@@ -383,6 +389,7 @@ const lead = await this.prisma.lead.findFirst({
 ### RBAC
 
 4 roles: `ADMIN`, `MANAGER`, `SALES`, `SUPPORT`
+
 - Chỉ ADMIN mới có quyền create/update/delete users
 
 ---
@@ -394,20 +401,21 @@ const lead = await this.prisma.lead.findFirst({
 Hệ thống audit log ghi lại mọi hành động quan trọng vào bảng `audit_logs`.
 
 **Service**: `src/infrastructure/audit/audit-log.service.ts`
+
 - Global module — available cho tất cả services
 - Wrapped trong try/catch — lỗi audit log không bao giờ làm hỏng business operation
 
 ### Các hành động được ghi log
 
-| Action            | Khi nào                                    | Áp dụng cho              |
-| ----------------- | ------------------------------------------ | ------------------------ |
-| `CREATE`          | Tạo mới entity                             | Tất cả 7 entity services |
-| `UPDATE`          | Cập nhật entity                            | Tất cả 7 entity services |
-| `SOFT_DELETE`     | Xóa mềm entity                            | Tất cả 7 entity services |
-| `LEAD_CONVERSION` | Convert lead → Account + Contact + Opportunity | LeadService          |
-| `STAGE_CHANGE`    | Đổi stage của Opportunity                  | OpportunityService       |
-| `STATUS_CHANGE`   | Đổi status của Lead hoặc Case              | LeadService, CaseService |
-| `TASK_COMPLETION` | Hoàn thành hoặc đổi status Task            | TaskService              |
+| Action            | Khi nào                                        | Áp dụng cho              |
+| ----------------- | ---------------------------------------------- | ------------------------ |
+| `CREATE`          | Tạo mới entity                                 | Tất cả 7 entity services |
+| `UPDATE`          | Cập nhật entity                                | Tất cả 7 entity services |
+| `SOFT_DELETE`     | Xóa mềm entity                                 | Tất cả 7 entity services |
+| `LEAD_CONVERSION` | Convert lead → Account + Contact + Opportunity | LeadService              |
+| `STAGE_CHANGE`    | Đổi stage của Opportunity                      | OpportunityService       |
+| `STATUS_CHANGE`   | Đổi status của Lead hoặc Case                  | LeadService, CaseService |
+| `TASK_COMPLETION` | Hoàn thành hoặc đổi status Task                | TaskService              |
 
 ### Cấu trúc Audit Log
 
@@ -451,13 +459,13 @@ npm run test:cov   # Coverage report
 
 ### Test Suites
 
-| File                                | Tests | Mô tả                                           |
-| ----------------------------------- | ----- | ------------------------------------------------ |
-| `test/auth.service.spec.ts`         | 6     | Register, login, logout, duplicate email         |
-| `test/lead-conversion.spec.ts`      | 5     | Conversion thành công, already converted, not found |
-| `test/lead-conversion-e2e.spec.ts`  | 6     | Conversion E2E: cross-org, double convert, audit log, account data |
-| `test/organization-isolation.spec.ts`| 30   | Multi-tenant isolation cho 6 entity services     |
-| **Tổng**                            | **47**| **4 suites, tất cả pass**                        |
+| File                                  | Tests  | Mô tả                                                              |
+| ------------------------------------- | ------ | ------------------------------------------------------------------ |
+| `test/auth.service.spec.ts`           | 6      | Register, login, logout, duplicate email                           |
+| `test/lead-conversion.spec.ts`        | 5      | Conversion thành công, already converted, not found                |
+| `test/lead-conversion-e2e.spec.ts`    | 6      | Conversion E2E: cross-org, double convert, audit log, account data |
+| `test/organization-isolation.spec.ts` | 30     | Multi-tenant isolation cho 6 entity services                       |
+| **Tổng**                              | **47** | **4 suites, tất cả pass**                                          |
 
 ### Organization Isolation Tests (30 tests)
 
@@ -495,17 +503,17 @@ Sau khi chạy `npm run prisma:seed`, có **2 tổ chức**:
 
 ### Organization: Sample Company Inc.
 
-| Role    | Email                  | Password     |
-| ------- | ---------------------- | ------------ |
-| ADMIN   | admin@example.com      | Admin@123    |
-| MANAGER | manager@example.com    | Manager@123  |
-| SALES   | sales@example.com      | Sales@123    |
+| Role    | Email               | Password    |
+| ------- | ------------------- | ----------- |
+| ADMIN   | admin@example.com   | Admin@123   |
+| MANAGER | manager@example.com | Manager@123 |
+| SALES   | sales@example.com   | Sales@123   |
 
 ### Organization: Rival Corp
 
-| Role    | Email              | Password     |
-| ------- | ------------------ | ------------ |
-| ADMIN   | admin@rival.com    | Rival@123    |
+| Role  | Email           | Password  |
+| ----- | --------------- | --------- |
+| ADMIN | admin@rival.com | Rival@123 |
 
 > Dùng 2 tổ chức để test multi-tenant isolation: login Org A, không thấy data Org B.
 
@@ -517,27 +525,27 @@ Code review toàn diện được thực hiện ngày **29/04/2026**, bao gồm 
 
 ### Đã kiểm chứng đạt ✅
 
-| Hạng mục                  | Kết quả | Chi tiết |
-| -------------------------- | ------- | -------- |
-| Multi-tenant isolation     | ✅ Pass | Tất cả 7 services scope query bằng `organizationId` |
-| Soft delete consistency    | ✅ Pass | Mọi find/update/delete check `deletedAt: null` |
-| Lead conversion transaction| ✅ Pass | Dùng `prisma.$transaction(async (tx) => {...})` đầy đủ 4 bước |
-| Refresh token hashing      | ✅ Pass | Hash bằng bcrypt, rotate khi refresh, xóa khi logout |
-| Token không bị lộ          | ✅ Pass | `refreshTokenHash` không có trong bất kỳ response DTO |
-| Input validation           | ✅ Pass | class-validator trên tất cả DTOs |
-| Global error handling      | ✅ Pass | GlobalExceptionFilter bắt mọi exception |
-| Pagination                 | ✅ Pass | MAX_LIMIT=100, page/limit validation |
+| Hạng mục                    | Kết quả | Chi tiết                                                      |
+| --------------------------- | ------- | ------------------------------------------------------------- |
+| Multi-tenant isolation      | ✅ Pass | Tất cả 7 services scope query bằng `organizationId`           |
+| Soft delete consistency     | ✅ Pass | Mọi find/update/delete check `deletedAt: null`                |
+| Lead conversion transaction | ✅ Pass | Dùng `prisma.$transaction(async (tx) => {...})` đầy đủ 4 bước |
+| Refresh token hashing       | ✅ Pass | Hash bằng bcrypt, rotate khi refresh, xóa khi logout          |
+| Token không bị lộ           | ✅ Pass | `refreshTokenHash` không có trong bất kỳ response DTO         |
+| Input validation            | ✅ Pass | class-validator trên tất cả DTOs                              |
+| Global error handling       | ✅ Pass | GlobalExceptionFilter bắt mọi exception                       |
+| Pagination                  | ✅ Pass | MAX_LIMIT=100, page/limit validation                          |
 
 ### Đã hoàn thành trong đợt hardening
 
-| Công việc                    | Trạng thái | Chi tiết |
-| ---------------------------- | ---------- | -------- |
-| AuditLogService              | ✅ Done | Tạo service + tích hợp vào 7 entity services |
-| Seed data 2 organizations    | ✅ Done | Thêm "Rival Corp" với admin user, lead, account |
-| Organization isolation tests | ✅ Done | 30 tests cho 6 entities |
-| Lead conversion E2E tests    | ✅ Done | 6 tests bao gồm cross-org + audit log |
-| Fix broken existing tests    | ✅ Done | Sửa 2 tests có mock thiếu return value |
-| jest-e2e.json                | ✅ Done | Tạo E2E test config |
+| Công việc                    | Trạng thái | Chi tiết                                        |
+| ---------------------------- | ---------- | ----------------------------------------------- |
+| AuditLogService              | ✅ Done    | Tạo service + tích hợp vào 7 entity services    |
+| Seed data 2 organizations    | ✅ Done    | Thêm "Rival Corp" với admin user, lead, account |
+| Organization isolation tests | ✅ Done    | 30 tests cho 6 entities                         |
+| Lead conversion E2E tests    | ✅ Done    | 6 tests bao gồm cross-org + audit log           |
+| Fix broken existing tests    | ✅ Done    | Sửa 2 tests có mock thiếu return value          |
+| jest-e2e.json                | ✅ Done    | Tạo E2E test config                             |
 
 ### Kết quả
 

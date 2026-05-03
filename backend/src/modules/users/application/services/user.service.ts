@@ -3,6 +3,9 @@ import { PrismaService } from '../../../../infrastructure/database/prisma.servic
 import { PasswordHasherService } from '../../../../infrastructure/security/password-hasher.service';
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from '../dto/user.dto';
 import { randomUUID } from 'crypto';
+import { calculatePagination, calculateMeta } from '../../../../common/pagination/pagination.utils';
+import { PaginatedResponse } from '../../../../common/types/response.types';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class UserService {
@@ -55,15 +58,46 @@ export class UserService {
     return this.mapToResponseDto(user);
   }
 
-  async findAll(organizationId: string): Promise<UserResponseDto[]> {
-    const users = await this.prisma.user.findMany({
-      where: {
-        organizationId,
-        deletedAt: null,
-      },
-    });
+  async findAll(
+    organizationId: string,
+    page: number = 1,
+    limit: number = 10,
+    search?: string,
+    role?: UserRole
+  ): Promise<PaginatedResponse<UserResponseDto>> {
+    const { skip } = calculatePagination({ page, limit });
 
-    return users.map((user) => this.mapToResponseDto(user));
+    const where: any = {
+      organizationId,
+      deletedAt: null,
+    };
+
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (role) {
+      where.role = role;
+    }
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      data: users.map((user) => this.mapToResponseDto(user)),
+      meta: calculateMeta(page, limit, total),
+    };
   }
 
   async update(

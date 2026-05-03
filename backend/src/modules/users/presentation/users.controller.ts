@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { UserService } from '../application/services/user.service';
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from '../application/dto/user.dto';
 import { JwtGuard } from '../../../shared/guards/jwt.guard';
@@ -8,6 +8,7 @@ import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { TokenPayload } from '../../../infrastructure/security/token.service';
 import { UserRole } from '@prisma/client';
+import { PaginatedResponse } from '../../../common/types/response.types';
 
 @ApiTags('Users')
 @Controller('users')
@@ -28,10 +29,24 @@ export class UsersController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all users in organization' })
-  @ApiResponse({ status: 200, description: 'Users list', type: [UserResponseDto] })
-  async findAll(@CurrentUser() user: TokenPayload): Promise<UserResponseDto[]> {
-    return this.userService.findAll(user.organizationId);
+  @ApiOperation({ summary: 'Get all users in organization with pagination and filtering' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'role', required: false, enum: UserRole })
+  @ApiResponse({
+    status: 200,
+    description: 'Users list',
+    type: () => PaginatedResponse,
+  })
+  async findAll(
+    @CurrentUser() user: TokenPayload,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('search') search?: string,
+    @Query('role') role?: UserRole
+  ): Promise<PaginatedResponse<UserResponseDto>> {
+    return this.userService.findAll(user.organizationId, page || 1, limit || 10, search, role);
   }
 
   @Get(':id')

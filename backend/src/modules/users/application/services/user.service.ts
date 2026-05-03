@@ -1,0 +1,142 @@
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../../../infrastructure/database/prisma.service';
+import { PasswordHasherService } from '../../../../infrastructure/security/password-hasher.service';
+import { CreateUserDto, UpdateUserDto, UserResponseDto } from '../dto/user.dto';
+import { randomUUID } from 'crypto';
+
+@Injectable()
+export class UserService {
+  constructor(
+    private prisma: PrismaService,
+    private passwordHasher: PasswordHasherService
+  ) {}
+
+  async create(organizationId: string, dto: CreateUserDto): Promise<UserResponseDto> {
+    // Check if email already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('Email already in use');
+    }
+
+    // Hash password
+    const passwordHash = await this.passwordHasher.hash(dto.password);
+
+    const user = await this.prisma.user.create({
+      data: {
+        id: randomUUID(),
+        organizationId,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email,
+        passwordHash,
+        role: dto.role,
+      },
+    });
+
+    return this.mapToResponseDto(user);
+  }
+
+  async findById(userId: string, organizationId: string): Promise<UserResponseDto> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        organizationId,
+        deletedAt: null,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return this.mapToResponseDto(user);
+  }
+
+  async findAll(organizationId: string): Promise<UserResponseDto[]> {
+    const users = await this.prisma.user.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+      },
+    });
+
+    return users.map((user) => this.mapToResponseDto(user));
+  }
+
+  async update(
+    userId: string,
+    organizationId: string,
+    dto: UpdateUserDto
+  ): Promise<UserResponseDto> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        organizationId,
+        deletedAt: null,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Check if new email is already used by another user
+    if (dto.email && dto.email !== user.email) {
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
+
+      if (existingUser) {
+        throw new BadRequestException('Email already in use');
+      }
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        firstName: dto.firstName || user.firstName,
+        lastName: dto.lastName || user.lastName,
+        email: dto.email || user.email,
+        role: dto.role || user.role,
+      },
+    });
+
+    return this.mapToResponseDto(updatedUser);
+  }
+
+  async delete(userId: string, organizationId: string): Promise<void> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        organizationId,
+        deletedAt: null,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Soft delete
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  private mapToResponseDto(user: any): UserResponseDto {
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      organizationId: user.organizationId,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+}

@@ -1,0 +1,359 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== Organization & User Models =====
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  users    User[]
+  leads    Lead[]
+  accounts Account[]
+  contacts Contact[]
+  opportunities Opportunity[]
+  tasks    Task[]
+  notes    Note[]
+  cases    Case[]
+  auditLogs AuditLog[]
+
+  @@map("organizations")
+}
+
+model User {
+  id                String   @id @default(uuid())
+  organizationId    String   @map("organization_id")
+  firstName         String   @map("first_name")
+  lastName          String   @map("last_name")
+  email             String   @unique
+  passwordHash      String   @map("password_hash")
+  refreshTokenHash  String?  @map("refresh_token_hash")
+  role              UserRole @default(SALES)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  // Relations
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ownedLeads        Lead[] @relation("LeadOwner")
+  ownedAccounts     Account[] @relation("AccountOwner")
+  ownedContacts     Contact[] @relation("ContactOwner")
+  ownedOpportunities Opportunity[] @relation("OpportunityOwner")
+  ownedTasks        Task[] @relation("TaskOwner")
+  assignedTasks     Task[] @relation("TaskAssignee")
+  ownedNotes        Note[] @relation("NoteOwner")
+  ownedCases        Case[] @relation("CaseOwner")
+  auditLogs         AuditLog[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  SALES
+  SUPPORT
+}
+
+// ===== Lead Model =====
+
+model Lead {
+  id                     String   @id @default(uuid())
+  organizationId         String   @map("organization_id")
+  ownerId                String   @map("owner_id")
+  firstName              String?  @map("first_name")
+  lastName               String   @map("last_name")
+  company                String
+  title                  String?
+  website                String?
+  email                  String?
+  phone                  String?
+  status                 LeadStatus @default(NEW)
+  source                 String?
+  industry               String?
+  description            String?
+  convertedAccountId     String?  @map("converted_account_id")
+  convertedContactId     String?  @map("converted_contact_id")
+  convertedOpportunityId String?  @map("converted_opportunity_id")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+  deletedAt              DateTime? @map("deleted_at")
+
+  // Relations
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner                  User @relation("LeadOwner", fields: [ownerId], references: [id])
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("leads")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  NURTURING
+  QUALIFIED
+  UNQUALIFIED
+  CONVERTED
+}
+
+// ===== Account Model =====
+
+model Account {
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  ownerId             String   @map("owner_id")
+  name                String
+  website             String?
+  type                String?
+  phone               String?
+  description         String?
+  billingCountry      String?  @map("billing_country")
+  billingStreet       String?  @map("billing_street")
+  billingCity         String?  @map("billing_city")
+  billingState        String?  @map("billing_state")
+  billingPostalCode   String?  @map("billing_postal_code")
+  shippingCountry     String?  @map("shipping_country")
+  shippingStreet      String?  @map("shipping_street")
+  shippingCity        String?  @map("shipping_city")
+  shippingState       String?  @map("shipping_state")
+  shippingPostalCode  String?  @map("shipping_postal_code")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  // Relations
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner               User @relation("AccountOwner", fields: [ownerId], references: [id])
+  contacts            Contact[]
+  opportunities       Opportunity[]
+  cases               Case[]
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@map("accounts")
+}
+
+// ===== Contact Model =====
+
+model Contact {
+  id                 String   @id @default(uuid())
+  organizationId     String   @map("organization_id")
+  ownerId            String   @map("owner_id")
+  accountId          String   @map("account_id")
+  firstName          String?  @map("first_name")
+  lastName           String   @map("last_name")
+  title              String?
+  email              String?
+  phone              String?
+  description        String?
+  mailingCountry     String?  @map("mailing_country")
+  mailingStreet      String?  @map("mailing_street")
+  mailingCity        String?  @map("mailing_city")
+  mailingState       String?  @map("mailing_state")
+  mailingPostalCode  String?  @map("mailing_postal_code")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
+
+  // Relations
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner              User @relation("ContactOwner", fields: [ownerId], references: [id])
+  account            Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  opportunities      Opportunity[]
+  cases              Case[]
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([accountId])
+  @@map("contacts")
+}
+
+// ===== Opportunity Model =====
+
+model Opportunity {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  ownerId         String   @map("owner_id")
+  accountId       String   @map("account_id")
+  contactId       String?  @map("contact_id")
+  name            String
+  stage           OpportunityStage @default(QUALIFY)
+  amount          Decimal? @db.Decimal(15, 2)
+  closeDate       DateTime? @map("close_date")
+  nextStep        String?  @map("next_step")
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Relations
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner           User @relation("OpportunityOwner", fields: [ownerId], references: [id])
+  account         Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  contact         Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([accountId])
+  @@index([contactId])
+  @@index([stage])
+  @@map("opportunities")
+}
+
+enum OpportunityStage {
+  QUALIFY
+  PROPOSE
+  NEGOTIATE
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+// ===== Task Model =====
+
+model Task {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  ownerId         String   @map("owner_id")
+  assignedToId    String   @map("assigned_to_id")
+  subject         String
+  dueDate         DateTime? @map("due_date")
+  status          TaskStatus @default(NOT_STARTED)
+  priority        TaskPriority @default(NORMAL)
+  relatedType     String?  @map("related_type")
+  relatedId       String?  @map("related_id")
+  description     String?
+  completedAt     DateTime? @map("completed_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Relations
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner           User @relation("TaskOwner", fields: [ownerId], references: [id])
+  assignedTo      User @relation("TaskAssignee", fields: [assignedToId], references: [id])
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([assignedToId])
+  @@index([status])
+  @@map("tasks")
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+// ===== Note Model =====
+
+model Note {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  ownerId         String   @map("owner_id")
+  content         String
+  relatedType     String   @map("related_type")
+  relatedId       String   @map("related_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Relations
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner           User @relation("NoteOwner", fields: [ownerId], references: [id])
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([relatedType])
+  @@index([relatedId])
+  @@map("notes")
+}
+
+// ===== Case Model =====
+
+model Case {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  ownerId         String   @map("owner_id")
+  accountId       String?  @map("account_id")
+  contactId       String?  @map("contact_id")
+  subject         String
+  status          CaseStatus @default(NEW)
+  priority        CasePriority @default(MEDIUM)
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Relations
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner           User @relation("CaseOwner", fields: [ownerId], references: [id])
+  account         Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  contact         Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([accountId])
+  @@index([contactId])
+  @@index([status])
+  @@map("cases")
+}
+
+enum CaseStatus {
+  NEW
+  WORKING
+  RESOLVED
+  CLOSED
+}
+
+enum CasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  action         String
+  entityType     String   @map("entity_type")
+  entityId       String   @map("entity_id")
+  oldValues      Json?    @map("old_values")
+  newValues      Json?    @map("new_values")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([entityType])
+  @@index([entityId])
+  @@map("audit_logs")
+}

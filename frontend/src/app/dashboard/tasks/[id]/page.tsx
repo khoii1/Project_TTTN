@@ -17,6 +17,31 @@ import { tasksApi } from "@/features/tasks/tasks.api";
 import { Task, TaskStatus, TaskPriority } from "@/features/tasks/tasks.types";
 import dayjs from "dayjs";
 import React from "react";
+import { RelatedRecordLookup } from "@/components/crm/RelatedRecordLookup";
+import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
+import type { EntityReferenceType } from "@/components/crm/EntityReferenceDisplay";
+import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
+
+const TaskRelationFields = () => {
+  const relatedType = Form.useWatch("relatedType");
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <Form.Item name="relatedType" label="Related To (Type)">
+        <Select allowClear>
+          <Select.Option value="LEAD">Lead</Select.Option>
+          <Select.Option value="ACCOUNT">Account</Select.Option>
+          <Select.Option value="CONTACT">Contact</Select.Option>
+          <Select.Option value="OPPORTUNITY">Opportunity</Select.Option>
+          <Select.Option value="CASE">Case</Select.Option>
+        </Select>
+      </Form.Item>
+      <Form.Item name="relatedId" label="Related Record">
+        <RelatedRecordLookup relatedType={relatedType} />
+      </Form.Item>
+    </div>
+  );
+};
 
 export default function TaskDetailPage({
   params,
@@ -27,7 +52,6 @@ export default function TaskDetailPage({
   const { id } = unwrappedParams;
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
-  const [form] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -36,16 +60,12 @@ export default function TaskDetailPage({
       setLoading(true);
       const data = await tasksApi.getById(id);
       setTask(data);
-      form.setFieldsValue({
-        ...data,
-        dueDate: data.dueDate ? dayjs(data.dueDate) : undefined,
-      });
     } catch {
       message.error("Failed to load task details");
     } finally {
       setLoading(false);
     }
-  }, [form, id]);
+  }, [id]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -60,11 +80,15 @@ export default function TaskDetailPage({
   ) => {
     try {
       setSaving(true);
+      const { status, ...updateValues } = values;
       const payload = {
-        ...values,
+        ...updateValues,
         dueDate: values.dueDate ? values.dueDate.toISOString() : undefined,
       };
       await tasksApi.update(id, payload);
+      if (status && status !== task?.status) {
+        await tasksApi.updateStatus(id, status);
+      }
       message.success("Task updated");
       setIsEditing(false);
       fetchTask();
@@ -114,7 +138,14 @@ export default function TaskDetailPage({
 
       <Card className="shadow-sm">
         {isEditing ? (
-          <Form form={form} layout="vertical" onFinish={handleUpdate}>
+          <Form
+            layout="vertical"
+            initialValues={{
+              ...task,
+              dueDate: task.dueDate ? dayjs(task.dueDate) : undefined,
+            }}
+            onFinish={handleUpdate}
+          >
             <Form.Item
               name="subject"
               label="Subject"
@@ -148,6 +179,7 @@ export default function TaskDetailPage({
                 <DatePicker className="w-full" />
               </Form.Item>
             </div>
+            <TaskRelationFields />
             <div className="flex justify-end space-x-2 mt-4">
               <Button onClick={() => setIsEditing(false)}>Cancel</Button>
               <Button type="primary" htmlType="submit" loading={saving}>
@@ -172,8 +204,22 @@ export default function TaskDetailPage({
             <Descriptions.Item label="Related Type">
               {task.relatedType || "N/A"}
             </Descriptions.Item>
-            <Descriptions.Item label="Related ID">
-              {task.relatedId || "N/A"}
+            <Descriptions.Item label="Related To">
+              {task.relatedType && task.relatedId ? (
+                <EntityReferenceDisplay
+                  entityType={task.relatedType as EntityReferenceType}
+                  entityId={task.relatedId}
+                  link
+                />
+              ) : (
+                "-"
+              )}
+            </Descriptions.Item>
+            <Descriptions.Item label="Assigned To">
+              <UserReferenceDisplay userId={task.assignedToId} />
+            </Descriptions.Item>
+            <Descriptions.Item label="Owner">
+              <UserReferenceDisplay userId={task.ownerId} />
             </Descriptions.Item>
             <Descriptions.Item label="Description" span={2}>
               {task.description || "N/A"}

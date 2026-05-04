@@ -23,6 +23,7 @@ import {
 } from "@/features/opportunities/opportunities.types";
 import { PageHeader } from "@/components/common/PageHeader";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { SourceFields } from "@/components/crm/SourceFields";
 
 export default function NewOpportunityPage() {
   const router = useRouter();
@@ -38,10 +39,18 @@ export default function NewOpportunityPage() {
   const onFinish = async (values: Partial<Opportunity>) => {
     try {
       setLoading(true);
-      await opportunitiesApi.create({
-        ...values,
-        stage: values.stage || OpportunityStage.QUALIFY,
+      const { stage, closeDate, ...restValues } = values;
+      const createdOpportunity = await opportunitiesApi.create({
+        ...restValues,
+        closeDate: closeDate
+          ? new Date(closeDate as string).toISOString()
+          : undefined,
       });
+
+      if (stage && stage !== OpportunityStage.QUALIFY) {
+        await opportunitiesApi.updateStage(createdOpportunity.id, stage);
+      }
+
       message.success("Opportunity created successfully");
       router.push("/dashboard/opportunities");
     } catch (error: unknown) {
@@ -120,6 +129,8 @@ export default function NewOpportunityPage() {
               ))}
             </Select>
           </Form.Item>
+
+          <SourceFields />
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button onClick={() => router.back()}>Cancel</Button>

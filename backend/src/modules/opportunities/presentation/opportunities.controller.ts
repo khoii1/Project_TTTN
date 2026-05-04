@@ -45,6 +45,8 @@ export class OpportunitiesController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'stage', required: false, type: String })
+  @ApiQuery({ name: 'source', required: false, type: String })
+  @ApiQuery({ name: 'deleted', required: false, type: Boolean })
   @ApiResponse({
     status: 200,
     description: 'Opportunities list',
@@ -55,14 +57,18 @@ export class OpportunitiesController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
-    @Query('stage') stage?: string
+    @Query('stage') stage?: string,
+    @Query('source') source?: string,
+    @Query('deleted') deleted?: string
   ): Promise<PaginatedResponse<OpportunityResponseDto>> {
     return this.opportunityService.findAll(
       user.organizationId,
       page || 1,
       limit || 10,
       search,
-      stage
+      stage,
+      source,
+      deleted === 'true',
     );
   }
 
@@ -100,6 +106,16 @@ export class OpportunitiesController {
     @CurrentUser() user: TokenPayload
   ): Promise<OpportunityResponseDto> {
     return this.opportunityService.changeStage(id, user.organizationId, dto);
+  }
+
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted opportunity' })
+  @ApiResponse({ status: 200, description: 'Opportunity restored', type: OpportunityResponseDto })
+  async restore(
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload
+  ): Promise<OpportunityResponseDto> {
+    return this.opportunityService.restore(id, user.organizationId);
   }
 
   @Delete(':id')

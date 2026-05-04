@@ -23,6 +23,16 @@ export class CreateCaseDto {
   @IsOptional()
   priority?: CasePriority;
 
+  @ApiPropertyOptional({ example: 'EMAIL' })
+  @IsString()
+  @IsOptional()
+  source?: string;
+
+  @ApiPropertyOptional({ example: 'Support inbox thread' })
+  @IsString()
+  @IsOptional()
+  sourceDetail?: string;
+
   @ApiPropertyOptional({ example: 'Need to resolve data sync issues' })
   @IsString()
   @IsOptional()
@@ -39,6 +49,16 @@ export class UpdateCaseDto {
   @IsEnum(CasePriority)
   @IsOptional()
   priority?: CasePriority;
+
+  @ApiPropertyOptional({ example: 'EMAIL' })
+  @IsString()
+  @IsOptional()
+  source?: string;
+
+  @ApiPropertyOptional({ example: 'Support inbox thread' })
+  @IsString()
+  @IsOptional()
+  sourceDetail?: string;
 
   @ApiPropertyOptional({ example: 'Need to resolve data sync issues' })
   @IsString()
@@ -62,6 +82,10 @@ export class CaseResponseDto {
   status: CaseStatus;
   @ApiProperty({ example: CasePriority.HIGH, enum: CasePriority })
   priority: CasePriority;
+  @ApiPropertyOptional({ example: 'EMAIL' })
+  source?: string;
+  @ApiPropertyOptional({ example: 'Support inbox thread' })
+  sourceDetail?: string;
   @ApiPropertyOptional({ example: 'Need to resolve data sync issues' })
   description?: string;
   @ApiPropertyOptional({ example: '11111111-1111-1111-1111-111111111111' })
@@ -72,6 +96,8 @@ export class CaseResponseDto {
   ownerId: string;
   @ApiProperty({ example: '55555555-5555-5555-5555-555555555555' })
   organizationId: string;
+  @ApiPropertyOptional({ example: '2026-04-29T08:00:00.000Z' })
+  deletedAt?: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })

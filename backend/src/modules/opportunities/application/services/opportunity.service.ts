@@ -64,6 +64,8 @@ export class OpportunityService {
         amount: dto.amount ? new Prisma.Decimal(dto.amount) : null,
         closeDate: dto.closeDate ? new Date(dto.closeDate) : null,
         nextStep: dto.nextStep,
+        source: dto.source,
+        sourceDetail: dto.sourceDetail,
         description: dto.description,
       },
     });
@@ -101,13 +103,15 @@ export class OpportunityService {
     page: number = 1,
     limit: number = 10,
     search?: string,
-    stage?: string
+    stage?: string,
+    source?: string,
+    deleted: boolean = false
   ): Promise<PaginatedResponse<OpportunityResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
     const where: any = {
       organizationId,
-      deletedAt: null,
+      deletedAt: deleted ? { not: null } : null,
     };
 
     if (search) {
@@ -116,6 +120,10 @@ export class OpportunityService {
 
     if (stage) {
       where.stage = stage;
+    }
+
+    if (source) {
+      where.source = source;
     }
 
     const [opportunities, total] = await Promise.all([
@@ -158,6 +166,8 @@ export class OpportunityService {
         amount: dto.amount !== undefined ? new Prisma.Decimal(dto.amount) : opportunity.amount,
         closeDate: dto.closeDate !== undefined ? new Date(dto.closeDate) : opportunity.closeDate,
         nextStep: dto.nextStep !== undefined ? dto.nextStep : opportunity.nextStep,
+        source: dto.source !== undefined ? dto.source : opportunity.source,
+        sourceDetail: dto.sourceDetail !== undefined ? dto.sourceDetail : opportunity.sourceDetail,
         description: dto.description !== undefined ? dto.description : opportunity.description,
       },
     });
@@ -239,6 +249,43 @@ export class OpportunityService {
     });
   }
 
+  async restore(
+    opportunityId: string,
+    organizationId: string
+  ): Promise<OpportunityResponseDto> {
+    const opportunity = await this.prisma.opportunity.findFirst({
+      where: {
+        id: opportunityId,
+        organizationId,
+      },
+    });
+
+    if (!opportunity) {
+      throw new NotFoundException('Opportunity not found');
+    }
+
+    if (!opportunity.deletedAt) {
+      return this.mapToResponseDto(opportunity);
+    }
+
+    const restoredOpportunity = await this.prisma.opportunity.update({
+      where: { id: opportunityId },
+      data: { deletedAt: null },
+    });
+
+    await this.auditLog.log({
+      organizationId,
+      userId: opportunity.ownerId,
+      action: AuditAction.RESTORE,
+      entityType: 'Opportunity',
+      entityId: opportunityId,
+      oldValues: { deletedAt: opportunity.deletedAt },
+      newValues: { deletedAt: null },
+    });
+
+    return this.mapToResponseDto(restoredOpportunity);
+  }
+
   private mapToResponseDto(opportunity: any): OpportunityResponseDto {
     return {
       id: opportunity.id,
@@ -247,11 +294,14 @@ export class OpportunityService {
       amount: opportunity.amount ? parseFloat(opportunity.amount.toString()) : undefined,
       closeDate: opportunity.closeDate,
       nextStep: opportunity.nextStep,
+      source: opportunity.source,
+      sourceDetail: opportunity.sourceDetail,
       description: opportunity.description,
       accountId: opportunity.accountId,
       contactId: opportunity.contactId,
       ownerId: opportunity.ownerId,
       organizationId: opportunity.organizationId,
+      deletedAt: opportunity.deletedAt,
       createdAt: opportunity.createdAt,
       updatedAt: opportunity.updatedAt,
     };

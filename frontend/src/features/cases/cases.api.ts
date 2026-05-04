@@ -3,7 +3,9 @@ import { toPaginatedArray } from "@/lib/api/pagination";
 import { Case } from "./cases.types";
 
 export const casesApi = {
-  getAll: async (params?: Record<string, string | number | undefined>) => {
+  getAll: async (
+    params?: Record<string, string | number | boolean | undefined>,
+  ) => {
     const { data } = await httpClient.get("/cases", { params });
     return toPaginatedArray<Case>(data);
   },
@@ -27,5 +29,9 @@ export const casesApi = {
   },
   delete: async (id: string) => {
     await httpClient.delete(`/cases/${id}`);
+  },
+  restore: async (id: string) => {
+    const { data } = await httpClient.patch<Case>(`/cases/${id}/restore`);
+    return data;
   },
 };

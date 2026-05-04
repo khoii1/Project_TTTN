@@ -12,6 +12,7 @@ import { Case } from "@/features/cases/cases.types";
 import { CaseStatus, CasePriority } from "@/features/cases/cases.types";
 import { PageHeader } from "@/components/common/PageHeader";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { SourceFields } from "@/components/crm/SourceFields";
 
 export default function NewCasePage() {
   const router = useRouter();
@@ -27,11 +28,16 @@ export default function NewCasePage() {
   const onFinish = async (values: Partial<Case>) => {
     try {
       setLoading(true);
-      await casesApi.create({
-        ...values,
-        status: values.status || CaseStatus.NEW,
+      const { status, ...createPayload } = values;
+      const createdCase = await casesApi.create({
+        ...createPayload,
         priority: values.priority || CasePriority.MEDIUM,
       });
+
+      if (status && status !== CaseStatus.NEW) {
+        await casesApi.updateStatus(createdCase.id, status);
+      }
+
       message.success("Case created successfully");
       router.push("/dashboard/cases");
     } catch (error: unknown) {
@@ -116,6 +122,8 @@ export default function NewCasePage() {
               </Select>
             </Form.Item>
           </div>
+
+          <SourceFields />
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button onClick={() => router.back()}>Cancel</Button>

@@ -43,6 +43,8 @@ export class ContactsController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'source', required: false, type: String })
+  @ApiQuery({ name: 'deleted', required: false, type: Boolean })
   @ApiResponse({
     status: 200,
     description: 'Contacts list',
@@ -52,9 +54,18 @@ export class ContactsController {
     @CurrentUser() user: TokenPayload,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
-    @Query('search') search?: string
+    @Query('search') search?: string,
+    @Query('source') source?: string,
+    @Query('deleted') deleted?: string
   ): Promise<PaginatedResponse<ContactResponseDto>> {
-    return this.contactService.findAll(user.organizationId, page || 1, limit || 10, search);
+    return this.contactService.findAll(
+      user.organizationId,
+      page || 1,
+      limit || 10,
+      search,
+      source,
+      deleted === 'true',
+    );
   }
 
   @Get(':id')
@@ -76,6 +87,16 @@ export class ContactsController {
     @CurrentUser() user: TokenPayload
   ): Promise<ContactResponseDto> {
     return this.contactService.update(id, user.organizationId, dto);
+  }
+
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted contact' })
+  @ApiResponse({ status: 200, description: 'Contact restored', type: ContactResponseDto })
+  async restore(
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload
+  ): Promise<ContactResponseDto> {
+    return this.contactService.restore(id, user.organizationId);
   }
 
   @Delete(':id')

@@ -16,7 +16,10 @@ import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import { notesApi } from "@/features/notes/notes.api";
 import { tasksApi } from "@/features/tasks/tasks.api";
 import { Note } from "@/features/notes/notes.types";
-import { Task, TaskStatus, TaskPriority } from "@/features/tasks/tasks.types";
+import { Task, TaskPriority } from "@/features/tasks/tasks.types";
+import { useAuthStore } from "@/features/auth/auth.store";
+import type { Dayjs } from "dayjs";
+import { RelatedRecordLookup } from "./RelatedRecordLookup";
 
 interface ActivityTimelineProps {
   relatedType: string;
@@ -42,7 +45,7 @@ type NewTaskPayload = {
   subject: string;
   description?: string;
   priority?: TaskPriority;
-  dueDate?: string;
+  dueDate?: Dayjs;
 };
 
 export const ActivityTimeline = ({
@@ -53,7 +56,9 @@ export const ActivityTimeline = ({
   const [loading, setLoading] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [form] = Form.useForm();
+  const [noteForm] = Form.useForm();
+  const [taskForm] = Form.useForm();
+  const { user } = useAuthStore();
 
   const fetchActivities = useCallback(async () => {
     try {
@@ -63,7 +68,7 @@ export const ActivityTimeline = ({
       let fetchedTasks: Task[] = [];
 
       try {
-        const allNotes = await notesApi.getAll(); // Ideally backend supports filtering: { relatedType, relatedId }
+        const allNotes = await notesApi.getAll({ relatedId });
         fetchedNotes = allNotes.filter(
           (n) => n.relatedType === relatedType && n.relatedId === relatedId,
         );
@@ -129,7 +134,7 @@ export const ActivityTimeline = ({
       });
       message.success("Note added");
       setIsNoteModalOpen(false);
-      form.resetFields();
+      noteForm.resetFields();
       fetchActivities();
     } catch {
       message.error("Failed to add note");
@@ -138,15 +143,23 @@ export const ActivityTimeline = ({
 
   const handleAddTask = async (values: NewTaskPayload) => {
     try {
+      if (!user?.id) {
+        message.error("Cannot create task without a current user");
+        return;
+      }
+
       await tasksApi.create({
-        ...values,
+        subject: values.subject,
+        description: values.description,
+        priority: values.priority,
+        dueDate: values.dueDate ? values.dueDate.toISOString() : undefined,
         relatedType,
         relatedId,
-        status: TaskStatus.NOT_STARTED,
+        assignedToId: user.id,
       });
       message.success("Task created");
       setIsTaskModalOpen(false);
-      form.resetFields();
+      taskForm.resetFields();
       fetchActivities();
     } catch {
       message.error("Failed to add task");
@@ -245,8 +258,9 @@ export const ActivityTimeline = ({
         open={isNoteModalOpen}
         onCancel={() => setIsNoteModalOpen(false)}
         footer={null}
+        forceRender
       >
-        <Form form={form} onFinish={handleAddNote} layout="vertical">
+        <Form form={noteForm} onFinish={handleAddNote} layout="vertical">
           <Form.Item
             name="content"
             rules={[{ required: true, message: "Note content is required" }]}
@@ -266,8 +280,9 @@ export const ActivityTimeline = ({
         open={isTaskModalOpen}
         onCancel={() => setIsTaskModalOpen(false)}
         footer={null}
+        forceRender
       >
-        <Form form={form} onFinish={handleAddTask} layout="vertical">
+        <Form form={taskForm} onFinish={handleAddTask} layout="vertical">
           <Form.Item
             name="subject"
             label="Subject"
@@ -293,6 +308,13 @@ export const ActivityTimeline = ({
           </Form.Item>
           <Form.Item name="dueDate" label="Due Date">
             <DatePicker className="w-full" />
+          </Form.Item>
+          <Form.Item label="Related Record">
+            <RelatedRecordLookup
+              relatedType={relatedType}
+              value={relatedId}
+              disabled
+            />
           </Form.Item>
           <div className="flex justify-end">
             <Button type="primary" htmlType="submit">

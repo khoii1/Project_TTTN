@@ -42,6 +42,8 @@ export class ContactService {
         title: dto.title,
         email: dto.email,
         phone: dto.phone,
+        source: dto.source,
+        sourceDetail: dto.sourceDetail,
         description: dto.description,
         mailingCountry: dto.mailingCountry,
         mailingStreet: dto.mailingStreet,
@@ -83,13 +85,15 @@ export class ContactService {
     organizationId: string,
     page: number = 1,
     limit: number = 10,
-    search?: string
+    search?: string,
+    source?: string,
+    deleted: boolean = false
   ): Promise<PaginatedResponse<ContactResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
     const where: any = {
       organizationId,
-      deletedAt: null,
+      deletedAt: deleted ? { not: null } : null,
     };
 
     if (search) {
@@ -98,6 +102,10 @@ export class ContactService {
         { lastName: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
       ];
+    }
+
+    if (source) {
+      where.source = source;
     }
 
     const [contacts, total] = await Promise.all([
@@ -141,6 +149,8 @@ export class ContactService {
         title: dto.title !== undefined ? dto.title : contact.title,
         email: dto.email !== undefined ? dto.email : contact.email,
         phone: dto.phone !== undefined ? dto.phone : contact.phone,
+        source: dto.source !== undefined ? dto.source : contact.source,
+        sourceDetail: dto.sourceDetail !== undefined ? dto.sourceDetail : contact.sourceDetail,
         description: dto.description !== undefined ? dto.description : contact.description,
         mailingCountry:
           dto.mailingCountry !== undefined ? dto.mailingCountry : contact.mailingCountry,
@@ -194,6 +204,40 @@ export class ContactService {
     });
   }
 
+  async restore(contactId: string, organizationId: string): Promise<ContactResponseDto> {
+    const contact = await this.prisma.contact.findFirst({
+      where: {
+        id: contactId,
+        organizationId,
+      },
+    });
+
+    if (!contact) {
+      throw new NotFoundException('Contact not found');
+    }
+
+    if (!contact.deletedAt) {
+      return this.mapToResponseDto(contact);
+    }
+
+    const restoredContact = await this.prisma.contact.update({
+      where: { id: contactId },
+      data: { deletedAt: null },
+    });
+
+    await this.auditLog.log({
+      organizationId,
+      userId: contact.ownerId,
+      action: AuditAction.RESTORE,
+      entityType: 'Contact',
+      entityId: contactId,
+      oldValues: { deletedAt: contact.deletedAt },
+      newValues: { deletedAt: null },
+    });
+
+    return this.mapToResponseDto(restoredContact);
+  }
+
   private mapToResponseDto(contact: any): ContactResponseDto {
     return {
       id: contact.id,
@@ -202,6 +246,8 @@ export class ContactService {
       title: contact.title,
       email: contact.email,
       phone: contact.phone,
+      source: contact.source,
+      sourceDetail: contact.sourceDetail,
       description: contact.description,
       mailingCountry: contact.mailingCountry,
       mailingStreet: contact.mailingStreet,
@@ -211,6 +257,7 @@ export class ContactService {
       accountId: contact.accountId,
       ownerId: contact.ownerId,
       organizationId: contact.organizationId,
+      deletedAt: contact.deletedAt,
       createdAt: contact.createdAt,
       updatedAt: contact.updatedAt,
     };

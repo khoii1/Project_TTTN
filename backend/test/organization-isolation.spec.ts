@@ -27,11 +27,30 @@ const mockAuditLogService = { log: jest.fn() };
 
 // ---------- Helper to build a mock PrismaService for a single entity ----------
 function buildMockPrisma(entityName: string, entityRecords: Record<string, any>[]) {
+  const matchesDeletedAt = (record: Record<string, any>, where: Record<string, any>) => {
+    if (!Object.prototype.hasOwnProperty.call(where, 'deletedAt')) {
+      return true;
+    }
+
+    if (where.deletedAt === null) {
+      return !record.deletedAt;
+    }
+
+    if (where.deletedAt?.not === null) {
+      return !!record.deletedAt;
+    }
+
+    return true;
+  };
+
   const findFirst = jest.fn().mockImplementation(({ where }) => {
     // Simulate Prisma's findFirst: match id AND organizationId AND deletedAt
     return Promise.resolve(
       entityRecords.find(
-        (r) => r.id === where.id && r.organizationId === where.organizationId && !r.deletedAt,
+        (r) =>
+          r.id === where.id &&
+          r.organizationId === where.organizationId &&
+          matchesDeletedAt(r, where),
       ) || null,
     );
   });
@@ -39,7 +58,7 @@ function buildMockPrisma(entityName: string, entityRecords: Record<string, any>[
   const findMany = jest.fn().mockImplementation(({ where }) => {
     return Promise.resolve(
       entityRecords.filter(
-        (r) => r.organizationId === where.organizationId && !r.deletedAt,
+        (r) => r.organizationId === where.organizationId && matchesDeletedAt(r, where),
       ),
     );
   });
@@ -47,12 +66,15 @@ function buildMockPrisma(entityName: string, entityRecords: Record<string, any>[
   const count = jest.fn().mockImplementation(({ where }) => {
     return Promise.resolve(
       entityRecords.filter(
-        (r) => r.organizationId === where.organizationId && !r.deletedAt,
+        (r) => r.organizationId === where.organizationId && matchesDeletedAt(r, where),
       ).length,
     );
   });
 
-  const update = jest.fn().mockResolvedValue({});
+  const update = jest.fn().mockImplementation(({ where, data }) => {
+    const record = entityRecords.find((r) => r.id === where.id);
+    return Promise.resolve({ ...record, ...data });
+  });
 
   return {
     [entityName]: { findFirst, findMany, count, update },
@@ -268,9 +290,13 @@ describe('Organization Isolation — Task', () => {
     id: 'task-2', organizationId: ORG_B, ownerId: 'user-b', assignedToId: 'user-b',
     subject: 'OrgB Task', status: 'NOT_STARTED', priority: 'HIGH', deletedAt: null,
   };
+  const deletedTaskOrgA = {
+    id: 'task-3', organizationId: ORG_A, ownerId: USER_A, assignedToId: USER_A,
+    subject: 'Deleted OrgA Task', status: 'NOT_STARTED', priority: 'NORMAL', deletedAt: new Date(),
+  };
 
   beforeEach(async () => {
-    const mockPrisma = buildMockPrisma('task', [taskOrgA, taskOrgB]);
+    const mockPrisma = buildMockPrisma('task', [taskOrgA, taskOrgB, deletedTaskOrgA]);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TaskService,
@@ -302,6 +328,22 @@ describe('Organization Isolation — Task', () => {
     const result = await service.findAll(ORG_A, 1, 10);
     expect(result.data.length).toBe(1);
     expect(result.data[0].id).toBe('task-1');
+  });
+
+  it('findAll deleted only returns deleted Org A records', async () => {
+    const result = await service.findAll(ORG_A, 1, 10, undefined, undefined, undefined, true);
+    expect(result.data.length).toBe(1);
+    expect(result.data[0].id).toBe('task-3');
+  });
+
+  it('Org A user can restore Org A deleted task', async () => {
+    const result = await service.restore('task-3', ORG_A);
+    expect(result.id).toBe('task-3');
+    expect(result.deletedAt).toBeNull();
+  });
+
+  it('Org A user CANNOT restore Org B task', async () => {
+    await expect(service.restore('task-2', ORG_A)).rejects.toThrow(NotFoundException);
   });
 });
 

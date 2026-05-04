@@ -3,7 +3,9 @@ import { toPaginatedArray } from "@/lib/api/pagination";
 import { Opportunity } from "./opportunities.types";
 
 export const opportunitiesApi = {
-  getAll: async (params?: Record<string, string | number | undefined>) => {
+  getAll: async (
+    params?: Record<string, string | number | boolean | undefined>,
+  ) => {
     const { data } = await httpClient.get("/opportunities", { params });
     return toPaginatedArray<Opportunity>(data);
   },
@@ -34,5 +36,11 @@ export const opportunitiesApi = {
   },
   delete: async (id: string) => {
     await httpClient.delete(`/opportunities/${id}`);
+  },
+  restore: async (id: string) => {
+    const { data } = await httpClient.patch<Opportunity>(
+      `/opportunities/${id}/restore`,
+    );
+    return data;
   },
 };

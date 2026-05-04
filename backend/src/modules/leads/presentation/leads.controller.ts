@@ -46,6 +46,8 @@ export class LeadsController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'source', required: false, type: String })
+  @ApiQuery({ name: 'deleted', required: false, type: Boolean })
   @ApiResponse({
     status: 200,
     description: 'Leads list',
@@ -56,9 +58,19 @@ export class LeadsController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
-    @Query('status') status?: string
+    @Query('status') status?: string,
+    @Query('source') source?: string,
+    @Query('deleted') deleted?: string
   ): Promise<PaginatedResponse<LeadResponseDto>> {
-    return this.leadService.findAll(user.organizationId, page || 1, limit || 10, search, status);
+    return this.leadService.findAll(
+      user.organizationId,
+      page || 1,
+      limit || 10,
+      search,
+      status,
+      source,
+      deleted === 'true',
+    );
   }
 
   @Get(':id')
@@ -102,6 +114,16 @@ export class LeadsController {
     @CurrentUser() user: TokenPayload
   ): Promise<LeadResponseDto> {
     return this.leadService.convert(id, user.organizationId, user.sub, dto);
+  }
+
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted lead' })
+  @ApiResponse({ status: 200, description: 'Lead restored', type: LeadResponseDto })
+  async restore(
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload
+  ): Promise<LeadResponseDto> {
+    return this.leadService.restore(id, user.organizationId);
   }
 
   @Delete(':id')

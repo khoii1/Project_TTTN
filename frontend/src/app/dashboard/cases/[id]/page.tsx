@@ -14,10 +14,14 @@ import {
 } from "antd";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
+import { SourceFields } from "@/components/crm/SourceFields";
+import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
+import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { casesApi } from "@/features/cases/cases.api";
 import { accountsApi } from "@/features/accounts/accounts.api";
 import { Account } from "@/features/accounts/accounts.types";
 import { Case, CaseStatus, CasePriority } from "@/features/cases/cases.types";
+import { getSourceLabel } from "@/lib/constants/source-options";
 import React from "react";
 
 export default function CaseDetailPage({
@@ -30,7 +34,6 @@ export default function CaseDetailPage({
   const [caseItem, setCaseItem] = useState<Case | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -39,13 +42,12 @@ export default function CaseDetailPage({
       setLoading(true);
       const data = await casesApi.getById(id);
       setCaseItem(data);
-      form.setFieldsValue(data);
     } catch {
       message.error("Failed to load case details");
     } finally {
       setLoading(false);
     }
-  }, [form, id]);
+  }, [id]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -59,7 +61,9 @@ export default function CaseDetailPage({
   const handleUpdate = async (values: Partial<Case>) => {
     try {
       setSaving(true);
-      await casesApi.update(id, values);
+      const updatePayload = { ...values };
+      delete updatePayload.accountId;
+      await casesApi.update(id, updatePayload);
       message.success("Case updated");
       setIsEditing(false);
       fetchCase();
@@ -112,7 +116,7 @@ export default function CaseDetailPage({
         />
 
         {isEditing ? (
-          <Form form={form} layout="vertical" onFinish={handleUpdate}>
+          <Form layout="vertical" initialValues={caseItem} onFinish={handleUpdate}>
             <Form.Item
               name="subject"
               label="Subject"
@@ -148,6 +152,7 @@ export default function CaseDetailPage({
                 </Select>
               </Form.Item>
             </div>
+            <SourceFields />
             <div className="flex justify-end space-x-2 mt-4">
               <Button onClick={() => setIsEditing(false)}>Cancel</Button>
               <Button type="primary" htmlType="submit" loading={saving}>
@@ -167,7 +172,30 @@ export default function CaseDetailPage({
               {caseItem.priority}
             </Descriptions.Item>
             <Descriptions.Item label="Account">
-              {accounts.find((a) => a.id === caseItem.accountId)?.name || "N/A"}
+              <EntityReferenceDisplay
+                entityType="ACCOUNT"
+                entityId={caseItem.accountId}
+                link
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Contact">
+              <EntityReferenceDisplay
+                entityType="CONTACT"
+                entityId={caseItem.contactId}
+                link
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Owner">
+              <UserReferenceDisplay userId={caseItem.ownerId} />
+            </Descriptions.Item>
+            <Descriptions.Item label="Assigned To">
+              <UserReferenceDisplay userId={caseItem.assignedToId} />
+            </Descriptions.Item>
+            <Descriptions.Item label="Source">
+              {getSourceLabel(caseItem.source)}
+            </Descriptions.Item>
+            <Descriptions.Item label="Source Detail">
+              {caseItem.sourceDetail || "-"}
             </Descriptions.Item>
             <Descriptions.Item label="Created">
               {new Date(caseItem.createdAt).toLocaleString()}

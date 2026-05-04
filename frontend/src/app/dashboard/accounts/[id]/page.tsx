@@ -10,10 +10,11 @@ import {
   Form,
   Input,
   Tabs,
-  List,
 } from "antd";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
+import { SourceFields } from "@/components/crm/SourceFields";
+import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { accountsApi } from "@/features/accounts/accounts.api";
 import { contactsApi } from "@/features/contacts/contacts.api";
 import { opportunitiesApi } from "@/features/opportunities/opportunities.api";
@@ -23,7 +24,28 @@ import { Contact } from "@/features/contacts/contacts.types";
 import { Opportunity } from "@/features/opportunities/opportunities.types";
 import { Case } from "@/features/cases/cases.types";
 import { useRouter } from "next/navigation";
+import { getSourceLabel } from "@/lib/constants/source-options";
 import React from "react";
+
+type RelatedRowProps = {
+  title: string;
+  description?: string;
+  onView: () => void;
+};
+
+const RelatedRow = ({ title, description, onView }: RelatedRowProps) => (
+  <div className="flex items-start justify-between gap-4 border-b border-gray-100 py-3 last:border-b-0">
+    <div className="min-w-0">
+      <div className="truncate font-medium text-gray-900">{title}</div>
+      {description && (
+        <div className="mt-1 truncate text-sm text-gray-500">{description}</div>
+      )}
+    </div>
+    <Button type="link" onClick={onView}>
+      View
+    </Button>
+  </div>
+);
 
 export default function AccountDetailPage({
   params,
@@ -39,7 +61,6 @@ export default function AccountDetailPage({
   const [relatedCases, setRelatedCases] = useState<Case[]>([]);
 
   const [loading, setLoading] = useState(true);
-  const [form] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -53,7 +74,6 @@ export default function AccountDetailPage({
         casesApi.getAll(),
       ]);
       setAccount(accData);
-      form.setFieldsValue(accData);
 
       setRelatedContacts(allContacts.filter((c) => c.accountId === id));
       setRelatedOpps(allOpps.filter((o) => o.accountId === id));
@@ -63,7 +83,7 @@ export default function AccountDetailPage({
     } finally {
       setLoading(false);
     }
-  }, [form, id]);
+  }, [id]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -108,7 +128,7 @@ export default function AccountDetailPage({
 
       <Card className="shadow-sm">
         {isEditing ? (
-          <Form form={form} layout="vertical" onFinish={handleUpdate}>
+          <Form layout="vertical" initialValues={account} onFinish={handleUpdate}>
             <Form.Item
               name="name"
               label="Account Name"
@@ -127,6 +147,7 @@ export default function AccountDetailPage({
                 <Input />
               </Form.Item>
             </div>
+            <SourceFields />
             <div className="flex justify-end space-x-2 mt-4">
               <Button onClick={() => setIsEditing(false)}>Cancel</Button>
               <Button type="primary" htmlType="submit" loading={saving}>
@@ -148,6 +169,15 @@ export default function AccountDetailPage({
             <Descriptions.Item label="Phone">
               {account.phone || "N/A"}
             </Descriptions.Item>
+            <Descriptions.Item label="Owner">
+              <UserReferenceDisplay userId={account.ownerId} />
+            </Descriptions.Item>
+            <Descriptions.Item label="Source">
+              {getSourceLabel(account.source)}
+            </Descriptions.Item>
+            <Descriptions.Item label="Source Detail">
+              {account.sourceDetail || "-"}
+            </Descriptions.Item>
             <Descriptions.Item label="Created">
               {new Date(account.createdAt).toLocaleString()}
             </Descriptions.Item>
@@ -167,90 +197,54 @@ export default function AccountDetailPage({
                 key: "contacts",
                 label: `Contacts (${relatedContacts.length})`,
                 children: (
-                  <List
-                    size="small"
-                    dataSource={relatedContacts}
-                    renderItem={(item) => (
-                      <List.Item
-                        actions={[
-                          <Button
-                            key={`contact-view-${item.id}`}
-                            type="link"
-                            onClick={() =>
-                              router.push(`/dashboard/contacts/${item.id}`)
-                            }
-                          >
-                            View
-                          </Button>,
-                        ]}
-                      >
-                        <List.Item.Meta
-                          title={`${item.firstName} ${item.lastName}`}
-                          description={item.email}
-                        />
-                      </List.Item>
-                    )}
-                  />
+                  <div>
+                    {relatedContacts.map((item) => (
+                      <RelatedRow
+                        key={item.id}
+                        title={`${item.firstName} ${item.lastName}`}
+                        description={item.email}
+                        onView={() =>
+                          router.push(`/dashboard/contacts/${item.id}`)
+                        }
+                      />
+                    ))}
+                  </div>
                 ),
               },
               {
                 key: "opportunities",
                 label: `Opportunities (${relatedOpps.length})`,
                 children: (
-                  <List
-                    size="small"
-                    dataSource={relatedOpps}
-                    renderItem={(item) => (
-                      <List.Item
-                        actions={[
-                          <Button
-                            key={`opportunity-view-${item.id}`}
-                            type="link"
-                            onClick={() =>
-                              router.push(`/dashboard/opportunities/${item.id}`)
-                            }
-                          >
-                            View
-                          </Button>,
-                        ]}
-                      >
-                        <List.Item.Meta
-                          title={item.name}
-                          description={`Stage: ${item.stage} | Amount: $${item.amount || 0}`}
-                        />
-                      </List.Item>
-                    )}
-                  />
+                  <div>
+                    {relatedOpps.map((item) => (
+                      <RelatedRow
+                        key={item.id}
+                        title={item.name}
+                        description={`Stage: ${item.stage} | Amount: $${item.amount || 0}`}
+                        onView={() =>
+                          router.push(`/dashboard/opportunities/${item.id}`)
+                        }
+                      />
+                    ))}
+                  </div>
                 ),
               },
               {
                 key: "cases",
                 label: `Cases (${relatedCases.length})`,
                 children: (
-                  <List
-                    size="small"
-                    dataSource={relatedCases}
-                    renderItem={(item) => (
-                      <List.Item
-                        actions={[
-                          <Button
-                            key={`case-view-${item.id}`}
-                            type="link"
-                            onClick={() =>
-                              router.push(`/dashboard/cases/${item.id}`)
-                            }
-                          >
-                            View
-                          </Button>,
-                        ]}
-                      >
-                        <List.Item.Meta
-                          title={item.subject}
-                          description={`Status: ${item.status}`}
-                        />
-                      </List.Item>
-                    )}
-                  />
+                  <div>
+                    {relatedCases.map((item) => (
+                      <RelatedRow
+                        key={item.id}
+                        title={item.subject}
+                        description={`Status: ${item.status}`}
+                        onView={() =>
+                          router.push(`/dashboard/cases/${item.id}`)
+                        }
+                      />
+                    ))}
+                  </div>
                 ),
               },
             ]}

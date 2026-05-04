@@ -22,7 +22,9 @@ import {
   OpportunityStage,
 } from "@/features/opportunities/opportunities.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
+import { getSourceLabel } from "@/lib/constants/source-options";
 
 function OpportunitiesList() {
   const router = useRouter();
@@ -154,6 +156,18 @@ function OpportunitiesList() {
       render: (stage: string) => (
         <Tag color={stageColors[stage] || "default"}>{stage}</Tag>
       ),
+    },
+    {
+      title: "Source",
+      dataIndex: "source",
+      key: "source",
+      render: (source?: string) => getSourceLabel(source),
+    },
+    {
+      title: "Owner",
+      dataIndex: "ownerId",
+      key: "ownerId",
+      render: (ownerId?: string) => <UserReferenceDisplay userId={ownerId} />,
     },
     {
       title: "Close Date",

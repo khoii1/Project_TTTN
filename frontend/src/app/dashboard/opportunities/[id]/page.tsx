@@ -16,6 +16,9 @@ import {
 } from "antd";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
+import { SourceFields } from "@/components/crm/SourceFields";
+import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
+import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { opportunitiesApi } from "@/features/opportunities/opportunities.api";
 import { accountsApi } from "@/features/accounts/accounts.api";
 import { Account } from "@/features/accounts/accounts.types";
@@ -24,6 +27,7 @@ import {
   OpportunityStage,
 } from "@/features/opportunities/opportunities.types";
 import dayjs from "dayjs";
+import { getSourceLabel } from "@/lib/constants/source-options";
 import React from "react";
 
 export default function OpportunityDetailPage({
@@ -36,7 +40,6 @@ export default function OpportunityDetailPage({
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -45,16 +48,12 @@ export default function OpportunityDetailPage({
       setLoading(true);
       const data = await opportunitiesApi.getById(id);
       setOpportunity(data);
-      form.setFieldsValue({
-        ...data,
-        closeDate: data.closeDate ? dayjs(data.closeDate) : undefined,
-      });
     } catch {
       message.error("Failed to load opportunity details");
     } finally {
       setLoading(false);
     }
-  }, [form, id]);
+  }, [id]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -76,6 +75,7 @@ export default function OpportunityDetailPage({
           ? values.closeDate.toISOString()
           : undefined,
       };
+      delete payload.accountId;
       await opportunitiesApi.update(id, payload);
       message.success("Opportunity updated");
       setIsEditing(false);
@@ -130,7 +130,16 @@ export default function OpportunityDetailPage({
         />
 
         {isEditing ? (
-          <Form form={form} layout="vertical" onFinish={handleUpdate}>
+          <Form
+            layout="vertical"
+            initialValues={{
+              ...opportunity,
+              closeDate: opportunity.closeDate
+                ? dayjs(opportunity.closeDate)
+                : undefined,
+            }}
+            onFinish={handleUpdate}
+          >
             <Form.Item
               name="name"
               label="Opportunity Name"
@@ -163,6 +172,7 @@ export default function OpportunityDetailPage({
                 </Select>
               </Form.Item>
             </div>
+            <SourceFields />
             <div className="flex justify-end space-x-2 mt-4">
               <Button onClick={() => setIsEditing(false)}>Cancel</Button>
               <Button type="primary" htmlType="submit" loading={saving}>
@@ -189,8 +199,27 @@ export default function OpportunityDetailPage({
                 : "N/A"}
             </Descriptions.Item>
             <Descriptions.Item label="Account">
-              {accounts.find((a) => a.id === opportunity.accountId)?.name ||
-                "Unknown Account"}
+              <EntityReferenceDisplay
+                entityType="ACCOUNT"
+                entityId={opportunity.accountId}
+                link
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Owner">
+              <UserReferenceDisplay userId={opportunity.ownerId} />
+            </Descriptions.Item>
+            <Descriptions.Item label="Contact">
+              <EntityReferenceDisplay
+                entityType="CONTACT"
+                entityId={opportunity.contactId}
+                link
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Source">
+              {getSourceLabel(opportunity.source)}
+            </Descriptions.Item>
+            <Descriptions.Item label="Source Detail">
+              {opportunity.sourceDetail || "-"}
             </Descriptions.Item>
             <Descriptions.Item label="Created">
               {new Date(opportunity.createdAt).toLocaleString()}

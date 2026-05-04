@@ -17,7 +17,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { leadsApi } from "@/features/leads/leads.api";
 import { Lead, LeadStatus } from "@/features/leads/leads.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
+import { getSourceLabel } from "@/lib/constants/source-options";
 
 function LeadsList() {
   const router = useRouter();
@@ -130,6 +132,18 @@ function LeadsList() {
       render: (status: string) => (
         <Tag color={statusColors[status] || "default"}>{status}</Tag>
       ),
+    },
+    {
+      title: "Source",
+      dataIndex: "source",
+      key: "source",
+      render: (source?: string) => getSourceLabel(source),
+    },
+    {
+      title: "Owner",
+      dataIndex: "ownerId",
+      key: "ownerId",
+      render: (ownerId?: string) => <UserReferenceDisplay userId={ownerId} />,
     },
     {
       title: "Created At",

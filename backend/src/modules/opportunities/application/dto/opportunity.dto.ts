@@ -43,6 +43,16 @@ export class CreateOpportunityDto {
   @IsOptional()
   nextStep?: string;
 
+  @ApiPropertyOptional({ example: 'CONVERTED_LEAD' })
+  @IsString()
+  @IsOptional()
+  source?: string;
+
+  @ApiPropertyOptional({ example: 'Converted from Facebook lead' })
+  @IsString()
+  @IsOptional()
+  sourceDetail?: string;
+
   @ApiPropertyOptional({ example: 'High-value enterprise deal' })
   @IsString()
   @IsOptional()
@@ -71,6 +81,16 @@ export class UpdateOpportunityDto {
   @IsOptional()
   nextStep?: string;
 
+  @ApiPropertyOptional({ example: 'CONVERTED_LEAD' })
+  @IsString()
+  @IsOptional()
+  source?: string;
+
+  @ApiPropertyOptional({ example: 'Converted from Facebook lead' })
+  @IsString()
+  @IsOptional()
+  sourceDetail?: string;
+
   @ApiPropertyOptional({ example: 'High-value enterprise deal' })
   @IsString()
   @IsOptional()
@@ -97,6 +117,10 @@ export class OpportunityResponseDto {
   closeDate?: Date;
   @ApiPropertyOptional({ example: 'Send pricing proposal' })
   nextStep?: string;
+  @ApiPropertyOptional({ example: 'CONVERTED_LEAD' })
+  source?: string;
+  @ApiPropertyOptional({ example: 'Converted from Facebook lead' })
+  sourceDetail?: string;
   @ApiPropertyOptional({ example: 'High-value enterprise deal' })
   description?: string;
   @ApiProperty({ example: '11111111-1111-1111-1111-111111111111' })
@@ -107,6 +131,8 @@ export class OpportunityResponseDto {
   ownerId: string;
   @ApiProperty({ example: '55555555-5555-5555-5555-555555555555' })
   organizationId: string;
+  @ApiPropertyOptional({ example: '2026-04-29T08:00:00.000Z' })
+  deletedAt?: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })

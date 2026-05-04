@@ -38,6 +38,7 @@ export class LeadService {
         email: dto.email,
         phone: dto.phone,
         source: dto.source,
+        sourceDetail: dto.sourceDetail,
         industry: dto.industry,
         description: dto.description,
         status: LeadStatus.NEW,
@@ -77,13 +78,15 @@ export class LeadService {
     page: number = 1,
     limit: number = 10,
     search?: string,
-    status?: string
+    status?: string,
+    source?: string,
+    deleted: boolean = false
   ): Promise<PaginatedResponse<LeadResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
     const where: any = {
       organizationId,
-      deletedAt: null,
+      deletedAt: deleted ? { not: null } : null,
     };
 
     if (search) {
@@ -97,6 +100,10 @@ export class LeadService {
 
     if (status) {
       where.status = status;
+    }
+
+    if (source) {
+      where.source = source;
     }
 
     const [leads, total] = await Promise.all([
@@ -143,6 +150,7 @@ export class LeadService {
         email: dto.email !== undefined ? dto.email : lead.email,
         phone: dto.phone !== undefined ? dto.phone : lead.phone,
         source: dto.source !== undefined ? dto.source : lead.source,
+        sourceDetail: dto.sourceDetail !== undefined ? dto.sourceDetail : lead.sourceDetail,
         industry: dto.industry !== undefined ? dto.industry : lead.industry,
         description: dto.description !== undefined ? dto.description : lead.description,
       },
@@ -218,46 +226,109 @@ export class LeadService {
       throw new BadRequestException('Lead is already converted');
     }
 
+    if (dto.accountMode === 'USE_EXISTING' && !dto.accountId) {
+      throw new BadRequestException('accountId is required when using an existing account');
+    }
+
+    if (dto.contactMode === 'USE_EXISTING' && !dto.contactId) {
+      throw new BadRequestException('contactId is required when using an existing contact');
+    }
+
+    if (dto.opportunityMode === 'USE_EXISTING' && !dto.opportunityId) {
+      throw new BadRequestException('opportunityId is required when using an existing opportunity');
+    }
+
     // Run everything inside a transaction
+    const convertedSource = lead.source || 'CONVERTED_LEAD';
     const result = await this.prisma.$transaction(async (tx) => {
-      // Create Account
-      const account = await tx.account.create({
-        data: {
-          id: randomUUID(),
-          organizationId,
-          ownerId,
-          name: lead.company,
-          type: dto.accountType,
-        },
-      });
+      const accountMode = dto.accountMode || 'CREATE_NEW';
+      const contactMode = dto.contactMode || 'CREATE_NEW';
+      const opportunityMode = dto.opportunityMode || 'CREATE_NEW';
 
-      // Create Contact
-      const contact = await tx.contact.create({
-        data: {
-          id: randomUUID(),
-          organizationId,
-          ownerId,
-          accountId: account.id,
-          firstName: lead.firstName,
-          lastName: lead.lastName,
-          title: dto.contactTitle || lead.title,
-          email: lead.email,
-          phone: lead.phone,
-        },
-      });
+      const account =
+        accountMode === 'USE_EXISTING'
+          ? await tx.account.findFirst({
+              where: {
+                id: dto.accountId,
+                organizationId,
+                deletedAt: null,
+              },
+            })
+          : await tx.account.create({
+              data: {
+                id: randomUUID(),
+                organizationId,
+                ownerId,
+                name: lead.company,
+                type: dto.accountType,
+                website: lead.website,
+                phone: lead.phone,
+                source: convertedSource,
+                sourceDetail: lead.sourceDetail,
+              },
+            });
 
-      // Create Opportunity
-      const opportunity = await tx.opportunity.create({
-        data: {
-          id: randomUUID(),
-          organizationId,
-          ownerId,
-          accountId: account.id,
-          contactId: contact.id,
-          name: `New opportunity - ${lead.company}`,
-          stage: 'QUALIFY',
-        },
-      });
+      if (!account) {
+        throw new NotFoundException('Account not found');
+      }
+
+      const contact =
+        contactMode === 'USE_EXISTING'
+          ? await tx.contact.findFirst({
+              where: {
+                id: dto.contactId,
+                organizationId,
+                deletedAt: null,
+              },
+            })
+          : await tx.contact.create({
+              data: {
+                id: randomUUID(),
+                organizationId,
+                ownerId,
+                accountId: account.id,
+                firstName: lead.firstName,
+                lastName: lead.lastName,
+                title: dto.contactTitle || lead.title,
+                email: lead.email,
+                phone: lead.phone,
+                source: convertedSource,
+                sourceDetail: lead.sourceDetail,
+              },
+            });
+
+      if (!contact) {
+        throw new NotFoundException('Contact not found');
+      }
+
+      const opportunity =
+        opportunityMode === 'DO_NOT_CREATE'
+          ? null
+          : opportunityMode === 'USE_EXISTING'
+            ? await tx.opportunity.findFirst({
+                where: {
+                  id: dto.opportunityId,
+                  organizationId,
+                  deletedAt: null,
+                },
+              })
+            : await tx.opportunity.create({
+                data: {
+                  id: randomUUID(),
+                  organizationId,
+                  ownerId,
+                  accountId: account.id,
+                  contactId: contact.id,
+                  name: dto.opportunityName || `New Opportunity - ${lead.company}`,
+                  stage: 'QUALIFY',
+                  source: convertedSource,
+                  sourceDetail: lead.sourceDetail,
+                },
+              });
+
+      if (opportunityMode === 'USE_EXISTING' && !opportunity) {
+        throw new NotFoundException('Opportunity not found');
+      }
 
       // Update Lead
       const updatedLead = await tx.lead.update({
@@ -266,7 +337,7 @@ export class LeadService {
           status: LeadStatus.CONVERTED,
           convertedAccountId: account.id,
           convertedContactId: contact.id,
-          convertedOpportunityId: opportunity.id,
+          convertedOpportunityId: opportunity?.id,
         },
       });
 
@@ -320,6 +391,40 @@ export class LeadService {
     });
   }
 
+  async restore(leadId: string, organizationId: string): Promise<LeadResponseDto> {
+    const lead = await this.prisma.lead.findFirst({
+      where: {
+        id: leadId,
+        organizationId,
+      },
+    });
+
+    if (!lead) {
+      throw new NotFoundException('Lead not found');
+    }
+
+    if (!lead.deletedAt) {
+      return this.mapToResponseDto(lead);
+    }
+
+    const restoredLead = await this.prisma.lead.update({
+      where: { id: leadId },
+      data: { deletedAt: null },
+    });
+
+    await this.auditLog.log({
+      organizationId,
+      userId: lead.ownerId,
+      action: AuditAction.RESTORE,
+      entityType: 'Lead',
+      entityId: leadId,
+      oldValues: { deletedAt: lead.deletedAt },
+      newValues: { deletedAt: null },
+    });
+
+    return this.mapToResponseDto(restoredLead);
+  }
+
   private mapToResponseDto(lead: any): LeadResponseDto {
     return {
       id: lead.id,
@@ -332,6 +437,7 @@ export class LeadService {
       phone: lead.phone,
       status: lead.status,
       source: lead.source,
+      sourceDetail: lead.sourceDetail,
       industry: lead.industry,
       description: lead.description,
       convertedAccountId: lead.convertedAccountId,
@@ -339,6 +445,7 @@ export class LeadService {
       convertedOpportunityId: lead.convertedOpportunityId,
       ownerId: lead.ownerId,
       organizationId: lead.organizationId,
+      deletedAt: lead.deletedAt,
       createdAt: lead.createdAt,
       updatedAt: lead.updatedAt,
     };

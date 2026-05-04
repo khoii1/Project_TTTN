@@ -7,6 +7,7 @@ import { leadsApi } from "@/features/leads/leads.api";
 import { Lead, LeadStatus } from "@/features/leads/leads.types";
 import { PageHeader } from "@/components/common/PageHeader";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { SourceFields } from "@/components/crm/SourceFields";
 
 export default function NewLeadPage() {
   const router = useRouter();
@@ -15,10 +16,13 @@ export default function NewLeadPage() {
   const onFinish = async (values: Partial<Lead>) => {
     try {
       setLoading(true);
-      await leadsApi.create({
-        ...values,
-        status: values.status || LeadStatus.NEW,
-      });
+      const { status, ...createPayload } = values;
+      const createdLead = await leadsApi.create(createPayload);
+
+      if (status && status !== LeadStatus.NEW) {
+        await leadsApi.updateStatus(createdLead.id, status);
+      }
+
       message.success("Lead created successfully");
       router.push("/dashboard/leads");
     } catch (error: unknown) {
@@ -80,6 +84,8 @@ export default function NewLeadPage() {
               ))}
             </Select>
           </Form.Item>
+
+          <SourceFields />
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button onClick={() => router.back()}>Cancel</Button>

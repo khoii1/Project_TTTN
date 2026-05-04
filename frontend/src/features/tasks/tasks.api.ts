@@ -1,9 +1,11 @@
 import { httpClient } from "@/lib/api/http-client";
 import { toPaginatedArray } from "@/lib/api/pagination";
-import { Task } from "./tasks.types";
+import { Task, TaskStatus } from "./tasks.types";
 
 export const tasksApi = {
-  getAll: async (params?: Record<string, string | number | undefined>) => {
+  getAll: async (
+    params?: Record<string, string | number | boolean | undefined>,
+  ) => {
     const { data } = await httpClient.get("/tasks", { params });
     return toPaginatedArray<Task>(data);
   },
@@ -19,11 +21,23 @@ export const tasksApi = {
     const { data } = await httpClient.patch<Task>(`/tasks/${id}`, payload);
     return data;
   },
+  updateStatus: async (id: string, status: TaskStatus) => {
+    const { data } = await httpClient.patch<Task>(`/tasks/${id}/complete`, {
+      status,
+    });
+    return data;
+  },
   complete: async (id: string) => {
-    const { data } = await httpClient.patch<Task>(`/tasks/${id}/complete`);
+    const { data } = await httpClient.patch<Task>(`/tasks/${id}/complete`, {
+      status: TaskStatus.COMPLETED,
+    });
     return data;
   },
   delete: async (id: string) => {
     await httpClient.delete(`/tasks/${id}`);
+  },
+  restore: async (id: string) => {
+    const { data } = await httpClient.patch<Task>(`/tasks/${id}/restore`);
+    return data;
   },
 };

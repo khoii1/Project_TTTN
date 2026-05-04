@@ -20,6 +20,7 @@ export interface Lead {
   title?: string;
   website?: string;
   source?: string;
+  sourceDetail?: string;
   industry?: string;
   description?: string;
   convertedAccountId?: string;
@@ -28,4 +29,20 @@ export interface Lead {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
+}
+
+export type LeadConvertMode = "CREATE_NEW" | "USE_EXISTING";
+export type LeadConvertOpportunityMode =
+  | "CREATE_NEW"
+  | "USE_EXISTING"
+  | "DO_NOT_CREATE";
+
+export interface ConvertLeadPayload {
+  accountMode?: LeadConvertMode;
+  accountId?: string;
+  contactMode?: LeadConvertMode;
+  contactId?: string;
+  opportunityMode?: LeadConvertOpportunityMode;
+  opportunityId?: string;
+  opportunityName?: string;
 }

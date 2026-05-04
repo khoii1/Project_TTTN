@@ -3,7 +3,9 @@ import { toPaginatedArray } from "@/lib/api/pagination";
 import { Contact } from "./contacts.types";
 
 export const contactsApi = {
-  getAll: async (params?: Record<string, string | number | undefined>) => {
+  getAll: async (
+    params?: Record<string, string | number | boolean | undefined>,
+  ) => {
     const { data } = await httpClient.get("/contacts", { params });
     return toPaginatedArray<Contact>(data);
   },
@@ -24,5 +26,9 @@ export const contactsApi = {
   },
   delete: async (id: string) => {
     await httpClient.delete(`/contacts/${id}`);
+  },
+  restore: async (id: string) => {
+    const { data } = await httpClient.patch<Contact>(`/contacts/${id}/restore`);
+    return data;
   },
 };

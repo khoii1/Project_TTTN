@@ -8,7 +8,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { accountsApi } from "@/features/accounts/accounts.api";
 import { Account } from "@/features/accounts/accounts.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
+import { getSourceLabel } from "@/lib/constants/source-options";
 
 function AccountsList() {
   const router = useRouter();
@@ -108,6 +110,18 @@ function AccountsList() {
       title: "Phone",
       dataIndex: "phone",
       key: "phone",
+    },
+    {
+      title: "Source",
+      dataIndex: "source",
+      key: "source",
+      render: (source?: string) => getSourceLabel(source),
+    },
+    {
+      title: "Owner",
+      dataIndex: "ownerId",
+      key: "ownerId",
+      render: (ownerId?: string) => <UserReferenceDisplay userId={ownerId} />,
     },
     {
       title: "Created At",

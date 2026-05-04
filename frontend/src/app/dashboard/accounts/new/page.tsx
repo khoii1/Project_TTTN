@@ -7,6 +7,7 @@ import { accountsApi } from "@/features/accounts/accounts.api";
 import { Account } from "@/features/accounts/accounts.types";
 import { PageHeader } from "@/components/common/PageHeader";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { SourceFields } from "@/components/crm/SourceFields";
 
 export default function NewAccountPage() {
   const router = useRouter();
@@ -50,6 +51,8 @@ export default function NewAccountPage() {
           <Form.Item name="phone" label="Phone">
             <Input placeholder="+1 234 567 8900" />
           </Form.Item>
+
+          <SourceFields />
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button onClick={() => router.back()}>Cancel</Button>

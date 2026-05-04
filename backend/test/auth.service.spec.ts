@@ -104,8 +104,8 @@ describe('AuthService', () => {
 
       const result = await service.register(registerDto);
 
-      expect(result).toHaveProperty('accessToken');
-      expect(result).toHaveProperty('refreshToken');
+      expect(result).toHaveProperty('tokens.accessToken');
+      expect(result).toHaveProperty('tokens.refreshToken');
       expect((result.user as any).email).toBe('john@example.com');
       expect((result.user as any).role).toBe('ADMIN');
     });
@@ -154,8 +154,8 @@ describe('AuthService', () => {
 
       const result = await service.login(loginDto);
 
-      expect(result).toHaveProperty('accessToken');
-      expect(result).toHaveProperty('refreshToken');
+      expect(result).toHaveProperty('tokens.accessToken');
+      expect(result).toHaveProperty('tokens.refreshToken');
       expect((result.user as any).email).toBe('john@example.com');
     });
 

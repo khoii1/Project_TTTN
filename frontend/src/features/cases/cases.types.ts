@@ -18,10 +18,14 @@ export interface Case {
   description?: string;
   status: CaseStatus;
   priority: CasePriority;
+  source?: string;
+  sourceDetail?: string;
   accountId?: string;
   contactId?: string;
   organizationId: string;
+  ownerId?: string;
   assignedToId?: string;
+  deletedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

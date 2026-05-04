@@ -13,6 +13,8 @@ export interface Opportunity {
   stage: OpportunityStage;
   closeDate?: string;
   nextStep?: string;
+  source?: string;
+  sourceDetail?: string;
   description?: string;
   accountId: string;
   contactId?: string;

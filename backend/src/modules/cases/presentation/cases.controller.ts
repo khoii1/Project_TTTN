@@ -46,6 +46,8 @@ export class CasesController {
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'status', required: false, type: String })
   @ApiQuery({ name: 'priority', required: false, type: String })
+  @ApiQuery({ name: 'source', required: false, type: String })
+  @ApiQuery({ name: 'deleted', required: false, type: Boolean })
   @ApiResponse({
     status: 200,
     description: 'Cases list',
@@ -57,9 +59,20 @@ export class CasesController {
     @Query('limit') limit?: number,
     @Query('search') search?: string,
     @Query('status') status?: string,
-    @Query('priority') priority?: string
+    @Query('priority') priority?: string,
+    @Query('source') source?: string,
+    @Query('deleted') deleted?: string
   ): Promise<PaginatedResponse<CaseResponseDto>> {
-    return this.caseService.findAll(user.organizationId, page || 1, limit || 10, search, status, priority);
+    return this.caseService.findAll(
+      user.organizationId,
+      page || 1,
+      limit || 10,
+      search,
+      status,
+      priority,
+      source,
+      deleted === 'true',
+    );
   }
 
   @Get(':id')
@@ -92,6 +105,16 @@ export class CasesController {
     @CurrentUser() user: TokenPayload
   ): Promise<CaseResponseDto> {
     return this.caseService.changeStatus(id, user.organizationId, dto);
+  }
+
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted case' })
+  @ApiResponse({ status: 200, description: 'Case restored', type: CaseResponseDto })
+  async restore(
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload
+  ): Promise<CaseResponseDto> {
+    return this.caseService.restore(id, user.organizationId);
   }
 
   @Delete(':id')

@@ -22,6 +22,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { tasksApi } from "@/features/tasks/tasks.api";
 import { Task } from "@/features/tasks/tasks.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
+import type { EntityReferenceType } from "@/components/crm/EntityReferenceDisplay";
+import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
 
 function TasksList() {
@@ -188,6 +191,28 @@ function TasksList() {
       key: "dueDate",
       render: (date: string) =>
         date ? new Date(date).toLocaleDateString() : "N/A",
+    },
+    {
+      title: "Related To",
+      key: "relatedTo",
+      render: (_, record) =>
+        record.relatedType && record.relatedId ? (
+          <EntityReferenceDisplay
+            entityType={record.relatedType as EntityReferenceType}
+            entityId={record.relatedId}
+            link
+          />
+        ) : (
+          "-"
+        ),
+    },
+    {
+      title: "Assigned To",
+      dataIndex: "assignedToId",
+      key: "assignedToId",
+      render: (assignedToId?: string) => (
+        <UserReferenceDisplay userId={assignedToId} />
+      ),
     },
     {
       title: "Actions",

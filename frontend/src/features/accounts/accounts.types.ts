@@ -4,6 +4,8 @@ export interface Account {
   website?: string;
   type?: string;
   phone?: string;
+  source?: string;
+  sourceDetail?: string;
   description?: string;
   organizationId: string;
   ownerId: string;

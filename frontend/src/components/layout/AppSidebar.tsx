@@ -13,6 +13,7 @@ import {
   ExceptionOutlined,
   SettingOutlined,
   TeamOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/features/auth/auth.store';
 
@@ -40,6 +41,7 @@ export const AppSidebar = () => {
     { key: '/dashboard/opportunities', icon: <LineChartOutlined />, label: 'Opportunities' },
     { key: '/dashboard/tasks', icon: <CheckSquareOutlined />, label: 'Tasks' },
     { key: '/dashboard/cases', icon: <ExceptionOutlined />, label: 'Cases' },
+    { key: '/dashboard/recycle-bin', icon: <DeleteOutlined />, label: 'Recycle Bin' },
     ...(user?.role === 'ADMIN' ? [{ key: '/dashboard/users', icon: <TeamOutlined />, label: 'Users' }] : []),
     { key: '/dashboard/settings/organization', icon: <SettingOutlined />, label: 'Settings' },
   ];

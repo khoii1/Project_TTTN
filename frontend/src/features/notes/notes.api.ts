@@ -3,7 +3,7 @@ import { toPaginatedArray } from "@/lib/api/pagination";
 import { Note } from "./notes.types";
 
 export const notesApi = {
-  getAll: async (params?: { relatedType?: string; relatedId?: string }) => {
+  getAll: async (params?: { relatedId?: string }) => {
     const { data } = await httpClient.get("/notes", { params });
     return toPaginatedArray<Note>(data);
   },

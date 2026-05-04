@@ -9,6 +9,7 @@ import { Contact } from "@/features/contacts/contacts.types";
 import { Account } from "@/features/accounts/accounts.types";
 import { PageHeader } from "@/components/common/PageHeader";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { SourceFields } from "@/components/crm/SourceFields";
 
 export default function NewContactPage() {
   const router = useRouter();
@@ -88,6 +89,8 @@ export default function NewContactPage() {
               <Input placeholder="Software Engineer" />
             </Form.Item>
           </div>
+
+          <SourceFields />
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button onClick={() => router.back()}>Cancel</Button>

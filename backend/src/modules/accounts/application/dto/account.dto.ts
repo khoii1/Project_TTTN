@@ -24,6 +24,16 @@ export class CreateAccountDto {
   @IsOptional()
   phone?: string;
 
+  @ApiPropertyOptional({ example: 'WEBSITE' })
+  @IsString()
+  @IsOptional()
+  source?: string;
+
+  @ApiPropertyOptional({ example: 'Website form landing page A' })
+  @IsString()
+  @IsOptional()
+  sourceDetail?: string;
+
   @ApiPropertyOptional({ example: 'Key enterprise customer' })
   @IsString()
   @IsOptional()
@@ -102,6 +112,14 @@ export class UpdateAccountDto {
 
   @IsString()
   @IsOptional()
+  source?: string;
+
+  @IsString()
+  @IsOptional()
+  sourceDetail?: string;
+
+  @IsString()
+  @IsOptional()
   description?: string;
 
   @IsString()
@@ -156,6 +174,10 @@ export class AccountResponseDto {
   type?: string;
   @ApiPropertyOptional({ example: '+1-555-0201' })
   phone?: string;
+  @ApiPropertyOptional({ example: 'WEBSITE' })
+  source?: string;
+  @ApiPropertyOptional({ example: 'Website form landing page A' })
+  sourceDetail?: string;
   @ApiPropertyOptional({ example: 'Key enterprise customer' })
   description?: string;
   @ApiPropertyOptional({ example: 'USA' })
@@ -182,6 +204,8 @@ export class AccountResponseDto {
   ownerId: string;
   @ApiProperty({ example: '55555555-5555-5555-5555-555555555555' })
   organizationId: string;
+  @ApiPropertyOptional({ example: '2026-04-29T08:00:00.000Z' })
+  deletedAt?: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })

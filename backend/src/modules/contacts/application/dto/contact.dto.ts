@@ -35,6 +35,16 @@ export class CreateContactDto {
   @IsOptional()
   phone?: string;
 
+  @ApiPropertyOptional({ example: 'REFERRAL' })
+  @IsString()
+  @IsOptional()
+  source?: string;
+
+  @ApiPropertyOptional({ example: 'Referred by existing customer' })
+  @IsString()
+  @IsOptional()
+  sourceDetail?: string;
+
   @ApiPropertyOptional({ example: 'Important account contact' })
   @IsString()
   @IsOptional()
@@ -93,6 +103,14 @@ export class UpdateContactDto {
 
   @IsString()
   @IsOptional()
+  source?: string;
+
+  @IsString()
+  @IsOptional()
+  sourceDetail?: string;
+
+  @IsString()
+  @IsOptional()
   description?: string;
 
   @IsString()
@@ -129,6 +147,10 @@ export class ContactResponseDto {
   email?: string;
   @ApiPropertyOptional({ example: '+1-555-0301' })
   phone?: string;
+  @ApiPropertyOptional({ example: 'REFERRAL' })
+  source?: string;
+  @ApiPropertyOptional({ example: 'Referred by existing customer' })
+  sourceDetail?: string;
   @ApiPropertyOptional({ example: 'Important account contact' })
   description?: string;
   @ApiPropertyOptional({ example: 'USA' })
@@ -147,6 +169,8 @@ export class ContactResponseDto {
   ownerId: string;
   @ApiProperty({ example: '55555555-5555-5555-5555-555555555555' })
   organizationId: string;
+  @ApiPropertyOptional({ example: '2026-04-29T08:00:00.000Z' })
+  deletedAt?: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })

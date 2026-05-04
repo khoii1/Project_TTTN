@@ -98,6 +98,8 @@ export class TaskResponseDto {
   assignedToId: string;
   @ApiProperty({ example: '55555555-5555-5555-5555-555555555555' })
   organizationId: string;
+  @ApiPropertyOptional({ example: '2026-04-29T08:00:00.000Z' })
+  deletedAt?: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })

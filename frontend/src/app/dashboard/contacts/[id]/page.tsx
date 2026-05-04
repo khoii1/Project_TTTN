@@ -13,10 +13,14 @@ import {
 } from "antd";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
+import { SourceFields } from "@/components/crm/SourceFields";
+import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
+import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { contactsApi } from "@/features/contacts/contacts.api";
 import { accountsApi } from "@/features/accounts/accounts.api";
 import { Account } from "@/features/accounts/accounts.types";
 import { Contact } from "@/features/contacts/contacts.types";
+import { getSourceLabel } from "@/lib/constants/source-options";
 import React from "react";
 
 export default function ContactDetailPage({
@@ -29,7 +33,6 @@ export default function ContactDetailPage({
   const [contact, setContact] = useState<Contact | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -38,13 +41,12 @@ export default function ContactDetailPage({
       setLoading(true);
       const data = await contactsApi.getById(id);
       setContact(data);
-      form.setFieldsValue(data);
     } catch {
       message.error("Failed to load contact details");
     } finally {
       setLoading(false);
     }
-  }, [form, id]);
+  }, [id]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -58,7 +60,9 @@ export default function ContactDetailPage({
   const handleUpdate = async (values: Partial<Contact>) => {
     try {
       setSaving(true);
-      await contactsApi.update(id, values);
+      const updatePayload = { ...values };
+      delete updatePayload.accountId;
+      await contactsApi.update(id, updatePayload);
       message.success("Contact updated");
       setIsEditing(false);
       fetchContact();
@@ -90,7 +94,7 @@ export default function ContactDetailPage({
 
       <Card className="shadow-sm">
         {isEditing ? (
-          <Form form={form} layout="vertical" onFinish={handleUpdate}>
+          <Form layout="vertical" initialValues={contact} onFinish={handleUpdate}>
             <div className="grid grid-cols-2 gap-4">
               <Form.Item
                 name="firstName"
@@ -133,6 +137,7 @@ export default function ContactDetailPage({
                 </Select>
               </Form.Item>
             </div>
+            <SourceFields />
             <div className="flex justify-end space-x-2 mt-4">
               <Button onClick={() => setIsEditing(false)}>Cancel</Button>
               <Button type="primary" htmlType="submit" loading={saving}>
@@ -156,8 +161,20 @@ export default function ContactDetailPage({
               {contact.phone || "N/A"}
             </Descriptions.Item>
             <Descriptions.Item label="Account">
-              {accounts.find((a) => a.id === contact.accountId)?.name ||
-                "Unknown Account"}
+              <EntityReferenceDisplay
+                entityType="ACCOUNT"
+                entityId={contact.accountId}
+                link
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Owner">
+              <UserReferenceDisplay userId={contact.ownerId} />
+            </Descriptions.Item>
+            <Descriptions.Item label="Source">
+              {getSourceLabel(contact.source)}
+            </Descriptions.Item>
+            <Descriptions.Item label="Source Detail">
+              {contact.sourceDetail || "-"}
             </Descriptions.Item>
             <Descriptions.Item label="Created">
               {new Date(contact.createdAt).toLocaleString()}

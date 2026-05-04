@@ -1,9 +1,11 @@
 import { httpClient } from "@/lib/api/http-client";
 import { toPaginatedArray } from "@/lib/api/pagination";
-import { Lead } from "./leads.types";
+import { ConvertLeadPayload, Lead } from "./leads.types";
 
 export const leadsApi = {
-  getAll: async (params?: Record<string, string | number | undefined>) => {
+  getAll: async (
+    params?: Record<string, string | number | boolean | undefined>,
+  ) => {
     const { data } = await httpClient.get("/leads", { params });
     return toPaginatedArray<Lead>(data);
   },
@@ -25,11 +27,15 @@ export const leadsApi = {
     });
     return data;
   },
-  convert: async (id: string) => {
-    const { data } = await httpClient.post(`/leads/${id}/convert`);
+  convert: async (id: string, payload?: ConvertLeadPayload) => {
+    const { data } = await httpClient.post(`/leads/${id}/convert`, payload);
     return data;
   },
   delete: async (id: string) => {
     await httpClient.delete(`/leads/${id}`);
+  },
+  restore: async (id: string) => {
+    const { data } = await httpClient.patch<Lead>(`/leads/${id}/restore`);
+    return data;
   },
 };

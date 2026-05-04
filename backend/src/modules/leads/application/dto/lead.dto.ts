@@ -4,6 +4,7 @@ import {
   IsEmail,
   IsNotEmpty,
   IsEnum,
+  IsIn,
   MinLength,
   MaxLength,
 } from 'class-validator';
@@ -54,6 +55,11 @@ export class CreateLeadDto {
   @IsString()
   @IsOptional()
   source?: string;
+
+  @ApiPropertyOptional({ example: 'Landing page campaign A' })
+  @IsString()
+  @IsOptional()
+  sourceDetail?: string;
 
   @ApiPropertyOptional({ example: 'Technology' })
   @IsString()
@@ -111,6 +117,11 @@ export class UpdateLeadDto {
   @IsOptional()
   source?: string;
 
+  @ApiPropertyOptional({ example: 'Referred by previous customer' })
+  @IsString()
+  @IsOptional()
+  sourceDetail?: string;
+
   @ApiPropertyOptional({ example: 'Technology' })
   @IsString()
   @IsOptional()
@@ -130,6 +141,45 @@ export class ChangeLeadStatusDto {
 }
 
 export class ConvertLeadDto {
+  @ApiPropertyOptional({ example: 'CREATE_NEW', enum: ['CREATE_NEW', 'USE_EXISTING'] })
+  @IsString()
+  @IsOptional()
+  @IsIn(['CREATE_NEW', 'USE_EXISTING'])
+  accountMode?: 'CREATE_NEW' | 'USE_EXISTING';
+
+  @ApiPropertyOptional({ example: '11111111-1111-1111-1111-111111111111' })
+  @IsString()
+  @IsOptional()
+  accountId?: string;
+
+  @ApiPropertyOptional({ example: 'CREATE_NEW', enum: ['CREATE_NEW', 'USE_EXISTING'] })
+  @IsString()
+  @IsOptional()
+  @IsIn(['CREATE_NEW', 'USE_EXISTING'])
+  contactMode?: 'CREATE_NEW' | 'USE_EXISTING';
+
+  @ApiPropertyOptional({ example: '22222222-2222-2222-2222-222222222222' })
+  @IsString()
+  @IsOptional()
+  contactId?: string;
+
+  @ApiPropertyOptional({ example: 'CREATE_NEW', enum: ['CREATE_NEW', 'USE_EXISTING', 'DO_NOT_CREATE'] })
+  @IsString()
+  @IsOptional()
+  @IsIn(['CREATE_NEW', 'USE_EXISTING', 'DO_NOT_CREATE'])
+  opportunityMode?: 'CREATE_NEW' | 'USE_EXISTING' | 'DO_NOT_CREATE';
+
+  @ApiPropertyOptional({ example: '33333333-3333-3333-3333-333333333333' })
+  @IsString()
+  @IsOptional()
+  opportunityId?: string;
+
+  @ApiPropertyOptional({ example: 'New Opportunity - Tech Corp' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  opportunityName?: string;
+
   @ApiPropertyOptional({ example: 'Decision Maker' })
   @IsString()
   @IsOptional()
@@ -162,6 +212,8 @@ export class LeadResponseDto {
   status: LeadStatus;
   @ApiPropertyOptional({ example: 'Website' })
   source?: string;
+  @ApiPropertyOptional({ example: 'Landing page campaign A' })
+  sourceDetail?: string;
   @ApiPropertyOptional({ example: 'Technology' })
   industry?: string;
   @ApiPropertyOptional({ example: 'Interested in CRM demo' })
@@ -176,6 +228,8 @@ export class LeadResponseDto {
   ownerId: string;
   @ApiProperty({ example: '55555555-5555-5555-5555-555555555555' })
   organizationId: string;
+  @ApiPropertyOptional({ example: '2026-04-29T08:00:00.000Z' })
+  deletedAt?: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })

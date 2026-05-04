@@ -17,7 +17,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { casesApi } from "@/features/cases/cases.api";
 import { Case } from "@/features/cases/cases.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
+import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
+import { getSourceLabel } from "@/lib/constants/source-options";
 
 function CasesList() {
   const router = useRouter();
@@ -154,6 +157,34 @@ function CasesList() {
       render: (priority: string) => (
         <Tag color={priorityColors[priority]}>{priority}</Tag>
       ),
+    },
+    {
+      title: "Account",
+      dataIndex: "accountId",
+      key: "accountId",
+      render: (accountId?: string) => (
+        <EntityReferenceDisplay entityType="ACCOUNT" entityId={accountId} link />
+      ),
+    },
+    {
+      title: "Contact",
+      dataIndex: "contactId",
+      key: "contactId",
+      render: (contactId?: string) => (
+        <EntityReferenceDisplay entityType="CONTACT" entityId={contactId} link />
+      ),
+    },
+    {
+      title: "Source",
+      dataIndex: "source",
+      key: "source",
+      render: (source?: string) => getSourceLabel(source),
+    },
+    {
+      title: "Owner",
+      dataIndex: "ownerId",
+      key: "ownerId",
+      render: (ownerId?: string) => <UserReferenceDisplay userId={ownerId} />,
     },
     {
       title: "Created At",

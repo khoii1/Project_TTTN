@@ -39,9 +39,6 @@ export default function OrganizationSettingsPage() {
 
       <Card className="shadow-sm max-w-3xl">
         <Descriptions column={1} bordered size="middle">
-          <Descriptions.Item label="Organization ID">
-            {org.id}
-          </Descriptions.Item>
           <Descriptions.Item label="Organization Name">
             <span className="font-semibold text-lg">{org.name}</span>
           </Descriptions.Item>

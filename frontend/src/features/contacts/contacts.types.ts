@@ -4,6 +4,8 @@ export interface Contact {
   lastName: string;
   email?: string;
   phone?: string;
+  source?: string;
+  sourceDetail?: string;
   title?: string;
   description?: string;
   accountId: string;

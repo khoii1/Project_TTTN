@@ -85,6 +85,7 @@ model Lead {
   phone                  String?
   status                 LeadStatus @default(NEW)
   source                 String?
+  sourceDetail           String?  @map("source_detail")
   industry               String?
   description            String?
   convertedAccountId     String?  @map("converted_account_id")
@@ -123,6 +124,8 @@ model Account {
   website             String?
   type                String?
   phone               String?
+  source              String?
+  sourceDetail        String?  @map("source_detail")
   description         String?
   billingCountry      String?  @map("billing_country")
   billingStreet       String?  @map("billing_street")
@@ -162,6 +165,8 @@ model Contact {
   title              String?
   email              String?
   phone              String?
+  source             String?
+  sourceDetail       String?  @map("source_detail")
   description        String?
   mailingCountry     String?  @map("mailing_country")
   mailingStreet      String?  @map("mailing_street")
@@ -198,6 +203,8 @@ model Opportunity {
   amount          Decimal? @db.Decimal(15, 2)
   closeDate       DateTime? @map("close_date")
   nextStep        String?  @map("next_step")
+  source          String?
+  sourceDetail    String?  @map("source_detail")
   description     String?
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -304,6 +311,8 @@ model Case {
   subject         String
   status          CaseStatus @default(NEW)
   priority        CasePriority @default(MEDIUM)
+  source          String?
+  sourceDetail    String?  @map("source_detail")
   description     String?
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")

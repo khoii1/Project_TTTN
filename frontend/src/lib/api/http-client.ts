@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { tokenStorage } from "./token-storage";
 import { notification } from "antd";
 
@@ -13,6 +14,35 @@ let isRefreshing = false;
 type QueueItem = {
   resolve: (token: string | null) => void;
   reject: (error: unknown) => void;
+};
+
+type RetryableRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+};
+
+type RefreshResponse = {
+  tokens?: {
+    accessToken?: string;
+    refreshToken?: string;
+  };
+};
+
+type ApiErrorResponse = {
+  message?: string | string[];
+};
+
+const getErrorMessage = (data: unknown): string | null => {
+  if (!data || typeof data !== "object" || !("message" in data)) {
+    return null;
+  }
+
+  const message = (data as ApiErrorResponse).message;
+
+  if (Array.isArray(message)) {
+    return message.join(", ");
+  }
+
+  return typeof message === "string" ? message : null;
 };
 
 let failedQueue: QueueItem[] = [];
@@ -42,8 +72,12 @@ httpClient.interceptors.request.use(
 
 httpClient.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+  async (error: AxiosError) => {
+    const originalRequest = error.config as RetryableRequestConfig | undefined;
+
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (
@@ -58,7 +92,9 @@ httpClient.interceptors.response.use(
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
-            originalRequest.headers.Authorization = "Bearer " + token;
+            if (token) {
+              originalRequest.headers.Authorization = "Bearer " + token;
+            }
             return httpClient(originalRequest);
           })
           .catch((err) => {
@@ -77,21 +113,28 @@ httpClient.interceptors.response.use(
       }
 
       try {
-        const { data } = await axios.post(
+        const { data } = await axios.post<RefreshResponse>(
           `${httpClient.defaults.baseURL}/auth/refresh`,
           {
             refreshToken,
           },
         );
 
-        tokenStorage.setAccessToken(data.accessToken);
-        tokenStorage.setRefreshToken(data.refreshToken);
+        const newAccessToken = data.tokens?.accessToken;
+        const newRefreshToken = data.tokens?.refreshToken;
+
+        if (!newAccessToken || !newRefreshToken) {
+          throw new Error("Invalid refresh response");
+        }
+
+        tokenStorage.setAccessToken(newAccessToken);
+        tokenStorage.setRefreshToken(newRefreshToken);
 
         httpClient.defaults.headers.common["Authorization"] =
-          "Bearer " + data.accessToken;
-        originalRequest.headers.Authorization = "Bearer " + data.accessToken;
+          "Bearer " + newAccessToken;
+        originalRequest.headers.Authorization = "Bearer " + newAccessToken;
 
-        processQueue(null, data.accessToken);
+        processQueue(null, newAccessToken);
         return httpClient(originalRequest);
       } catch (err) {
         processQueue(err, null);
@@ -103,13 +146,10 @@ httpClient.interceptors.response.use(
       }
     }
 
-    if (error.response?.data?.message) {
-      // Normalize error message handling
-      const msg = Array.isArray(error.response.data.message)
-        ? error.response.data.message.join(", ")
-        : error.response.data.message;
+    const msg = getErrorMessage(error.response?.data);
 
-      if (error.response.status !== 401) {
+    if (msg) {
+      if (error.response?.status !== 401) {
         // 401 is handled above
         notification.error({
           message: "API Error",

@@ -46,6 +46,7 @@ export class TasksController {
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'status', required: false, type: String })
   @ApiQuery({ name: 'priority', required: false, type: String })
+  @ApiQuery({ name: 'deleted', required: false, type: Boolean })
   @ApiResponse({
     status: 200,
     description: 'Tasks list',
@@ -57,9 +58,18 @@ export class TasksController {
     @Query('limit') limit?: number,
     @Query('search') search?: string,
     @Query('status') status?: string,
-    @Query('priority') priority?: string
+    @Query('priority') priority?: string,
+    @Query('deleted') deleted?: string
   ): Promise<PaginatedResponse<TaskResponseDto>> {
-    return this.taskService.findAll(user.organizationId, page || 1, limit || 10, search, status, priority);
+    return this.taskService.findAll(
+      user.organizationId,
+      page || 1,
+      limit || 10,
+      search,
+      status,
+      priority,
+      deleted === 'true',
+    );
   }
 
   @Get(':id')
@@ -92,6 +102,16 @@ export class TasksController {
     @CurrentUser() user: TokenPayload
   ): Promise<TaskResponseDto> {
     return this.taskService.completeTask(id, user.organizationId, dto);
+  }
+
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted task' })
+  @ApiResponse({ status: 200, description: 'Task restored', type: TaskResponseDto })
+  async restore(
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload
+  ): Promise<TaskResponseDto> {
+    return this.taskService.restore(id, user.organizationId);
   }
 
   @Delete(':id')

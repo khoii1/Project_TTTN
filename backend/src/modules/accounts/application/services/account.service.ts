@@ -27,6 +27,8 @@ export class AccountService {
         website: dto.website,
         type: dto.type,
         phone: dto.phone,
+        source: dto.source,
+        sourceDetail: dto.sourceDetail,
         description: dto.description,
         billingCountry: dto.billingCountry,
         billingStreet: dto.billingStreet,
@@ -73,13 +75,15 @@ export class AccountService {
     organizationId: string,
     page: number = 1,
     limit: number = 10,
-    search?: string
+    search?: string,
+    source?: string,
+    deleted: boolean = false
   ): Promise<PaginatedResponse<AccountResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
     const where: any = {
       organizationId,
-      deletedAt: null,
+      deletedAt: deleted ? { not: null } : null,
     };
 
     if (search) {
@@ -87,6 +91,10 @@ export class AccountService {
         { name: { contains: search, mode: 'insensitive' } },
         { website: { contains: search, mode: 'insensitive' } },
       ];
+    }
+
+    if (source) {
+      where.source = source;
     }
 
     const [accounts, total] = await Promise.all([
@@ -129,6 +137,8 @@ export class AccountService {
         website: dto.website !== undefined ? dto.website : account.website,
         type: dto.type !== undefined ? dto.type : account.type,
         phone: dto.phone !== undefined ? dto.phone : account.phone,
+        source: dto.source !== undefined ? dto.source : account.source,
+        sourceDetail: dto.sourceDetail !== undefined ? dto.sourceDetail : account.sourceDetail,
         description: dto.description !== undefined ? dto.description : account.description,
         billingCountry:
           dto.billingCountry !== undefined ? dto.billingCountry : account.billingCountry,
@@ -192,6 +202,40 @@ export class AccountService {
     });
   }
 
+  async restore(accountId: string, organizationId: string): Promise<AccountResponseDto> {
+    const account = await this.prisma.account.findFirst({
+      where: {
+        id: accountId,
+        organizationId,
+      },
+    });
+
+    if (!account) {
+      throw new NotFoundException('Account not found');
+    }
+
+    if (!account.deletedAt) {
+      return this.mapToResponseDto(account);
+    }
+
+    const restoredAccount = await this.prisma.account.update({
+      where: { id: accountId },
+      data: { deletedAt: null },
+    });
+
+    await this.auditLog.log({
+      organizationId,
+      userId: account.ownerId,
+      action: AuditAction.RESTORE,
+      entityType: 'Account',
+      entityId: accountId,
+      oldValues: { deletedAt: account.deletedAt },
+      newValues: { deletedAt: null },
+    });
+
+    return this.mapToResponseDto(restoredAccount);
+  }
+
   private mapToResponseDto(account: any): AccountResponseDto {
     return {
       id: account.id,
@@ -199,6 +243,8 @@ export class AccountService {
       website: account.website,
       type: account.type,
       phone: account.phone,
+      source: account.source,
+      sourceDetail: account.sourceDetail,
       description: account.description,
       billingCountry: account.billingCountry,
       billingStreet: account.billingStreet,
@@ -212,6 +258,7 @@ export class AccountService {
       shippingPostalCode: account.shippingPostalCode,
       ownerId: account.ownerId,
       organizationId: account.organizationId,
+      deletedAt: account.deletedAt,
       createdAt: account.createdAt,
       updatedAt: account.updatedAt,
     };

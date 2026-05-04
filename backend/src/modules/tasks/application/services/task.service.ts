@@ -82,13 +82,14 @@ export class TaskService {
     limit: number = 10,
     search?: string,
     status?: string,
-    priority?: string
+    priority?: string,
+    deleted: boolean = false
   ): Promise<PaginatedResponse<TaskResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
     const where: any = {
       organizationId,
-      deletedAt: null,
+      deletedAt: deleted ? { not: null } : null,
     };
 
     if (search) {
@@ -175,6 +176,40 @@ export class TaskService {
     return this.mapToResponseDto(updatedTask);
   }
 
+  async restore(taskId: string, organizationId: string): Promise<TaskResponseDto> {
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id: taskId,
+        organizationId,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (!task.deletedAt) {
+      return this.mapToResponseDto(task);
+    }
+
+    const restoredTask = await this.prisma.task.update({
+      where: { id: taskId },
+      data: { deletedAt: null },
+    });
+
+    await this.auditLog.log({
+      organizationId,
+      userId: task.ownerId,
+      action: AuditAction.RESTORE,
+      entityType: 'Task',
+      entityId: taskId,
+      oldValues: { deletedAt: task.deletedAt },
+      newValues: { deletedAt: null },
+    });
+
+    return this.mapToResponseDto(restoredTask);
+  }
+
   async completeTask(
     taskId: string,
     organizationId: string,
@@ -256,6 +291,7 @@ export class TaskService {
       ownerId: task.ownerId,
       assignedToId: task.assignedToId,
       organizationId: task.organizationId,
+      deletedAt: task.deletedAt,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
     };

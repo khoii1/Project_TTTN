@@ -11,10 +11,12 @@ import {
   Input,
   Select,
 } from "antd";
+import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { PlusOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { opportunitiesApi } from "@/features/opportunities/opportunities.api";
 import { accountsApi } from "@/features/accounts/accounts.api";
+import { Account } from "@/features/accounts/accounts.types";
 import {
   Opportunity,
   OpportunityStage,
@@ -32,7 +34,7 @@ function OpportunitiesList() {
   const currentLimit = parseInt(searchParams.get("limit") || "10", 10);
 
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -57,7 +59,7 @@ function OpportunitiesList() {
 
       // We only need to fetch accounts once ideally, but it's okay here for mapping names
       setAccounts(getDataArray(accountsData));
-    } catch (error) {
+    } catch {
       message.error("Failed to load opportunities");
     } finally {
       setLoading(false);
@@ -65,7 +67,16 @@ function OpportunitiesList() {
   };
 
   useEffect(() => {
-    fetchOpportunities(currentPage, currentLimit, currentSearch, currentStage);
+    const timer = window.setTimeout(() => {
+      fetchOpportunities(
+        currentPage,
+        currentLimit,
+        currentSearch,
+        currentStage,
+      );
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [currentPage, currentLimit, currentSearch, currentStage]);
 
   const updateURL = (params: Record<string, string | number | undefined>) => {
@@ -80,7 +91,7 @@ function OpportunitiesList() {
     router.push(`/dashboard/opportunities?${urlParams.toString()}`);
   };
 
-  const handleTableChange = (pagination: any) => {
+  const handleTableChange = (pagination: TablePaginationConfig) => {
     updateURL({ page: pagination.current, limit: pagination.pageSize });
   };
 
@@ -102,7 +113,7 @@ function OpportunitiesList() {
         currentSearch,
         currentStage,
       );
-    } catch (error) {
+    } catch {
       message.error("Failed to delete opportunity");
     }
   };
@@ -115,7 +126,7 @@ function OpportunitiesList() {
     CLOSED_LOST: "red",
   };
 
-  const columns = [
+  const columns: TableColumnsType<Opportunity> = [
     {
       title: "Opportunity Name",
       dataIndex: "name",
@@ -125,7 +136,7 @@ function OpportunitiesList() {
     {
       title: "Account",
       key: "account",
-      render: (_: any, record: Opportunity) => {
+      render: (_, record) => {
         const acc = accounts.find((a) => a.id === record.accountId);
         return acc ? acc.name : "N/A";
       },
@@ -154,7 +165,7 @@ function OpportunitiesList() {
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, record: Opportunity) => (
+      render: (_, record) => (
         <Space size="middle">
           <Button
             type="text"

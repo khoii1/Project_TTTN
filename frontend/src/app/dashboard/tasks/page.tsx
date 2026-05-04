@@ -11,6 +11,7 @@ import {
   Select,
   Input,
 } from "antd";
+import type { TableColumnsType, TablePaginationConfig } from "antd";
 import {
   PlusOutlined,
   DeleteOutlined,
@@ -52,7 +53,7 @@ function TasksList() {
       const items = getDataArray<Task>(res);
       setTasks(items);
       setTotal(getPaginationMeta(res)?.total ?? items.length);
-    } catch (error) {
+    } catch {
       message.error("Failed to load tasks");
     } finally {
       setLoading(false);
@@ -60,13 +61,17 @@ function TasksList() {
   };
 
   useEffect(() => {
-    fetchTasks(
-      currentPage,
-      currentLimit,
-      currentSearch,
-      currentStatus,
-      currentPriority,
-    );
+    const timer = window.setTimeout(() => {
+      fetchTasks(
+        currentPage,
+        currentLimit,
+        currentSearch,
+        currentStatus,
+        currentPriority,
+      );
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [
     currentPage,
     currentLimit,
@@ -87,7 +92,7 @@ function TasksList() {
     router.push(`/dashboard/tasks?${urlParams.toString()}`);
   };
 
-  const handleTableChange = (pagination: any) => {
+  const handleTableChange = (pagination: TablePaginationConfig) => {
     updateURL({ page: pagination.current, limit: pagination.pageSize });
   };
 
@@ -114,7 +119,7 @@ function TasksList() {
         currentStatus,
         currentPriority,
       );
-    } catch (error) {
+    } catch {
       message.error("Failed to delete task");
     }
   };
@@ -130,7 +135,7 @@ function TasksList() {
         currentStatus,
         currentPriority,
       );
-    } catch (error) {
+    } catch {
       message.error("Failed to complete task");
     }
   };
@@ -148,7 +153,7 @@ function TasksList() {
     HIGH: "red",
   };
 
-  const columns = [
+  const columns: TableColumnsType<Task> = [
     {
       title: "Subject",
       dataIndex: "subject",
@@ -187,7 +192,7 @@ function TasksList() {
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, record: Task) => (
+      render: (_, record) => (
         <Space size="middle">
           {record.status !== "COMPLETED" && (
             <Button

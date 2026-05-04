@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Card,
   Descriptions,
@@ -11,7 +11,6 @@ import {
   Input,
   Tabs,
   List,
-  Tag,
 } from "antd";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
@@ -20,6 +19,9 @@ import { contactsApi } from "@/features/contacts/contacts.api";
 import { opportunitiesApi } from "@/features/opportunities/opportunities.api";
 import { casesApi } from "@/features/cases/cases.api";
 import { Account } from "@/features/accounts/accounts.types";
+import { Contact } from "@/features/contacts/contacts.types";
+import { Opportunity } from "@/features/opportunities/opportunities.types";
+import { Case } from "@/features/cases/cases.types";
 import { useRouter } from "next/navigation";
 import React from "react";
 
@@ -32,16 +34,16 @@ export default function AccountDetailPage({
   const unwrappedParams = React.use(params);
   const { id } = unwrappedParams;
   const [account, setAccount] = useState<Account | null>(null);
-  const [relatedContacts, setRelatedContacts] = useState<any[]>([]);
-  const [relatedOpps, setRelatedOpps] = useState<any[]>([]);
-  const [relatedCases, setRelatedCases] = useState<any[]>([]);
+  const [relatedContacts, setRelatedContacts] = useState<Contact[]>([]);
+  const [relatedOpps, setRelatedOpps] = useState<Opportunity[]>([]);
+  const [relatedCases, setRelatedCases] = useState<Case[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [form] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [accData, allContacts, allOpps, allCases] = await Promise.all([
@@ -53,28 +55,32 @@ export default function AccountDetailPage({
       setAccount(accData);
       form.setFieldsValue(accData);
 
-      setRelatedContacts(allContacts.filter((c: any) => c.accountId === id));
-      setRelatedOpps(allOpps.filter((o: any) => o.accountId === id));
-      setRelatedCases(allCases.filter((c: any) => c.accountId === id));
-    } catch (error) {
+      setRelatedContacts(allContacts.filter((c) => c.accountId === id));
+      setRelatedOpps(allOpps.filter((o) => o.accountId === id));
+      setRelatedCases(allCases.filter((c) => c.accountId === id));
+    } catch {
       message.error("Failed to load account details");
     } finally {
       setLoading(false);
     }
-  };
+  }, [form, id]);
 
   useEffect(() => {
-    fetchData();
-  }, [id]);
+    const timer = window.setTimeout(() => {
+      fetchData();
+    }, 0);
 
-  const handleUpdate = async (values: any) => {
+    return () => window.clearTimeout(timer);
+  }, [fetchData]);
+
+  const handleUpdate = async (values: Partial<Account>) => {
     try {
       setSaving(true);
       await accountsApi.update(id, values);
       message.success("Account updated");
       setIsEditing(false);
       fetchData();
-    } catch (error) {
+    } catch {
       message.error("Failed to update account");
     } finally {
       setSaving(false);
@@ -168,6 +174,7 @@ export default function AccountDetailPage({
                       <List.Item
                         actions={[
                           <Button
+                            key={`contact-view-${item.id}`}
                             type="link"
                             onClick={() =>
                               router.push(`/dashboard/contacts/${item.id}`)
@@ -197,6 +204,7 @@ export default function AccountDetailPage({
                       <List.Item
                         actions={[
                           <Button
+                            key={`opportunity-view-${item.id}`}
                             type="link"
                             onClick={() =>
                               router.push(`/dashboard/opportunities/${item.id}`)
@@ -226,6 +234,7 @@ export default function AccountDetailPage({
                       <List.Item
                         actions={[
                           <Button
+                            key={`case-view-${item.id}`}
                             type="link"
                             onClick={() =>
                               router.push(`/dashboard/cases/${item.id}`)

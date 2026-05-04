@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { Table, Button, Space, Popconfirm, message, Input } from "antd";
+import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { PlusOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { accountsApi } from "@/features/accounts/accounts.api";
@@ -29,7 +30,7 @@ function AccountsList() {
       const items = getDataArray<Account>(res);
       setAccounts(items);
       setTotal(getPaginationMeta(res)?.total ?? items.length);
-    } catch (error) {
+    } catch {
       message.error("Failed to load accounts");
     } finally {
       setLoading(false);
@@ -37,7 +38,11 @@ function AccountsList() {
   };
 
   useEffect(() => {
-    fetchAccounts(currentPage, currentLimit, currentSearch);
+    const timer = window.setTimeout(() => {
+      fetchAccounts(currentPage, currentLimit, currentSearch);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [currentPage, currentLimit, currentSearch]);
 
   const updateURL = (params: Record<string, string | number | undefined>) => {
@@ -52,7 +57,7 @@ function AccountsList() {
     router.push(`/dashboard/accounts?${urlParams.toString()}`);
   };
 
-  const handleTableChange = (pagination: any) => {
+  const handleTableChange = (pagination: TablePaginationConfig) => {
     updateURL({ page: pagination.current, limit: pagination.pageSize });
   };
 
@@ -65,12 +70,12 @@ function AccountsList() {
       await accountsApi.delete(id);
       message.success("Account deleted");
       fetchAccounts(currentPage, currentLimit, currentSearch);
-    } catch (error) {
+    } catch {
       message.error("Failed to delete account");
     }
   };
 
-  const columns = [
+  const columns: TableColumnsType<Account> = [
     {
       title: "Account Name",
       dataIndex: "name",
@@ -113,7 +118,7 @@ function AccountsList() {
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, record: Account) => (
+      render: (_, record) => (
         <Space size="middle">
           <Button
             type="text"

@@ -75,12 +75,17 @@ export class AuthUserDto {
   organizationId: string;
 }
 
-export class AuthResponseDto {
+export class AuthTokensDto {
   @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIs...' })
   accessToken: string;
 
   @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIs...' })
   refreshToken: string;
+}
+
+export class AuthResponseDto {
+  @ApiProperty({ type: AuthTokensDto })
+  tokens: AuthTokensDto;
 
   @ApiProperty({ type: AuthUserDto })
   user: AuthUserDto;

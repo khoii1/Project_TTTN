@@ -11,6 +11,7 @@ import {
   Select,
   Input,
 } from "antd";
+import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { PlusOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { casesApi } from "@/features/cases/cases.api";
@@ -46,7 +47,7 @@ function CasesList() {
       const items = getDataArray<Case>(res);
       setCases(items);
       setTotal(getPaginationMeta(res)?.total ?? items.length);
-    } catch (error) {
+    } catch {
       message.error("Failed to load cases");
     } finally {
       setLoading(false);
@@ -54,13 +55,17 @@ function CasesList() {
   };
 
   useEffect(() => {
-    fetchCases(
-      currentPage,
-      currentLimit,
-      currentSearch,
-      currentStatus,
-      currentPriority,
-    );
+    const timer = window.setTimeout(() => {
+      fetchCases(
+        currentPage,
+        currentLimit,
+        currentSearch,
+        currentStatus,
+        currentPriority,
+      );
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [
     currentPage,
     currentLimit,
@@ -81,7 +86,7 @@ function CasesList() {
     router.push(`/dashboard/cases?${urlParams.toString()}`);
   };
 
-  const handleTableChange = (pagination: any) => {
+  const handleTableChange = (pagination: TablePaginationConfig) => {
     updateURL({ page: pagination.current, limit: pagination.pageSize });
   };
 
@@ -108,7 +113,7 @@ function CasesList() {
         currentStatus,
         currentPriority,
       );
-    } catch (error) {
+    } catch {
       message.error("Failed to delete case");
     }
   };
@@ -127,7 +132,7 @@ function CasesList() {
     URGENT: "red",
   };
 
-  const columns = [
+  const columns: TableColumnsType<Case> = [
     {
       title: "Subject",
       dataIndex: "subject",
@@ -159,7 +164,7 @@ function CasesList() {
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, record: Case) => (
+      render: (_, record) => (
         <Space size="middle">
           <Button
             type="text"

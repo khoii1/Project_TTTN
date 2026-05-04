@@ -11,6 +11,7 @@ import {
   Input,
   Select,
 } from "antd";
+import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { PlusOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { leadsApi } from "@/features/leads/leads.api";
@@ -44,7 +45,7 @@ function LeadsList() {
       const items = getDataArray<Lead>(res);
       setLeads(items);
       setTotal(getPaginationMeta(res)?.total ?? items.length);
-    } catch (error) {
+    } catch {
       message.error("Failed to load leads");
     } finally {
       setLoading(false);
@@ -52,7 +53,11 @@ function LeadsList() {
   };
 
   useEffect(() => {
-    fetchLeads(currentPage, currentLimit, currentSearch, currentStatus);
+    const timer = window.setTimeout(() => {
+      fetchLeads(currentPage, currentLimit, currentSearch, currentStatus);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [currentPage, currentLimit, currentSearch, currentStatus]);
 
   const updateURL = (params: Record<string, string | number | undefined>) => {
@@ -67,7 +72,7 @@ function LeadsList() {
     router.push(`/dashboard/leads?${urlParams.toString()}`);
   };
 
-  const handleTableChange = (pagination: any) => {
+  const handleTableChange = (pagination: TablePaginationConfig) => {
     updateURL({ page: pagination.current, limit: pagination.pageSize });
   };
 
@@ -84,7 +89,7 @@ function LeadsList() {
       await leadsApi.delete(id);
       message.success("Lead deleted");
       fetchLeads(currentPage, currentLimit, currentSearch, currentStatus);
-    } catch (error) {
+    } catch {
       message.error("Failed to delete lead");
     }
   };
@@ -98,11 +103,11 @@ function LeadsList() {
     CONVERTED: "gold",
   };
 
-  const columns = [
+  const columns: TableColumnsType<Lead> = [
     {
       title: "Name",
       key: "name",
-      render: (_: any, record: Lead) => (
+      render: (_, record) => (
         <span className="font-medium">
           {record.firstName} {record.lastName}
         </span>
@@ -135,7 +140,7 @@ function LeadsList() {
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, record: Lead) => (
+      render: (_, record) => (
         <Space size="middle">
           <Button
             type="text"

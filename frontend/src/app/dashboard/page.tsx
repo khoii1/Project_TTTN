@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, Col, Row, Typography, Statistic, List, Tag } from "antd";
+import { Card, Col, Row, Typography, Statistic, Tag } from "antd";
 import { leadsApi } from "@/features/leads/leads.api";
 import { accountsApi } from "@/features/accounts/accounts.api";
 import { contactsApi } from "@/features/contacts/contacts.api";
@@ -114,56 +114,56 @@ export default function DashboardHomePage() {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} md={8}>
-          <Card bordered={false} className="shadow-sm">
+          <Card variant="borderless" className="shadow-sm">
             <Statistic
               title="Total Leads"
               value={stats.leads}
-              valueStyle={{ color: "#1890ff" }}
+              styles={{ content: { color: "#1890ff" } }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={8}>
-          <Card bordered={false} className="shadow-sm">
+          <Card variant="borderless" className="shadow-sm">
             <Statistic
               title="Total Accounts"
               value={stats.accounts}
-              valueStyle={{ color: "#52c41a" }}
+              styles={{ content: { color: "#52c41a" } }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={8}>
-          <Card bordered={false} className="shadow-sm">
+          <Card variant="borderless" className="shadow-sm">
             <Statistic
               title="Total Contacts"
               value={stats.contacts}
-              valueStyle={{ color: "#722ed1" }}
+              styles={{ content: { color: "#722ed1" } }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={8}>
-          <Card bordered={false} className="shadow-sm">
+          <Card variant="borderless" className="shadow-sm">
             <Statistic
               title="Total Opportunities"
               value={stats.opportunities}
-              valueStyle={{ color: "#fa8c16" }}
+              styles={{ content: { color: "#fa8c16" } }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={8}>
-          <Card bordered={false} className="shadow-sm">
+          <Card variant="borderless" className="shadow-sm">
             <Statistic
               title="Open Tasks"
               value={stats.tasks}
-              valueStyle={{ color: "#faad14" }}
+              styles={{ content: { color: "#faad14" } }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={8}>
-          <Card bordered={false} className="shadow-sm">
+          <Card variant="borderless" className="shadow-sm">
             <Statistic
               title="Open Cases"
               value={stats.cases}
-              valueStyle={{ color: "#f5222d" }}
+              styles={{ content: { color: "#f5222d" } }}
             />
           </Card>
         </Col>
@@ -173,70 +173,84 @@ export default function DashboardHomePage() {
         <Col xs={24} lg={8}>
           <Card
             title="Recent Leads"
-            bordered={false}
+            variant="borderless"
             className="shadow-sm h-full"
           >
-            <List
-              size="small"
-              dataSource={recentLeads}
-              renderItem={(item) => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={`${item.firstName} ${item.lastName}`}
-                    description={item.email}
-                  />
+            <div className="space-y-2">
+              {recentLeads.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex justify-between items-center py-2 border-b last:border-0"
+                >
+                  <div>
+                    <p className="text-sm font-medium">
+                      {item.firstName} {item.lastName}
+                    </p>
+                    <p className="text-xs text-gray-500">{item.email}</p>
+                  </div>
                   <Tag color="blue">{item.status}</Tag>
-                </List.Item>
+                </div>
+              ))}
+              {recentLeads.length === 0 && (
+                <p className="text-gray-400 text-sm">No leads</p>
               )}
-            />
+            </div>
           </Card>
         </Col>
         <Col xs={24} lg={8}>
           <Card
             title="Recent Opportunities"
-            bordered={false}
+            variant="borderless"
             className="shadow-sm h-full"
           >
-            <List
-              size="small"
-              dataSource={recentOpps}
-              renderItem={(item) => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={item.name}
-                    description={`$${item.amount || 0}`}
-                  />
+            <div className="space-y-2">
+              {recentOpps.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex justify-between items-center py-2 border-b last:border-0"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{item.name}</p>
+                    <p className="text-xs text-gray-500">${item.amount || 0}</p>
+                  </div>
                   <Tag color="purple">{item.stage}</Tag>
-                </List.Item>
+                </div>
+              ))}
+              {recentOpps.length === 0 && (
+                <p className="text-gray-400 text-sm">No opportunities</p>
               )}
-            />
+            </div>
           </Card>
         </Col>
         <Col xs={24} lg={8}>
           <Card
             title="Upcoming Tasks"
-            bordered={false}
+            variant="borderless"
             className="shadow-sm h-full"
           >
-            <List
-              size="small"
-              dataSource={upcomingTasks}
-              renderItem={(item) => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={item.title}
-                    description={
-                      item.dueDate
+            <div className="space-y-2">
+              {upcomingTasks.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex justify-between items-center py-2 border-b last:border-0"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{item.title}</p>
+                    <p className="text-xs text-gray-500">
+                      {item.dueDate
                         ? new Date(item.dueDate).toLocaleDateString()
-                        : "No date"
-                    }
-                  />
+                        : "No date"}
+                    </p>
+                  </div>
                   <Tag color={item.priority === "HIGH" ? "red" : "default"}>
                     {item.priority}
                   </Tag>
-                </List.Item>
+                </div>
+              ))}
+              {upcomingTasks.length === 0 && (
+                <p className="text-gray-400 text-sm">No upcoming tasks</p>
               )}
-            />
+            </div>
           </Card>
         </Col>
       </Row>

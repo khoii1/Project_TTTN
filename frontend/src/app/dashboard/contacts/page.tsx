@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { Table, Button, Space, Popconfirm, message, Input } from "antd";
+import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { PlusOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { contactsApi } from "@/features/contacts/contacts.api";
@@ -29,7 +30,7 @@ function ContactsList() {
       const items = getDataArray<Contact>(res);
       setContacts(items);
       setTotal(getPaginationMeta(res)?.total ?? items.length);
-    } catch (error) {
+    } catch {
       message.error("Failed to load contacts");
     } finally {
       setLoading(false);
@@ -37,7 +38,11 @@ function ContactsList() {
   };
 
   useEffect(() => {
-    fetchContacts(currentPage, currentLimit, currentSearch);
+    const timer = window.setTimeout(() => {
+      fetchContacts(currentPage, currentLimit, currentSearch);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [currentPage, currentLimit, currentSearch]);
 
   const updateURL = (params: Record<string, string | number | undefined>) => {
@@ -52,7 +57,7 @@ function ContactsList() {
     router.push(`/dashboard/contacts?${urlParams.toString()}`);
   };
 
-  const handleTableChange = (pagination: any) => {
+  const handleTableChange = (pagination: TablePaginationConfig) => {
     updateURL({ page: pagination.current, limit: pagination.pageSize });
   };
 
@@ -65,16 +70,16 @@ function ContactsList() {
       await contactsApi.delete(id);
       message.success("Contact deleted");
       fetchContacts(currentPage, currentLimit, currentSearch);
-    } catch (error) {
+    } catch {
       message.error("Failed to delete contact");
     }
   };
 
-  const columns = [
+  const columns: TableColumnsType<Contact> = [
     {
       title: "Name",
       key: "name",
-      render: (_: any, record: Contact) => (
+      render: (_, record) => (
         <span className="font-medium">
           {record.firstName} {record.lastName}
         </span>
@@ -104,7 +109,7 @@ function ContactsList() {
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, record: Contact) => (
+      render: (_, record) => (
         <Space size="middle">
           <Button
             type="text"

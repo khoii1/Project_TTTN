@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Card,
   Descriptions,
@@ -15,7 +15,6 @@ import {
 import { PageHeader } from "@/components/common/PageHeader";
 import { tasksApi } from "@/features/tasks/tasks.api";
 import { Task, TaskStatus, TaskPriority } from "@/features/tasks/tasks.types";
-import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import React from "react";
 
@@ -24,7 +23,6 @@ export default function TaskDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const router = useRouter();
   const unwrappedParams = React.use(params);
   const { id } = unwrappedParams;
   const [task, setTask] = useState<Task | null>(null);
@@ -33,7 +31,7 @@ export default function TaskDetailPage({
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const fetchTask = async () => {
+  const fetchTask = useCallback(async () => {
     try {
       setLoading(true);
       const data = await tasksApi.getById(id);
@@ -42,18 +40,24 @@ export default function TaskDetailPage({
         ...data,
         dueDate: data.dueDate ? dayjs(data.dueDate) : undefined,
       });
-    } catch (error) {
+    } catch {
       message.error("Failed to load task details");
     } finally {
       setLoading(false);
     }
-  };
+  }, [form, id]);
 
   useEffect(() => {
-    fetchTask();
-  }, [id]);
+    const timer = window.setTimeout(() => {
+      fetchTask();
+    }, 0);
 
-  const handleUpdate = async (values: any) => {
+    return () => window.clearTimeout(timer);
+  }, [fetchTask]);
+
+  const handleUpdate = async (
+    values: Partial<Task> & { dueDate?: dayjs.Dayjs },
+  ) => {
     try {
       setSaving(true);
       const payload = {
@@ -64,7 +68,7 @@ export default function TaskDetailPage({
       message.success("Task updated");
       setIsEditing(false);
       fetchTask();
-    } catch (error) {
+    } catch {
       message.error("Failed to update task");
     } finally {
       setSaving(false);
@@ -76,7 +80,7 @@ export default function TaskDetailPage({
       await tasksApi.complete(id);
       message.success("Task marked as completed");
       fetchTask();
-    } catch (error) {
+    } catch {
       message.error("Failed to complete task");
     }
   };

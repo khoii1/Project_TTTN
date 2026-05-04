@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Timeline,
   Button,
@@ -8,7 +8,6 @@ import {
   Form,
   Input,
   message,
-  Tabs,
   Tag,
   Select,
   DatePicker,
@@ -32,7 +31,18 @@ type TimelineItem = {
   date: string;
   status?: string;
   author?: string;
-  raw: any;
+  raw: Note | Task;
+};
+
+type NewNotePayload = {
+  content: string;
+};
+
+type NewTaskPayload = {
+  subject: string;
+  description?: string;
+  priority?: TaskPriority;
+  dueDate?: string;
 };
 
 export const ActivityTimeline = ({
@@ -45,7 +55,7 @@ export const ActivityTimeline = ({
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [form] = Form.useForm();
 
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     try {
       setLoading(true);
       // Wait for both notes and tasks, but catch errors independently just in case backend filters fail
@@ -55,8 +65,7 @@ export const ActivityTimeline = ({
       try {
         const allNotes = await notesApi.getAll(); // Ideally backend supports filtering: { relatedType, relatedId }
         fetchedNotes = allNotes.filter(
-          (n: any) =>
-            n.relatedType === relatedType && n.relatedId === relatedId,
+          (n) => n.relatedType === relatedType && n.relatedId === relatedId,
         );
       } catch (e) {
         console.error("Failed fetching notes", e);
@@ -65,8 +74,7 @@ export const ActivityTimeline = ({
       try {
         const allTasks = await tasksApi.getAll();
         fetchedTasks = allTasks.filter(
-          (t: any) =>
-            t.relatedType === relatedType && t.relatedId === relatedId,
+          (t) => t.relatedType === relatedType && t.relatedId === relatedId,
         );
       } catch (e) {
         console.error("Failed fetching tasks", e);
@@ -97,18 +105,22 @@ export const ActivityTimeline = ({
       );
 
       setItems(allItems);
-    } catch (error) {
+    } catch {
       message.error("Failed to load activities");
     } finally {
       setLoading(false);
     }
-  };
+  }, [relatedId, relatedType]);
 
   useEffect(() => {
-    fetchActivities();
-  }, [relatedType, relatedId]);
+    const timer = window.setTimeout(() => {
+      fetchActivities();
+    }, 0);
 
-  const handleAddNote = async (values: any) => {
+    return () => window.clearTimeout(timer);
+  }, [fetchActivities]);
+
+  const handleAddNote = async (values: NewNotePayload) => {
     try {
       await notesApi.create({
         content: values.content,
@@ -119,12 +131,12 @@ export const ActivityTimeline = ({
       setIsNoteModalOpen(false);
       form.resetFields();
       fetchActivities();
-    } catch (error) {
+    } catch {
       message.error("Failed to add note");
     }
   };
 
-  const handleAddTask = async (values: any) => {
+  const handleAddTask = async (values: NewTaskPayload) => {
     try {
       await tasksApi.create({
         ...values,
@@ -136,7 +148,7 @@ export const ActivityTimeline = ({
       setIsTaskModalOpen(false);
       form.resetFields();
       fetchActivities();
-    } catch (error) {
+    } catch {
       message.error("Failed to add task");
     }
   };
@@ -146,7 +158,7 @@ export const ActivityTimeline = ({
       await notesApi.delete(id);
       message.success("Note deleted");
       fetchActivities();
-    } catch (error) {
+    } catch {
       message.error("Failed to delete note");
     }
   };

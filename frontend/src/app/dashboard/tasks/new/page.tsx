@@ -4,14 +4,18 @@ import { useState } from "react";
 import { Form, Input, Button, Card, message, Select, DatePicker } from "antd";
 import { useRouter } from "next/navigation";
 import { tasksApi } from "@/features/tasks/tasks.api";
-import { TaskStatus, TaskPriority } from "@/features/tasks/tasks.types";
+import { Task, TaskStatus, TaskPriority } from "@/features/tasks/tasks.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import dayjs from "dayjs";
+import { getApiErrorMessage } from "@/lib/api/error";
+
+type NewTaskFormValues = Partial<Task> & { dueDate?: dayjs.Dayjs };
 
 export default function NewTaskPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const onFinish = async (values: any) => {
+  const onFinish = async (values: NewTaskFormValues) => {
     try {
       setLoading(true);
       await tasksApi.create({
@@ -21,8 +25,8 @@ export default function NewTaskPage() {
       });
       message.success("Task created successfully");
       router.push("/dashboard/tasks");
-    } catch (error: any) {
-      message.error(error.response?.data?.message || "Failed to create task");
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, "Failed to create task"));
     } finally {
       setLoading(false);
     }

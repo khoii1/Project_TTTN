@@ -4,22 +4,22 @@ import { useState } from "react";
 import { Form, Input, Button, Card, message } from "antd";
 import { useRouter } from "next/navigation";
 import { accountsApi } from "@/features/accounts/accounts.api";
+import { Account } from "@/features/accounts/accounts.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import { getApiErrorMessage } from "@/lib/api/error";
 
 export default function NewAccountPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const onFinish = async (values: any) => {
+  const onFinish = async (values: Partial<Account>) => {
     try {
       setLoading(true);
       await accountsApi.create(values);
       message.success("Account created successfully");
       router.push("/dashboard/accounts");
-    } catch (error: any) {
-      message.error(
-        error.response?.data?.message || "Failed to create account",
-      );
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, "Failed to create account"));
     } finally {
       setLoading(false);
     }

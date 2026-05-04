@@ -11,6 +11,7 @@ import {
   Input,
   Select,
 } from "antd";
+import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usersApi } from "@/features/users/users.api";
@@ -46,7 +47,7 @@ function UsersList() {
       const items = getDataArray<User>(res);
       setUsers(items);
       setTotal(getPaginationMeta(res)?.total ?? items.length);
-    } catch (error) {
+    } catch {
       message.error("Failed to load users");
     } finally {
       setLoading(false);
@@ -54,7 +55,11 @@ function UsersList() {
   };
 
   useEffect(() => {
-    fetchUsers(currentPage, currentLimit, currentSearch, currentRole);
+    const timer = window.setTimeout(() => {
+      fetchUsers(currentPage, currentLimit, currentSearch, currentRole);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [currentPage, currentLimit, currentSearch, currentRole]);
 
   const updateURL = (params: Record<string, string | number | undefined>) => {
@@ -69,7 +74,7 @@ function UsersList() {
     router.push(`/dashboard/users?${urlParams.toString()}`);
   };
 
-  const handleTableChange = (pagination: any) => {
+  const handleTableChange = (pagination: TablePaginationConfig) => {
     updateURL({ page: pagination.current, limit: pagination.pageSize });
   };
 
@@ -86,7 +91,7 @@ function UsersList() {
       await usersApi.delete(id);
       message.success("User deleted");
       fetchUsers(currentPage, currentLimit, currentSearch, currentRole);
-    } catch (error) {
+    } catch {
       message.error("Failed to delete user");
     }
   };
@@ -98,11 +103,11 @@ function UsersList() {
     SUPPORT: "cyan",
   };
 
-  const columns = [
+  const columns: TableColumnsType<User> = [
     {
       title: "Name",
       key: "name",
-      render: (_: any, record: User) => (
+      render: (_, record) => (
         <span className="font-medium">
           {record.firstName} {record.lastName}
         </span>
@@ -131,7 +136,7 @@ function UsersList() {
     columns.push({
       title: "Actions",
       key: "actions",
-      render: (_: any, record: User) => (
+      render: (_, record) => (
         <Space size="middle">
           {record.id !== currentUser.id && (
             <Popconfirm
@@ -143,7 +148,7 @@ function UsersList() {
           )}
         </Space>
       ),
-    } as any);
+    });
   }
 
   return (

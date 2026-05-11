@@ -11,16 +11,17 @@
 
 1. Tạo project Supabase mới.
 2. Mở phần database settings và lấy PostgreSQL connection string.
-3. Cấu hình `DATABASE_URL` cho backend bằng connection string của Supabase.
-4. Chọn connection string phù hợp với Prisma.
-5. Không commit `DATABASE_URL` lên Git.
+3. Cấu hình `DATABASE_URL` cho backend bằng Supabase transaction pooler connection string.
+4. Cấu hình `DIRECT_URL` bằng Supabase Session pooler port `5432`, hoặc direct database connection string nếu môi trường hỗ trợ direct connection.
+5. Không commit `DATABASE_URL` hoặc `DIRECT_URL` lên Git.
 
-Lưu ý: Supabase có thể cung cấp nhiều loại connection string. Khi dùng Prisma, ưu tiên connection string PostgreSQL chuẩn và kiểm tra SSL/connection pooling theo hướng dẫn hiện tại của Supabase.
+Lưu ý: Supabase có nhiều loại connection string. Với Prisma, nên dùng `DATABASE_URL` qua transaction pooler port `6543` cho runtime và `DIRECT_URL` qua Session pooler port `5432` cho migration. Nếu môi trường hỗ trợ IPv6 hoặc có IPv4 add-on, có thể dùng direct host `db.<project-ref>.supabase.co:5432` cho `DIRECT_URL`. Tránh chạy `prisma migrate deploy` qua transaction pooler `6543` với `pgbouncer=true` vì có thể rất chậm hoặc lỗi lock/transaction.
 
 ## 3. Backend Environment Variables
 
 ```env
 DATABASE_URL=
+DIRECT_URL=
 JWT_ACCESS_TOKEN_SECRET=
 JWT_ACCESS_TOKEN_EXPIRATION=15m
 JWT_REFRESH_TOKEN_SECRET=
@@ -35,6 +36,7 @@ BCRYPT_ROUNDS=10
 Giải thích:
 
 - `DATABASE_URL`: kết nối Supabase PostgreSQL.
+- `DIRECT_URL`: Supabase Session pooler port `5432` hoặc direct connection đến Supabase PostgreSQL, dùng bởi Prisma migration.
 - `JWT_ACCESS_TOKEN_SECRET`: secret ký access token.
 - `JWT_REFRESH_TOKEN_SECRET`: secret ký refresh token.
 - `JWT_ACCESS_TOKEN_EXPIRATION`: thời hạn access token, ví dụ `15m`.
@@ -78,12 +80,15 @@ npx prisma db seed
 Lưu ý:
 
 - Production dùng `migrate deploy`, không dùng `migrate dev`.
+- Prisma migration sẽ dùng `DIRECT_URL` nếu Prisma schema có `directUrl = env("DIRECT_URL")`.
+- Nếu `DIRECT_URL` dạng `db.<project-ref>.supabase.co:5432` báo `P1001`, hãy đổi sang Supabase Session pooler dạng `<region>.pooler.supabase.com:5432/postgres`.
 - Seed chỉ dùng cho demo/staging, không dùng bừa cho production thật.
 
 ## 6. Deploy Order Checklist
 
 - [ ] Create Supabase project
 - [ ] Copy Supabase PostgreSQL `DATABASE_URL`
+- [ ] Copy Supabase direct PostgreSQL `DIRECT_URL`
 - [ ] Set backend environment variables
 - [ ] Deploy backend
 - [ ] Run `npx prisma generate`

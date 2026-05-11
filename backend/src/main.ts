@@ -26,8 +26,7 @@ async function bootstrap() {
     })
   );
 
-  const isProduction = process.env.NODE_ENV === 'production';
-  const allowedProductionOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
+  const configuredCorsOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -35,8 +34,8 @@ async function bootstrap() {
         return callback(null, true);
       }
 
-      if (isProduction) {
-        return callback(null, allowedProductionOrigins.includes(origin));
+      if (configuredCorsOrigins.length > 0) {
+        return callback(null, configuredCorsOrigins.includes(origin));
       }
 
       return callback(null, isLocalDevOrigin(origin));

@@ -6,6 +6,7 @@ export const validationSchema = Joi.object({
   API_PORT: Joi.number().default(3000),
   API_VERSION: Joi.string().default('v1'),
   DATABASE_URL: Joi.string().required(),
+  DIRECT_URL: Joi.string().optional(),
   JWT_ACCESS_TOKEN_SECRET: Joi.string().default('access_secret'),
   JWT_ACCESS_TOKEN_EXPIRATION: Joi.string().default('15m'),
   JWT_REFRESH_TOKEN_SECRET: Joi.string().default('refresh_secret'),

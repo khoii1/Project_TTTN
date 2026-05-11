@@ -3,11 +3,17 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+const normalizeOrigin = (origin: string): string =>
+  origin
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
+    .replace(/\/+$/, '');
+
 const parseCorsOrigins = (value?: string): string[] =>
   value
     ? value
         .split(',')
-        .map((origin) => origin.trim())
+        .map(normalizeOrigin)
         .filter(Boolean)
     : [];
 
@@ -34,13 +40,17 @@ async function bootstrap() {
         return callback(null, true);
       }
 
+      const normalizedOrigin = normalizeOrigin(origin);
+
       if (configuredCorsOrigins.length > 0) {
-        return callback(null, configuredCorsOrigins.includes(origin));
+        return callback(null, configuredCorsOrigins.includes(normalizedOrigin));
       }
 
-      return callback(null, isLocalDevOrigin(origin));
+      return callback(null, isLocalDevOrigin(normalizedOrigin));
     },
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   // Swagger setup

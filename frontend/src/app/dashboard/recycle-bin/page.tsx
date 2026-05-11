@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Button, Empty, message, Popconfirm, Table, Tabs, Tag } from "antd";
+import { Button, Empty, Popconfirm, Table, Tabs, Tag, App } from "antd";
 import type { TableColumnsType } from "antd";
 import { UndoOutlined } from "@ant-design/icons";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -19,6 +19,12 @@ import { tasksApi } from "@/features/tasks/tasks.api";
 import { Task } from "@/features/tasks/tasks.types";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray } from "@/lib/api/pagination";
+import {
+  EMPTY_STATE_LABELS,
+  ENTITY_LABELS,
+  FEEDBACK_LABELS,
+  FIELD_LABELS,
+} from "@/lib/constants/vi-labels";
 
 type RecycleType =
   | "All"
@@ -34,6 +40,7 @@ type DeletedRecord = {
   type: Exclude<RecycleType, "All">;
   name: string;
   deletedAt?: string;
+  deletedById?: string;
   ownerId?: string;
 };
 
@@ -57,6 +64,7 @@ const toDeletedRecord = (
         type,
         name: getLeadLabel(lead),
         deletedAt: lead.deletedAt,
+        deletedById: lead.deletedById,
         ownerId: lead.ownerId,
       };
     }
@@ -67,6 +75,7 @@ const toDeletedRecord = (
         type,
         name: account.name,
         deletedAt: account.deletedAt,
+        deletedById: account.deletedById,
         ownerId: account.ownerId,
       };
     }
@@ -77,6 +86,7 @@ const toDeletedRecord = (
         type,
         name: getContactLabel(contact),
         deletedAt: contact.deletedAt,
+        deletedById: contact.deletedById,
         ownerId: contact.ownerId,
       };
     }
@@ -87,6 +97,7 @@ const toDeletedRecord = (
         type,
         name: opportunity.name,
         deletedAt: opportunity.deletedAt,
+        deletedById: opportunity.deletedById,
         ownerId: opportunity.ownerId,
       };
     }
@@ -97,6 +108,7 @@ const toDeletedRecord = (
         type,
         name: task.subject,
         deletedAt: task.deletedAt,
+        deletedById: task.deletedById,
         ownerId: task.ownerId,
       };
     }
@@ -107,6 +119,7 @@ const toDeletedRecord = (
         type,
         name: crmCase.subject,
         deletedAt: crmCase.deletedAt,
+        deletedById: crmCase.deletedById,
         ownerId: crmCase.ownerId,
       };
     }
@@ -162,13 +175,13 @@ const restoreRecord = async (record: DeletedRecord) => {
 };
 
 const entityTabs: { key: RecycleType; label: string }[] = [
-  { key: "All", label: "All" },
-  { key: "Lead", label: "Leads" },
-  { key: "Account", label: "Accounts" },
-  { key: "Contact", label: "Contacts" },
-  { key: "Opportunity", label: "Opportunities" },
-  { key: "Task", label: "Tasks" },
-  { key: "Case", label: "Cases" },
+  { key: "All", label: "Tất cả" },
+  { key: "Lead", label: ENTITY_LABELS.leads },
+  { key: "Account", label: ENTITY_LABELS.accounts },
+  { key: "Contact", label: ENTITY_LABELS.contacts },
+  { key: "Opportunity", label: ENTITY_LABELS.opportunities },
+  { key: "Task", label: ENTITY_LABELS.tasks },
+  { key: "Case", label: ENTITY_LABELS.cases },
 ];
 
 const entityTypes: DeletedRecord["type"][] = [
@@ -180,7 +193,27 @@ const entityTypes: DeletedRecord["type"][] = [
   "Case",
 ];
 
+const getRecycleTypeLabel = (type: RecycleType) => {
+  switch (type) {
+    case "All":
+      return "Tất cả";
+    case "Lead":
+      return ENTITY_LABELS.lead;
+    case "Account":
+      return ENTITY_LABELS.account;
+    case "Contact":
+      return ENTITY_LABELS.contact;
+    case "Opportunity":
+      return ENTITY_LABELS.opportunity;
+    case "Task":
+      return ENTITY_LABELS.task;
+    case "Case":
+      return ENTITY_LABELS.case;
+  }
+};
+
 export default function RecycleBinPage() {
+  const { message } = App.useApp();
   const [activeTab, setActiveTab] = useState<RecycleType>("All");
   const [records, setRecords] = useState<DeletedRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -192,7 +225,7 @@ export default function RecycleBinPage() {
       const result = await Promise.all(types.map(fetchDeletedByType));
       setRecords(result.flat());
     } catch {
-      message.error("Failed to load deleted records");
+      message.error("Không thể tải bản ghi đã xóa");
       setRecords([]);
     } finally {
       setLoading(false);
@@ -207,74 +240,83 @@ export default function RecycleBinPage() {
   const handleRestore = async (record: DeletedRecord) => {
     try {
       await restoreRecord(record);
-      message.success(`${record.type} restored`);
+      message.success("Đã khôi phục bản ghi");
       setRecords((current) => current.filter((item) => item.id !== record.id));
     } catch {
-      message.error(`Failed to restore ${record.type.toLowerCase()}`);
+      message.error("Không thể khôi phục bản ghi");
     }
   };
 
   const columns: TableColumnsType<DeletedRecord> = [
-      {
-        title: "Name / Subject",
-        dataIndex: "name",
-        key: "name",
-        render: (name: string) => <span className="font-medium">{name}</span>,
-      },
-      {
-        title: "Type",
-        dataIndex: "type",
-        key: "type",
-        render: (type: string) => <Tag>{type}</Tag>,
-      },
-      {
-        title: "Deleted At",
-        dataIndex: "deletedAt",
-        key: "deletedAt",
-        render: (deletedAt?: string) =>
-          deletedAt ? new Date(deletedAt).toLocaleString() : "N/A",
-      },
-      {
-        title: "Owner",
-        dataIndex: "ownerId",
-        key: "ownerId",
-        render: (ownerId?: string) => (
-          <UserReferenceDisplay userId={ownerId} />
-        ),
-      },
-      {
-        title: "Actions",
-        key: "actions",
-        render: (_, record) => (
-          <Popconfirm
-            title={`Restore this ${record.type.toLowerCase()}?`}
-            onConfirm={() => handleRestore(record)}
-          >
-            <Button type="text" icon={<UndoOutlined />}>
-              Restore
-            </Button>
-          </Popconfirm>
-        ),
-      },
-    ];
+    {
+      title: "Tên / Tiêu đề",
+      dataIndex: "name",
+      key: "name",
+      render: (name: string) => <span className="font-medium">{name}</span>,
+    },
+    {
+      title: FIELD_LABELS.type,
+      dataIndex: "type",
+      key: "type",
+      render: (type: DeletedRecord["type"]) => (
+        <Tag>{getRecycleTypeLabel(type)}</Tag>
+      ),
+    },
+    {
+      title: "Ngày xóa",
+      dataIndex: "deletedAt",
+      key: "deletedAt",
+      render: (deletedAt?: string) =>
+        deletedAt ? new Date(deletedAt).toLocaleString() : "-",
+    },
+    {
+      title: "Người xóa",
+      dataIndex: "deletedById",
+      key: "deletedById",
+      render: (deletedById?: string) => (
+        <UserReferenceDisplay userId={deletedById} />
+      ),
+    },
+    {
+      title: FIELD_LABELS.owner,
+      dataIndex: "ownerId",
+      key: "ownerId",
+      render: (ownerId?: string) => <UserReferenceDisplay userId={ownerId} />,
+    },
+    {
+      title: "Thao tác",
+      key: "actions",
+      render: (_, record) => (
+        <Popconfirm
+          title={FEEDBACK_LABELS.restoreConfirm}
+          onConfirm={() => handleRestore(record)}
+        >
+          <Button type="text" icon={<UndoOutlined />}>
+            Khôi phục
+          </Button>
+        </Popconfirm>
+      ),
+    },
+  ];
 
   return (
     <div>
-      <PageHeader title="Recycle Bin" />
+      <PageHeader title={ENTITY_LABELS.recycleBin} />
       <Tabs
         activeKey={activeTab}
         onChange={(key) => setActiveTab(key as RecycleType)}
-        items={entityTabs.map((tab) => ({
-          key: tab.key,
-          label: tab.label,
-        }))}
+        items={entityTabs}
       />
       <Table
         columns={columns}
         dataSource={records}
         rowKey={(record) => `${record.type}-${record.id}`}
         loading={loading}
-        locale={{ emptyText: <Empty description="No deleted records found." /> }}
+        locale={{
+          emptyText: (
+            <Empty description={EMPTY_STATE_LABELS.noDeletedRecords} />
+          ),
+        }}
         pagination={{ pageSize: 10, showSizeChanger: true }}
         className="shadow-sm bg-white rounded-lg"
       />

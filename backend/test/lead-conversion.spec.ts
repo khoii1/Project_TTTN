@@ -16,12 +16,15 @@ describe('Lead Conversion (Use Case)', () => {
     },
     account: {
       create: jest.fn(),
+      findMany: jest.fn(),
     },
     contact: {
       create: jest.fn(),
+      findMany: jest.fn(),
     },
     opportunity: {
       create: jest.fn(),
+      findMany: jest.fn(),
     },
     $transaction: jest.fn(),
   };
@@ -243,6 +246,213 @@ describe('Lead Conversion (Use Case)', () => {
       await service.convert(leadId, organizationId, ownerId, {});
 
       expect(mockPrismaService.$transaction).toHaveBeenCalled();
+    });
+
+    it('should set convertedById and convertedAt when converting a lead', async () => {
+      const mockLead = {
+        id: leadId,
+        organizationId,
+        ownerId,
+        firstName: 'John',
+        lastName: 'Doe',
+        company: 'Tech Corp',
+        status: LeadStatus.NEW,
+      };
+
+      mockPrismaService.lead.findFirst.mockResolvedValue(mockLead);
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        const txMock = {
+          account: { create: jest.fn().mockResolvedValue({ id: 'account-1' }) },
+          contact: {
+            create: jest.fn().mockResolvedValue({
+              id: 'contact-1',
+              accountId: 'account-1',
+            }),
+          },
+          opportunity: { create: jest.fn().mockResolvedValue({ id: 'opportunity-1' }) },
+          lead: {
+            update: jest.fn().mockResolvedValue({
+              ...mockLead,
+              status: LeadStatus.CONVERTED,
+              convertedAccountId: 'account-1',
+              convertedContactId: 'contact-1',
+              convertedOpportunityId: 'opportunity-1',
+              convertedAt: new Date(),
+              convertedById: ownerId,
+            }),
+          },
+        };
+
+        await callback(txMock);
+
+        expect(txMock.lead.update).toHaveBeenCalledWith({
+          where: { id: leadId },
+          data: expect.objectContaining({
+            status: LeadStatus.CONVERTED,
+            convertedAt: expect.any(Date),
+            convertedById: ownerId,
+          }),
+        });
+
+        return {
+          ...mockLead,
+          status: LeadStatus.CONVERTED,
+          convertedAccountId: 'account-1',
+          convertedContactId: 'contact-1',
+          convertedOpportunityId: 'opportunity-1',
+          convertedAt: new Date(),
+          convertedById: ownerId,
+        };
+      });
+
+      const result = await service.convert(leadId, organizationId, ownerId, {});
+
+      expect(result.convertedById).toBe(ownerId);
+      expect(result.convertedAt).toBeInstanceOf(Date);
+    });
+
+    it('should reject an existing contact from a different account', async () => {
+      const mockLead = {
+        id: leadId,
+        organizationId,
+        ownerId,
+        firstName: 'John',
+        lastName: 'Doe',
+        company: 'Tech Corp',
+        status: LeadStatus.NEW,
+      };
+
+      mockPrismaService.lead.findFirst.mockResolvedValue(mockLead);
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        const txMock = {
+          account: {
+            findFirst: jest.fn().mockResolvedValue({ id: 'account-1' }),
+          },
+          contact: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'contact-1',
+              accountId: 'account-2',
+            }),
+          },
+          opportunity: { create: jest.fn() },
+          lead: { update: jest.fn() },
+        };
+
+        return callback(txMock);
+      });
+
+      await expect(
+        service.convert(leadId, organizationId, ownerId, {
+          accountMode: 'USE_EXISTING',
+          accountId: 'account-1',
+          contactMode: 'USE_EXISTING',
+          contactId: 'contact-1',
+        }),
+      ).rejects.toThrow('Selected contact does not belong to the selected account.');
+    });
+
+    it('should reject an existing opportunity from a different account', async () => {
+      const mockLead = {
+        id: leadId,
+        organizationId,
+        ownerId,
+        firstName: 'John',
+        lastName: 'Doe',
+        company: 'Tech Corp',
+        status: LeadStatus.NEW,
+      };
+
+      mockPrismaService.lead.findFirst.mockResolvedValue(mockLead);
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        const txMock = {
+          account: {
+            findFirst: jest.fn().mockResolvedValue({ id: 'account-1' }),
+          },
+          contact: {
+            create: jest.fn().mockResolvedValue({
+              id: 'contact-1',
+              accountId: 'account-1',
+            }),
+          },
+          opportunity: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'opportunity-1',
+              accountId: 'account-2',
+            }),
+          },
+          lead: { update: jest.fn() },
+        };
+
+        return callback(txMock);
+      });
+
+      await expect(
+        service.convert(leadId, organizationId, ownerId, {
+          accountMode: 'USE_EXISTING',
+          accountId: 'account-1',
+          opportunityMode: 'USE_EXISTING',
+          opportunityId: 'opportunity-1',
+        }),
+      ).rejects.toThrow('Selected opportunity does not belong to the selected account.');
+    });
+
+    it('should return conversion suggestions for matching existing records', async () => {
+      const mockLead = {
+        id: leadId,
+        organizationId,
+        ownerId,
+        firstName: 'John',
+        lastName: 'Doe',
+        company: 'Tech Corp',
+        email: 'john@techcorp.com',
+        phone: '+1-555-0100',
+        status: LeadStatus.NEW,
+      };
+
+      mockPrismaService.lead.findFirst.mockResolvedValue(mockLead);
+      mockPrismaService.account.findMany.mockResolvedValue([
+        {
+          id: 'account-1',
+          name: 'Tech Corp',
+          website: 'https://techcorp.com',
+          phone: '+1-555-0200',
+          ownerId,
+        },
+      ]);
+      mockPrismaService.contact.findMany.mockResolvedValue([
+        {
+          id: 'contact-1',
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@techcorp.com',
+          phone: '+1-555-0100',
+          accountId: 'account-1',
+        },
+      ]);
+      mockPrismaService.opportunity.findMany.mockResolvedValue([
+        {
+          id: 'opportunity-1',
+          name: 'Tech Corp renewal',
+          stage: 'QUALIFY',
+          accountId: 'account-1',
+          amount: null,
+        },
+      ]);
+
+      const result = await service.getConversionSuggestions(leadId, organizationId);
+
+      expect(result.accounts).toHaveLength(1);
+      expect(result.contacts).toHaveLength(1);
+      expect(result.opportunities).toHaveLength(1);
+      expect(mockPrismaService.account.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId,
+            deletedAt: null,
+          }),
+        }),
+      );
     });
   });
 });

@@ -24,7 +24,11 @@ export interface Task {
   ownerId: string;
   assignedToId: string;
   completedAt?: string;
+  completedById?: string;
   deletedAt?: string;
+  deletedById?: string;
+  restoredAt?: string;
+  restoredById?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -22,4 +22,7 @@ export interface Account {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
+  deletedById?: string;
+  restoredAt?: string;
+  restoredById?: string;
 }

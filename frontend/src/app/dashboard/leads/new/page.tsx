@@ -1,15 +1,17 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
-import { Form, Input, Button, Card, Select, message } from "antd";
+import { Form, Input, Button, Card, Select, App } from "antd";
 import { useRouter } from "next/navigation";
 import { leadsApi } from "@/features/leads/leads.api";
 import { Lead, LeadStatus } from "@/features/leads/leads.types";
 import { PageHeader } from "@/components/common/PageHeader";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { SourceFields } from "@/components/crm/SourceFields";
+import { getStatusLabel } from "@/lib/constants/vi-labels";
 
 export default function NewLeadPage() {
+  const { message } = App.useApp();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -23,10 +25,12 @@ export default function NewLeadPage() {
         await leadsApi.updateStatus(createdLead.id, status);
       }
 
-      message.success("Lead created successfully");
+      message.success("Tạo khách hàng tiềm năng thành công");
       router.push("/dashboard/leads");
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, "Failed to create lead"));
+      message.error(
+        getApiErrorMessage(error, "Không thể tạo khách hàng tiềm năng"),
+      );
     } finally {
       setLoading(false);
     }
@@ -34,7 +38,7 @@ export default function NewLeadPage() {
 
   return (
     <div>
-      <PageHeader title="New Lead" showBack />
+      <PageHeader title="Tạo khách hàng tiềm năng" showBack />
       <Card className="max-w-2xl shadow-sm">
         <Form
           layout="vertical"
@@ -44,16 +48,12 @@ export default function NewLeadPage() {
           <div className="grid grid-cols-2 gap-4">
             <Form.Item
               name="firstName"
-              label="First Name"
+              label="Tên"
               rules={[{ required: true }]}
             >
               <Input placeholder="John" />
             </Form.Item>
-            <Form.Item
-              name="lastName"
-              label="Last Name"
-              rules={[{ required: true }]}
-            >
+            <Form.Item name="lastName" label="Họ" rules={[{ required: true }]}>
               <Input placeholder="Doe" />
             </Form.Item>
           </div>
@@ -67,19 +67,19 @@ export default function NewLeadPage() {
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item name="phone" label="Phone">
+            <Form.Item name="phone" label="Số điện thoại">
               <Input placeholder="+1 234 567 8900" />
             </Form.Item>
-            <Form.Item name="company" label="Company">
+            <Form.Item name="company" label="Công ty">
               <Input placeholder="Acme Inc" />
             </Form.Item>
           </div>
 
-          <Form.Item name="status" label="Status">
+          <Form.Item name="status" label="Trạng thái">
             <Select>
               {Object.values(LeadStatus).map((status) => (
                 <Select.Option key={status} value={status}>
-                  {status}
+                  {getStatusLabel(status)}
                 </Select.Option>
               ))}
             </Select>
@@ -88,9 +88,9 @@ export default function NewLeadPage() {
           <SourceFields />
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button onClick={() => router.back()}>Cancel</Button>
+            <Button onClick={() => router.back()}>Hủy</Button>
             <Button type="primary" htmlType="submit" loading={loading}>
-              Save Lead
+              Lưu khách hàng tiềm năng
             </Button>
           </div>
         </Form>

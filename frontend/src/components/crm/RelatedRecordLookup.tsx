@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Select, message } from "antd";
+import { Select, App } from "antd";
 import { leadsApi } from "@/features/leads/leads.api";
 import { accountsApi } from "@/features/accounts/accounts.api";
 import { contactsApi } from "@/features/contacts/contacts.api";
@@ -12,6 +12,12 @@ import { Account } from "@/features/accounts/accounts.types";
 import { Contact } from "@/features/contacts/contacts.types";
 import { Opportunity } from "@/features/opportunities/opportunities.types";
 import { Case } from "@/features/cases/cases.types";
+import {
+  EMPTY_STATE_LABELS,
+  getPriorityLabel,
+  getStatusLabel,
+} from "@/lib/constants/vi-labels";
+import { formatVndAmount } from "@/lib/utils/currency";
 
 export type RelatedType =
   | "LEAD"
@@ -56,15 +62,19 @@ const getRecordLabel = (relatedType: string, record: RelatedRecord) => {
       const opportunity = record as Opportunity;
       return [
         opportunity.name,
-        opportunity.stage,
-        opportunity.amount ? `$${opportunity.amount}` : undefined,
+        getStatusLabel(opportunity.stage),
+        opportunity.amount ? formatVndAmount(opportunity.amount) : undefined,
       ]
         .filter(Boolean)
         .join(" - ");
     }
     case "CASE": {
       const crmCase = record as Case;
-      return [crmCase.subject, crmCase.status, crmCase.priority]
+      return [
+        crmCase.subject,
+        getStatusLabel(crmCase.status),
+        getPriorityLabel(crmCase.priority),
+      ]
         .filter(Boolean)
         .join(" - ");
     }
@@ -115,6 +125,7 @@ export const RelatedRecordLookup = ({
   onChange,
   disabled,
 }: RelatedRecordLookupProps) => {
+  const { message } = App.useApp();
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState<{ label: string; value: string }[]>(
@@ -151,6 +162,10 @@ export const RelatedRecordLookup = ({
     getRecordById(relatedType, value)
       .then((record) => {
         if (!record) {
+          setOptions((currentOptions) => [
+            { value, label: EMPTY_STATE_LABELS.recordNotFound },
+            ...currentOptions.filter((option) => option.value !== value),
+          ]);
           return;
         }
 
@@ -161,7 +176,7 @@ export const RelatedRecordLookup = ({
       })
       .catch(() => {
         setOptions((currentOptions) => [
-          { value, label: value },
+          { value, label: EMPTY_STATE_LABELS.recordNotFound },
           ...currentOptions.filter((option) => option.value !== value),
         ]);
       });
@@ -183,7 +198,7 @@ export const RelatedRecordLookup = ({
           })),
         );
       } catch {
-        message.warning("Could not load related records");
+        message.warning("Không thể tải bản ghi liên quan");
         setOptions([]);
       } finally {
         setLoading(false);
@@ -200,10 +215,12 @@ export const RelatedRecordLookup = ({
       disabled={disabled || !relatedType}
       filterOption={false}
       loading={loading}
-      notFoundContent={loading ? "Searching..." : "No records found"}
+      notFoundContent={
+        loading ? "Đang tìm kiếm..." : EMPTY_STATE_LABELS.noRecords
+      }
       options={options}
       placeholder={
-        relatedType ? "Search related record..." : "Select related type first"
+        relatedType ? "Tìm bản ghi liên quan..." : "Chọn loại liên quan trước"
       }
       value={value}
       onChange={onChange}

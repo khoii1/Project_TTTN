@@ -46,6 +46,8 @@ export class TasksController {
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'status', required: false, type: String })
   @ApiQuery({ name: 'priority', required: false, type: String })
+  @ApiQuery({ name: 'relatedType', required: false, type: String })
+  @ApiQuery({ name: 'relatedId', required: false, type: String })
   @ApiQuery({ name: 'deleted', required: false, type: Boolean })
   @ApiResponse({
     status: 200,
@@ -59,6 +61,8 @@ export class TasksController {
     @Query('search') search?: string,
     @Query('status') status?: string,
     @Query('priority') priority?: string,
+    @Query('relatedType') relatedType?: string,
+    @Query('relatedId') relatedId?: string,
     @Query('deleted') deleted?: string
   ): Promise<PaginatedResponse<TaskResponseDto>> {
     return this.taskService.findAll(
@@ -68,6 +72,8 @@ export class TasksController {
       search,
       status,
       priority,
+      relatedType,
+      relatedId,
       deleted === 'true',
     );
   }
@@ -101,7 +107,7 @@ export class TasksController {
     @Body() dto: CompleteTaskDto,
     @CurrentUser() user: TokenPayload
   ): Promise<TaskResponseDto> {
-    return this.taskService.completeTask(id, user.organizationId, dto);
+    return this.taskService.completeTask(id, user.organizationId, user.sub, dto);
   }
 
   @Patch(':id/restore')
@@ -111,7 +117,7 @@ export class TasksController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<TaskResponseDto> {
-    return this.taskService.restore(id, user.organizationId);
+    return this.taskService.restore(id, user.organizationId, user.sub);
   }
 
   @Delete(':id')
@@ -121,7 +127,7 @@ export class TasksController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<{ message: string }> {
-    await this.taskService.delete(id, user.organizationId);
+    await this.taskService.delete(id, user.organizationId, user.sub);
     return { message: 'Task deleted successfully' };
   }
 }

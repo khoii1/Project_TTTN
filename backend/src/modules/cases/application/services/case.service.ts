@@ -16,7 +16,7 @@ import { AuditLogService, AuditAction } from '../../../../infrastructure/audit/a
 export class CaseService {
   constructor(
     private prisma: PrismaService,
-    private auditLog: AuditLogService,
+    private auditLog: AuditLogService
   ) {}
 
   async create(
@@ -106,7 +106,9 @@ export class CaseService {
     status?: string,
     priority?: string,
     source?: string,
-    deleted: boolean = false
+    deleted: boolean = false,
+    accountId?: string,
+    contactId?: string
   ): Promise<PaginatedResponse<CaseResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
@@ -125,6 +127,14 @@ export class CaseService {
 
     if (priority) {
       where.priority = priority;
+    }
+
+    if (accountId) {
+      where.accountId = accountId;
+    }
+
+    if (contactId) {
+      where.contactId = contactId;
     }
 
     if (source) {
@@ -191,6 +201,7 @@ export class CaseService {
   async changeStatus(
     caseId: string,
     organizationId: string,
+    closedById: string,
     dto: ChangeCaseStatusDto
   ): Promise<CaseResponseDto> {
     const crmCase = await this.prisma.case.findFirst({
@@ -207,23 +218,35 @@ export class CaseService {
 
     const updatedCase = await this.prisma.case.update({
       where: { id: caseId },
-      data: { status: dto.status },
+      data: {
+        status: dto.status,
+        closedAt: dto.status === CaseStatus.CLOSED ? new Date() : null,
+        closedById: dto.status === CaseStatus.CLOSED ? closedById : null,
+      },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: crmCase.ownerId,
+      userId: closedById,
       action: AuditAction.STATUS_CHANGE,
       entityType: 'Case',
       entityId: caseId,
-      oldValues: { status: crmCase.status },
-      newValues: { status: dto.status },
+      oldValues: {
+        status: crmCase.status,
+        closedAt: crmCase.closedAt,
+        closedById: crmCase.closedById,
+      },
+      newValues: {
+        status: dto.status,
+        closedAt: updatedCase.closedAt,
+        closedById: updatedCase.closedById,
+      },
     });
 
     return this.mapToResponseDto(updatedCase);
   }
 
-  async delete(caseId: string, organizationId: string): Promise<void> {
+  async delete(caseId: string, organizationId: string, deletedById: string): Promise<void> {
     const crmCase = await this.prisma.case.findFirst({
       where: {
         id: caseId,
@@ -237,22 +260,28 @@ export class CaseService {
     }
 
     // Soft delete
+    const deletedAt = new Date();
     await this.prisma.case.update({
       where: { id: caseId },
-      data: { deletedAt: new Date() },
+      data: { deletedAt, deletedById },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: crmCase.ownerId,
+      userId: deletedById,
       action: AuditAction.SOFT_DELETE,
       entityType: 'Case',
       entityId: caseId,
       oldValues: { subject: crmCase.subject },
+      newValues: { deletedAt, deletedById },
     });
   }
 
-  async restore(caseId: string, organizationId: string): Promise<CaseResponseDto> {
+  async restore(
+    caseId: string,
+    organizationId: string,
+    restoredById: string
+  ): Promise<CaseResponseDto> {
     const crmCase = await this.prisma.case.findFirst({
       where: {
         id: caseId,
@@ -270,17 +299,25 @@ export class CaseService {
 
     const restoredCase = await this.prisma.case.update({
       where: { id: caseId },
-      data: { deletedAt: null },
+      data: {
+        deletedAt: null,
+        restoredAt: new Date(),
+        restoredById,
+      },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: crmCase.ownerId,
+      userId: restoredById,
       action: AuditAction.RESTORE,
       entityType: 'Case',
       entityId: caseId,
       oldValues: { deletedAt: crmCase.deletedAt },
-      newValues: { deletedAt: null },
+      newValues: {
+        deletedAt: null,
+        restoredAt: restoredCase.restoredAt,
+        restoredById,
+      },
     });
 
     return this.mapToResponseDto(restoredCase);
@@ -295,11 +332,16 @@ export class CaseService {
       source: crmCase.source,
       sourceDetail: crmCase.sourceDetail,
       description: crmCase.description,
+      closedAt: crmCase.closedAt,
+      closedById: crmCase.closedById,
       accountId: crmCase.accountId,
       contactId: crmCase.contactId,
       ownerId: crmCase.ownerId,
       organizationId: crmCase.organizationId,
       deletedAt: crmCase.deletedAt,
+      deletedById: crmCase.deletedById,
+      restoredAt: crmCase.restoredAt,
+      restoredById: crmCase.restoredById,
       createdAt: crmCase.createdAt,
       updatedAt: crmCase.updatedAt,
     };

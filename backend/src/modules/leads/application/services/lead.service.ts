@@ -5,6 +5,7 @@ import {
   UpdateLeadDto,
   ChangeLeadStatusDto,
   ConvertLeadDto,
+  LeadConversionSuggestionsDto,
   LeadResponseDto,
 } from '../dto/lead.dto';
 import { calculatePagination, calculateMeta } from '../../../../common/pagination/pagination.utils';
@@ -208,7 +209,7 @@ export class LeadService {
     leadId: string,
     organizationId: string,
     ownerId: string,
-    dto: ConvertLeadDto
+    dto: ConvertLeadDto = {}
   ): Promise<LeadResponseDto> {
     const lead = await this.prisma.lead.findFirst({
       where: {
@@ -301,6 +302,10 @@ export class LeadService {
         throw new NotFoundException('Contact not found');
       }
 
+      if (contactMode === 'USE_EXISTING' && contact.accountId !== account.id) {
+        throw new BadRequestException('Selected contact does not belong to the selected account.');
+      }
+
       const opportunity =
         opportunityMode === 'DO_NOT_CREATE'
           ? null
@@ -330,6 +335,12 @@ export class LeadService {
         throw new NotFoundException('Opportunity not found');
       }
 
+      if (opportunityMode === 'USE_EXISTING' && opportunity?.accountId !== account.id) {
+        throw new BadRequestException(
+          'Selected opportunity does not belong to the selected account.',
+        );
+      }
+
       // Update Lead
       const updatedLead = await tx.lead.update({
         where: { id: leadId },
@@ -338,6 +349,8 @@ export class LeadService {
           convertedAccountId: account.id,
           convertedContactId: contact.id,
           convertedOpportunityId: opportunity?.id,
+          convertedAt: new Date(),
+          convertedById: ownerId,
         },
       });
 
@@ -356,13 +369,101 @@ export class LeadService {
         convertedAccountId: result.convertedAccountId,
         convertedContactId: result.convertedContactId,
         convertedOpportunityId: result.convertedOpportunityId,
+        convertedAt: result.convertedAt,
+        convertedById: result.convertedById,
       },
     });
 
     return this.mapToResponseDto(result);
   }
 
-  async delete(leadId: string, organizationId: string): Promise<void> {
+  async getConversionSuggestions(
+    leadId: string,
+    organizationId: string
+  ): Promise<LeadConversionSuggestionsDto> {
+    const lead = await this.prisma.lead.findFirst({
+      where: {
+        id: leadId,
+        organizationId,
+        deletedAt: null,
+      },
+    });
+
+    if (!lead) {
+      throw new NotFoundException('Lead not found');
+    }
+
+    const contactFilters: any[] = [];
+    if (lead.email) {
+      contactFilters.push({ email: lead.email });
+    }
+    if (lead.phone) {
+      contactFilters.push({ phone: lead.phone });
+    }
+    if (lead.lastName) {
+      contactFilters.push({ lastName: { contains: lead.lastName, mode: 'insensitive' } });
+    }
+
+    const [accounts, contacts, opportunities] = await Promise.all([
+      this.prisma.account.findMany({
+        where: {
+          organizationId,
+          deletedAt: null,
+          name: { contains: lead.company, mode: 'insensitive' },
+        },
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+      }),
+      contactFilters.length > 0
+        ? this.prisma.contact.findMany({
+            where: {
+              organizationId,
+              deletedAt: null,
+              OR: contactFilters,
+            },
+            take: 5,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      this.prisma.opportunity.findMany({
+        where: {
+          organizationId,
+          deletedAt: null,
+          stage: { notIn: ['CLOSED_WON', 'CLOSED_LOST'] },
+          name: { contains: lead.company, mode: 'insensitive' },
+        },
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      accounts: accounts.map((account) => ({
+        id: account.id,
+        name: account.name,
+        website: account.website ?? undefined,
+        phone: account.phone ?? undefined,
+        ownerId: account.ownerId,
+      })),
+      contacts: contacts.map((contact) => ({
+        id: contact.id,
+        firstName: contact.firstName ?? undefined,
+        lastName: contact.lastName,
+        email: contact.email ?? undefined,
+        phone: contact.phone ?? undefined,
+        accountId: contact.accountId,
+      })),
+      opportunities: opportunities.map((opportunity) => ({
+        id: opportunity.id,
+        name: opportunity.name,
+        stage: opportunity.stage,
+        accountId: opportunity.accountId,
+        amount: opportunity.amount ? parseFloat(opportunity.amount.toString()) : undefined,
+      })),
+    };
+  }
+
+  async delete(leadId: string, organizationId: string, deletedById: string): Promise<void> {
     const lead = await this.prisma.lead.findFirst({
       where: {
         id: leadId,
@@ -376,22 +477,28 @@ export class LeadService {
     }
 
     // Soft delete
+    const deletedAt = new Date();
     await this.prisma.lead.update({
       where: { id: leadId },
-      data: { deletedAt: new Date() },
+      data: { deletedAt, deletedById },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: lead.ownerId,
+      userId: deletedById,
       action: AuditAction.SOFT_DELETE,
       entityType: 'Lead',
       entityId: leadId,
       oldValues: { firstName: lead.firstName, lastName: lead.lastName, company: lead.company },
+      newValues: { deletedAt, deletedById },
     });
   }
 
-  async restore(leadId: string, organizationId: string): Promise<LeadResponseDto> {
+  async restore(
+    leadId: string,
+    organizationId: string,
+    restoredById: string
+  ): Promise<LeadResponseDto> {
     const lead = await this.prisma.lead.findFirst({
       where: {
         id: leadId,
@@ -409,17 +516,25 @@ export class LeadService {
 
     const restoredLead = await this.prisma.lead.update({
       where: { id: leadId },
-      data: { deletedAt: null },
+      data: {
+        deletedAt: null,
+        restoredAt: new Date(),
+        restoredById,
+      },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: lead.ownerId,
+      userId: restoredById,
       action: AuditAction.RESTORE,
       entityType: 'Lead',
       entityId: leadId,
       oldValues: { deletedAt: lead.deletedAt },
-      newValues: { deletedAt: null },
+      newValues: {
+        deletedAt: null,
+        restoredAt: restoredLead.restoredAt,
+        restoredById,
+      },
     });
 
     return this.mapToResponseDto(restoredLead);
@@ -443,9 +558,14 @@ export class LeadService {
       convertedAccountId: lead.convertedAccountId,
       convertedContactId: lead.convertedContactId,
       convertedOpportunityId: lead.convertedOpportunityId,
+      convertedAt: lead.convertedAt,
+      convertedById: lead.convertedById,
       ownerId: lead.ownerId,
       organizationId: lead.organizationId,
       deletedAt: lead.deletedAt,
+      deletedById: lead.deletedById,
+      restoredAt: lead.restoredAt,
+      restoredById: lead.restoredById,
       createdAt: lead.createdAt,
       updatedAt: lead.updatedAt,
     };

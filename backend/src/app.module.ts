@@ -19,6 +19,7 @@ import { OpportunitiesModule } from './modules/opportunities/opportunities.modul
 import { TasksModule } from './modules/tasks/tasks.module';
 import { NotesModule } from './modules/notes/notes.module';
 import { CasesModule } from './modules/cases/cases.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { CasesModule } from './modules/cases/cases.module';
     TasksModule,
     NotesModule,
     CasesModule,
+    DashboardModule,
   ],
   providers: [
     {

@@ -26,9 +26,14 @@ export interface Lead {
   convertedAccountId?: string;
   convertedContactId?: string;
   convertedOpportunityId?: string;
+  convertedAt?: string;
+  convertedById?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
+  deletedById?: string;
+  restoredAt?: string;
+  restoredById?: string;
 }
 
 export type LeadConvertMode = "CREATE_NEW" | "USE_EXISTING";
@@ -45,4 +50,35 @@ export interface ConvertLeadPayload {
   opportunityMode?: LeadConvertOpportunityMode;
   opportunityId?: string;
   opportunityName?: string;
+}
+
+export interface LeadConversionAccountSuggestion {
+  id: string;
+  name: string;
+  website?: string;
+  phone?: string;
+  ownerId: string;
+}
+
+export interface LeadConversionContactSuggestion {
+  id: string;
+  firstName?: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  accountId: string;
+}
+
+export interface LeadConversionOpportunitySuggestion {
+  id: string;
+  name: string;
+  stage: string;
+  accountId: string;
+  amount?: number;
+}
+
+export interface LeadConversionSuggestions {
+  accounts: LeadConversionAccountSuggestion[];
+  contacts: LeadConversionContactSuggestion[];
+  opportunities: LeadConversionOpportunitySuggestion[];
 }

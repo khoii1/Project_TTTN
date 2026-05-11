@@ -1,6 +1,10 @@
 import { httpClient } from "@/lib/api/http-client";
 import { toPaginatedArray } from "@/lib/api/pagination";
-import { ConvertLeadPayload, Lead } from "./leads.types";
+import {
+  ConvertLeadPayload,
+  Lead,
+  LeadConversionSuggestions,
+} from "./leads.types";
 
 export const leadsApi = {
   getAll: async (
@@ -29,6 +33,12 @@ export const leadsApi = {
   },
   convert: async (id: string, payload?: ConvertLeadPayload) => {
     const { data } = await httpClient.post(`/leads/${id}/convert`, payload);
+    return data;
+  },
+  getConversionSuggestions: async (id: string) => {
+    const { data } = await httpClient.get<LeadConversionSuggestions>(
+      `/leads/${id}/conversion-suggestions`,
+    );
     return data;
   },
   delete: async (id: string) => {

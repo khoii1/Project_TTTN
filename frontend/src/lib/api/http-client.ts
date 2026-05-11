@@ -1,7 +1,6 @@
 import axios from "axios";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { tokenStorage } from "./token-storage";
-import { notification } from "antd";
 
 export const httpClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000",
@@ -82,7 +81,8 @@ httpClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (
         originalRequest.url === "/auth/login" ||
-        originalRequest.url === "/auth/refresh"
+        originalRequest.url === "/auth/refresh" ||
+        originalRequest.url === "/auth/logout"
       ) {
         return Promise.reject(error);
       }
@@ -151,10 +151,14 @@ httpClient.interceptors.response.use(
     if (msg) {
       if (error.response?.status !== 401) {
         // 401 is handled above
-        notification.error({
-          message: "API Error",
-          description: msg,
-        });
+        window.dispatchEvent(
+          new CustomEvent("crm:api-error", {
+            detail: {
+              title: "Lỗi API",
+              description: msg,
+            },
+          }),
+        );
       }
     }
 

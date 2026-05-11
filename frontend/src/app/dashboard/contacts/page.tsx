@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { Table, Button, Space, Popconfirm, message, Input } from "antd";
+import { Table, Button, Space, Popconfirm, Input, Select, Tag, App } from "antd";
 import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { PlusOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,13 +11,20 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
-import { getSourceLabel } from "@/lib/constants/source-options";
+import { SOURCE_OPTIONS, getSourceLabel } from "@/lib/constants/source-options";
+import {
+  EMPTY_STATE_LABELS,
+  FEEDBACK_LABELS,
+  FIELD_LABELS,
+} from "@/lib/constants/vi-labels";
 
 function ContactsList() {
+  const { message } = App.useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const currentSearch = searchParams.get("search") || "";
+  const currentSource = searchParams.get("source") || undefined;
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
   const currentLimit = parseInt(searchParams.get("limit") || "10", 10);
 
@@ -25,16 +32,21 @@ function ContactsList() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const fetchContacts = async (page: number, limit: number, search: string) => {
+  const fetchContacts = async (
+    page: number,
+    limit: number,
+    search: string,
+    source?: string,
+  ) => {
     try {
       setLoading(true);
-      const payload = { page, limit, search };
+      const payload = { page, limit, search, source };
       const res = await contactsApi.getAll(payload);
       const items = getDataArray<Contact>(res);
       setContacts(items);
       setTotal(getPaginationMeta(res)?.total ?? items.length);
     } catch {
-      message.error("Failed to load contacts");
+      message.error("Không thể tải người liên hệ");
     } finally {
       setLoading(false);
     }
@@ -42,11 +54,11 @@ function ContactsList() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      fetchContacts(currentPage, currentLimit, currentSearch);
+      fetchContacts(currentPage, currentLimit, currentSearch, currentSource);
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [currentPage, currentLimit, currentSearch]);
+  }, [currentPage, currentLimit, currentSearch, currentSource]);
 
   const updateURL = (params: Record<string, string | number | undefined>) => {
     const urlParams = new URLSearchParams(searchParams.toString());
@@ -68,19 +80,23 @@ function ContactsList() {
     updateURL({ search: value, page: 1 });
   };
 
+  const handleSourceFilter = (value?: string) => {
+    updateURL({ source: value, page: 1 });
+  };
+
   const handleDelete = async (id: string) => {
     try {
       await contactsApi.delete(id);
-      message.success("Contact deleted");
-      fetchContacts(currentPage, currentLimit, currentSearch);
+      message.success("Đã xóa người liên hệ");
+      fetchContacts(currentPage, currentLimit, currentSearch, currentSource);
     } catch {
-      message.error("Failed to delete contact");
+      message.error("Không thể xóa người liên hệ");
     }
   };
 
   const columns: TableColumnsType<Contact> = [
     {
-      title: "Name",
+      title: FIELD_LABELS.name,
       key: "name",
       render: (_, record) => (
         <span className="font-medium">
@@ -89,48 +105,52 @@ function ContactsList() {
       ),
     },
     {
-      title: "Title",
+      title: FIELD_LABELS.title,
       dataIndex: "title",
       key: "title",
     },
     {
-      title: "Email",
+      title: FIELD_LABELS.email,
       dataIndex: "email",
       key: "email",
     },
     {
-      title: "Phone",
+      title: FIELD_LABELS.phone,
       dataIndex: "phone",
       key: "phone",
     },
     {
-      title: "Account",
+      title: FIELD_LABELS.account,
       dataIndex: "accountId",
       key: "accountId",
       render: (accountId?: string) => (
-        <EntityReferenceDisplay entityType="ACCOUNT" entityId={accountId} link />
+        <EntityReferenceDisplay
+          entityType="ACCOUNT"
+          entityId={accountId}
+          link
+        />
       ),
     },
     {
-      title: "Source",
+      title: FIELD_LABELS.source,
       dataIndex: "source",
       key: "source",
-      render: (source?: string) => getSourceLabel(source),
+      render: (source?: string) => <Tag>{getSourceLabel(source)}</Tag>,
     },
     {
-      title: "Owner",
+      title: FIELD_LABELS.owner,
       dataIndex: "ownerId",
       key: "ownerId",
       render: (ownerId?: string) => <UserReferenceDisplay userId={ownerId} />,
     },
     {
-      title: "Created At",
+      title: FIELD_LABELS.createdAt,
       dataIndex: "createdAt",
       key: "createdAt",
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
     {
-      title: "Actions",
+      title: "Thao tác",
       key: "actions",
       render: (_, record) => (
         <Space size="middle">
@@ -140,7 +160,7 @@ function ContactsList() {
             onClick={() => router.push(`/dashboard/contacts/${record.id}`)}
           />
           <Popconfirm
-            title="Delete this contact?"
+            title={FEEDBACK_LABELS.deleteConfirm}
             onConfirm={() => handleDelete(record.id)}
           >
             <Button type="text" danger icon={<DeleteOutlined />} />
@@ -153,23 +173,32 @@ function ContactsList() {
   return (
     <div>
       <PageHeader
-        title="Contacts"
+        title="Người liên hệ"
         action={
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => router.push("/dashboard/contacts/new")}
           >
-            New Contact
+            Tạo người liên hệ
           </Button>
         }
       />
-      <div className="mb-4 w-64">
+      <div className="crm-filter-bar mb-4 flex flex-wrap gap-3">
         <Input.Search
-          placeholder="Search contacts..."
+          placeholder="Tìm người liên hệ..."
           defaultValue={currentSearch}
           onSearch={handleSearch}
           allowClear
+          className="w-64"
+        />
+        <Select
+          placeholder="Tất cả nguồn"
+          allowClear
+          value={currentSource}
+          onChange={handleSourceFilter}
+          className="w-52"
+          options={[...SOURCE_OPTIONS]}
         />
       </div>
       <Table
@@ -193,7 +222,9 @@ function ContactsList() {
 export default function ContactsListPage() {
   return (
     <Suspense
-      fallback={<div className="p-4 text-center">Loading contacts...</div>}
+      fallback={
+        <div className="p-4 text-center">{EMPTY_STATE_LABELS.loading}</div>
+      }
     >
       <ContactsList />
     </Suspense>

@@ -224,14 +224,89 @@ export class LeadResponseDto {
   convertedContactId?: string;
   @ApiPropertyOptional({ example: '33333333-3333-3333-3333-333333333333' })
   convertedOpportunityId?: string;
+  @ApiPropertyOptional({ example: '2026-05-11T08:48:00.000Z' })
+  convertedAt?: Date;
+  @ApiPropertyOptional({ example: '44444444-4444-4444-4444-444444444444' })
+  convertedById?: string;
   @ApiProperty({ example: '44444444-4444-4444-4444-444444444444' })
   ownerId: string;
   @ApiProperty({ example: '55555555-5555-5555-5555-555555555555' })
   organizationId: string;
   @ApiPropertyOptional({ example: '2026-04-29T08:00:00.000Z' })
   deletedAt?: Date;
+  @ApiPropertyOptional({ example: '44444444-4444-4444-4444-444444444444' })
+  deletedById?: string;
+  @ApiPropertyOptional({ example: '2026-05-11T08:48:00.000Z' })
+  restoredAt?: Date;
+  @ApiPropertyOptional({ example: '44444444-4444-4444-4444-444444444444' })
+  restoredById?: string;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })
   updatedAt: Date;
+}
+
+export class LeadConversionAccountSuggestionDto {
+  @ApiProperty({ example: '11111111-1111-1111-1111-111111111111' })
+  id: string;
+
+  @ApiProperty({ example: 'Tech Corp' })
+  name: string;
+
+  @ApiPropertyOptional({ example: 'https://techcorp.com' })
+  website?: string;
+
+  @ApiPropertyOptional({ example: '+1-555-0201' })
+  phone?: string;
+
+  @ApiProperty({ example: '44444444-4444-4444-4444-444444444444' })
+  ownerId: string;
+}
+
+export class LeadConversionContactSuggestionDto {
+  @ApiProperty({ example: '22222222-2222-2222-2222-222222222222' })
+  id: string;
+
+  @ApiPropertyOptional({ example: 'Alice' })
+  firstName?: string;
+
+  @ApiProperty({ example: 'Johnson' })
+  lastName: string;
+
+  @ApiPropertyOptional({ example: 'alice@techcorp.com' })
+  email?: string;
+
+  @ApiPropertyOptional({ example: '+1-555-0101' })
+  phone?: string;
+
+  @ApiProperty({ example: '11111111-1111-1111-1111-111111111111' })
+  accountId: string;
+}
+
+export class LeadConversionOpportunitySuggestionDto {
+  @ApiProperty({ example: '33333333-3333-3333-3333-333333333333' })
+  id: string;
+
+  @ApiProperty({ example: 'New Opportunity - Tech Corp' })
+  name: string;
+
+  @ApiProperty({ example: 'QUALIFY' })
+  stage: string;
+
+  @ApiProperty({ example: '11111111-1111-1111-1111-111111111111' })
+  accountId: string;
+
+  @ApiPropertyOptional({ example: 500000 })
+  amount?: number;
+}
+
+export class LeadConversionSuggestionsDto {
+  @ApiProperty({ type: [LeadConversionAccountSuggestionDto] })
+  accounts: LeadConversionAccountSuggestionDto[];
+
+  @ApiProperty({ type: [LeadConversionContactSuggestionDto] })
+  contacts: LeadConversionContactSuggestionDto[];
+
+  @ApiProperty({ type: [LeadConversionOpportunitySuggestionDto] })
+  opportunities: LeadConversionOpportunitySuggestionDto[];
 }

@@ -1,16 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, Suspense } from "react";
-import {
-  Table,
-  Button,
-  Space,
-  Tag,
-  Popconfirm,
-  message,
-  Input,
-  Select,
-} from "antd";
+import { Table, Button, Space, Tag, Popconfirm, Input, Select, App } from "antd";
 import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -19,8 +10,15 @@ import { User, UserRole } from "@/features/auth/auth.types";
 import { PageHeader } from "@/components/common/PageHeader";
 import { useAuthStore } from "@/features/auth/auth.store";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
+import {
+  EMPTY_STATE_LABELS,
+  FEEDBACK_LABELS,
+  FIELD_LABELS,
+  getRoleLabel,
+} from "@/lib/constants/vi-labels";
 
 function UsersList() {
+  const { message } = App.useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user: currentUser } = useAuthStore();
@@ -48,7 +46,7 @@ function UsersList() {
       setUsers(items);
       setTotal(getPaginationMeta(res)?.total ?? items.length);
     } catch {
-      message.error("Failed to load users");
+      message.error("Không thể tải người dùng");
     } finally {
       setLoading(false);
     }
@@ -89,10 +87,10 @@ function UsersList() {
   const handleDelete = async (id: string) => {
     try {
       await usersApi.delete(id);
-      message.success("User deleted");
+      message.success("Đã xóa người dùng");
       fetchUsers(currentPage, currentLimit, currentSearch, currentRole);
     } catch {
-      message.error("Failed to delete user");
+      message.error("Không thể xóa người dùng");
     }
   };
 
@@ -105,7 +103,7 @@ function UsersList() {
 
   const columns: TableColumnsType<User> = [
     {
-      title: "Name",
+      title: FIELD_LABELS.name,
       key: "name",
       render: (_, record) => (
         <span className="font-medium">
@@ -114,18 +112,20 @@ function UsersList() {
       ),
     },
     {
-      title: "Email",
+      title: FIELD_LABELS.email,
       dataIndex: "email",
       key: "email",
     },
     {
-      title: "Role",
+      title: FIELD_LABELS.role,
       dataIndex: "role",
       key: "role",
-      render: (role: string) => <Tag color={roleColors[role]}>{role}</Tag>,
+      render: (role: string) => (
+        <Tag color={roleColors[role]}>{getRoleLabel(role)}</Tag>
+      ),
     },
     {
-      title: "Created At",
+      title: FIELD_LABELS.createdAt,
       dataIndex: "createdAt",
       key: "createdAt",
       render: (date: string) => new Date(date).toLocaleDateString(),
@@ -134,13 +134,13 @@ function UsersList() {
 
   if (currentUser?.role === "ADMIN") {
     columns.push({
-      title: "Actions",
+      title: "Thao tác",
       key: "actions",
       render: (_, record) => (
         <Space size="middle">
           {record.id !== currentUser.id && (
             <Popconfirm
-              title="Delete this user?"
+              title={FEEDBACK_LABELS.deleteConfirm}
               onConfirm={() => handleDelete(record.id)}
             >
               <Button type="text" danger icon={<DeleteOutlined />} />
@@ -154,7 +154,7 @@ function UsersList() {
   return (
     <div>
       <PageHeader
-        title="Users"
+        title="Người dùng"
         action={
           currentUser?.role === "ADMIN" ? (
             <Button
@@ -162,21 +162,21 @@ function UsersList() {
               icon={<PlusOutlined />}
               onClick={() => router.push("/dashboard/users/new")}
             >
-              New User
+              Tạo người dùng
             </Button>
           ) : null
         }
       />
-      <div className="mb-4 flex space-x-4">
+      <div className="crm-filter-bar mb-4 flex flex-wrap gap-3">
         <Input.Search
-          placeholder="Search users..."
+          placeholder="Tìm người dùng..."
           defaultValue={currentSearch}
           onSearch={handleSearch}
           allowClear
           className="w-64"
         />
         <Select
-          placeholder="Filter by Role"
+          placeholder="Lọc theo vai trò"
           allowClear
           value={currentRole}
           onChange={handleRoleFilter}
@@ -184,7 +184,7 @@ function UsersList() {
         >
           {Object.values(UserRole).map((s) => (
             <Select.Option key={s} value={s}>
-              {s}
+              {getRoleLabel(s)}
             </Select.Option>
           ))}
         </Select>
@@ -210,7 +210,9 @@ function UsersList() {
 export default function UsersListPage() {
   return (
     <Suspense
-      fallback={<div className="p-4 text-center">Loading users...</div>}
+      fallback={
+        <div className="p-4 text-center">{EMPTY_STATE_LABELS.loading}</div>
+      }
     >
       <UsersList />
     </Suspense>

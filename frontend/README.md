@@ -12,7 +12,7 @@ This is a Next.js (App Router) frontend application for a Salesforce-style CRM b
 - **State Management**: Zustand
 - **Token Management**: js-cookie
 - **Dates**: dayjs
-- **Routing Protection**: Next.js Middleware
+- **Routing Protection**: Next.js Proxy
 
 ## Folder Structure
 
@@ -69,7 +69,7 @@ During this session, the following tasks were completed to build out the fronten
 
 - Initialized Next.js with Tailwind CSS and Ant Design Registry.
 - Built a **Dashboard Shell** mimicking an enterprise CRM (Salesforce-style) featuring an `AppSidebar` for navigation and `AppHeader` for User/Organization context.
-- Implemented **Next.js Middleware** (`middleware.ts`) to protect `/dashboard` routes and redirect unauthenticated users to `/login`.
+- Implemented **Next.js Proxy** (`proxy.ts`) to protect `/dashboard` routes and redirect unauthenticated users to `/login`.
 
 ### 2. Authentication Flow
 
@@ -174,10 +174,10 @@ Backend APIs return paginated data in the following format:
 
 Frontend helpers (`pagination.ts`) automatically handle both paginated and raw array responses.
 
-## Known Limitations & Future TODOs
+## Current Limitations & Future TODOs
 
-1. **Token Storage Security**: Currently, the token storage uses `js-cookie` which stores tokens in standard browser cookies accessible to JS. This is acceptable for MVP, but for production, the refresh token should be moved to an `HttpOnly` secure cookie set by the backend.
-2. **Global Search**: There is no universal search bar in the `AppHeader` to search across all modules simultaneously.
-3. **Advanced Analytics**: Dashboard statistics are calculated from the raw lists. Integrating a library like `Recharts` and fetching pre-aggregated data from the backend would improve performance and visuals.
-4. **Owner Details**: List pages and detail pages currently display `ownerId` (UUID) instead of owner name. Future work should fetch and display owner details in tables and cards.
-5. **Soft Delete Handling**: Frontend does not yet filter out soft-deleted records (`deletedAt !== null`). Backend filters these by default, but frontend could add UI indicators or restore functionality.
+1. **Token Storage Security**: The MVP still stores access and refresh tokens with `js-cookie`. For production, move refresh tokens to secure `HttpOnly` cookies set by the backend.
+2. **Dashboard Date Filtering**: Dashboard analytics use dedicated backend endpoints, but there is no date range filter yet.
+3. **Global Search MVP**: Global Search is implemented in the `AppHeader` by querying existing list endpoints in parallel. A backend aggregate search endpoint with ranking/highlighting is still future work.
+4. **Recycle Bin Scope**: Recycle Bin is implemented for Leads, Accounts, Contacts, Opportunities, Tasks, and Cases. Users and Notes are soft-deleted by backend behavior but are not part of the current Recycle Bin UI.
+5. **Mobile App**: Flutter mobile app is not implemented yet.

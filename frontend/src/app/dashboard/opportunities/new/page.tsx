@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -6,10 +6,11 @@ import {
   Input,
   Button,
   Card,
-  message,
   Select,
   InputNumber,
   DatePicker,
+  App,
+  Space,
 } from "antd";
 import { useRouter } from "next/navigation";
 import { opportunitiesApi } from "@/features/opportunities/opportunities.api";
@@ -24,8 +25,10 @@ import {
 import { PageHeader } from "@/components/common/PageHeader";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { SourceFields } from "@/components/crm/SourceFields";
+import { getStatusLabel } from "@/lib/constants/vi-labels";
 
 export default function NewOpportunityPage() {
+  const { message } = App.useApp();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -51,10 +54,10 @@ export default function NewOpportunityPage() {
         await opportunitiesApi.updateStage(createdOpportunity.id, stage);
       }
 
-      message.success("Opportunity created successfully");
+      message.success("Tạo cơ hội bán hàng thành công");
       router.push("/dashboard/opportunities");
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, "Failed to create opportunity"));
+      message.error(getApiErrorMessage(error, "Không thể tạo cơ hội bán hàng"));
     } finally {
       setLoading(false);
     }
@@ -62,7 +65,7 @@ export default function NewOpportunityPage() {
 
   return (
     <div>
-      <PageHeader title="New Opportunity" showBack />
+      <PageHeader title="Tạo cơ hội bán hàng" showBack />
       <Card className="max-w-2xl shadow-sm">
         <Form
           layout="vertical"
@@ -71,17 +74,25 @@ export default function NewOpportunityPage() {
         >
           <Form.Item
             name="name"
-            label="Opportunity Name"
+            label="Tên cơ hội bán hàng"
             rules={[{ required: true }]}
           >
             <Input placeholder="100 Laptops deal" />
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item name="amount" label="Amount ($)">
-              <InputNumber className="w-full" placeholder="10000" />
+            <Form.Item label="Giá trị">
+              <Space.Compact className="w-full">
+                <Form.Item name="amount" noStyle>
+                  <InputNumber
+                    className="w-full"
+                    placeholder="Nhập giá trị cơ hội"
+                  />
+                </Form.Item>
+                <Button disabled>VNĐ</Button>
+              </Space.Compact>
             </Form.Item>
-            <Form.Item name="closeDate" label="Expected Close Date">
+            <Form.Item name="closeDate" label="Ngày chốt dự kiến">
               <DatePicker className="w-full" />
             </Form.Item>
           </div>
@@ -89,11 +100,11 @@ export default function NewOpportunityPage() {
           <div className="grid grid-cols-2 gap-4">
             <Form.Item
               name="accountId"
-              label="Account"
+              label="Khách hàng / Công ty"
               rules={[{ required: true }]}
             >
               <Select
-                placeholder="Select an Account"
+                placeholder="Chọn khách hàng / công ty"
                 showSearch
                 optionFilterProp="children"
               >
@@ -104,9 +115,9 @@ export default function NewOpportunityPage() {
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item name="contactId" label="Contact (Optional)">
+            <Form.Item name="contactId" label="Người liên hệ (không bắt buộc)">
               <Select
-                placeholder="Select a Contact"
+                placeholder="Chọn người liên hệ"
                 showSearch
                 optionFilterProp="children"
                 allowClear
@@ -120,11 +131,11 @@ export default function NewOpportunityPage() {
             </Form.Item>
           </div>
 
-          <Form.Item name="stage" label="Stage">
+          <Form.Item name="stage" label="Giai đoạn">
             <Select>
               {Object.values(OpportunityStage).map((stage) => (
                 <Select.Option key={stage} value={stage}>
-                  {stage}
+                  {getStatusLabel(stage)}
                 </Select.Option>
               ))}
             </Select>
@@ -133,9 +144,9 @@ export default function NewOpportunityPage() {
           <SourceFields />
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button onClick={() => router.back()}>Cancel</Button>
+            <Button onClick={() => router.back()}>Hủy</Button>
             <Button type="primary" htmlType="submit" loading={loading}>
-              Save Opportunity
+              Lưu cơ hội bán hàng
             </Button>
           </div>
         </Form>

@@ -49,13 +49,29 @@ model User {
   // Relations
   organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   ownedLeads        Lead[] @relation("LeadOwner")
+  deletedLeads      Lead[] @relation("LeadDeleter")
+  restoredLeads     Lead[] @relation("LeadRestorer")
   ownedAccounts     Account[] @relation("AccountOwner")
+  deletedAccounts   Account[] @relation("AccountDeleter")
+  restoredAccounts  Account[] @relation("AccountRestorer")
   ownedContacts     Contact[] @relation("ContactOwner")
+  deletedContacts   Contact[] @relation("ContactDeleter")
+  restoredContacts  Contact[] @relation("ContactRestorer")
   ownedOpportunities Opportunity[] @relation("OpportunityOwner")
+  stageChangedOpportunities Opportunity[] @relation("OpportunityStageChanger")
+  deletedOpportunities Opportunity[] @relation("OpportunityDeleter")
+  restoredOpportunities Opportunity[] @relation("OpportunityRestorer")
   ownedTasks        Task[] @relation("TaskOwner")
   assignedTasks     Task[] @relation("TaskAssignee")
+  completedTasks    Task[] @relation("TaskCompleter")
+  deletedTasks      Task[] @relation("TaskDeleter")
+  restoredTasks     Task[] @relation("TaskRestorer")
   ownedNotes        Note[] @relation("NoteOwner")
   ownedCases        Case[] @relation("CaseOwner")
+  closedCases       Case[] @relation("CaseCloser")
+  deletedCases      Case[] @relation("CaseDeleter")
+  restoredCases     Case[] @relation("CaseRestorer")
+  convertedLeads    Lead[] @relation("LeadConverter")
   auditLogs         AuditLog[]
 
   @@index([organizationId])
@@ -91,17 +107,28 @@ model Lead {
   convertedAccountId     String?  @map("converted_account_id")
   convertedContactId     String?  @map("converted_contact_id")
   convertedOpportunityId String?  @map("converted_opportunity_id")
+  convertedAt            DateTime? @map("converted_at")
+  convertedById          String?  @map("converted_by_id")
   createdAt              DateTime @default(now()) @map("created_at")
   updatedAt              DateTime @updatedAt @map("updated_at")
   deletedAt              DateTime? @map("deleted_at")
+  deletedById            String?  @map("deleted_by_id")
+  restoredAt             DateTime? @map("restored_at")
+  restoredById           String?  @map("restored_by_id")
 
   // Relations
   organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner                  User @relation("LeadOwner", fields: [ownerId], references: [id])
+  convertedBy            User? @relation("LeadConverter", fields: [convertedById], references: [id], onDelete: SetNull)
+  deletedBy              User? @relation("LeadDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
+  restoredBy             User? @relation("LeadRestorer", fields: [restoredById], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([ownerId])
   @@index([status])
+  @@index([convertedById])
+  @@index([deletedById])
+  @@index([restoredById])
   @@map("leads")
 }
 
@@ -140,16 +167,23 @@ model Account {
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
   deletedAt           DateTime? @map("deleted_at")
+  deletedById         String?  @map("deleted_by_id")
+  restoredAt          DateTime? @map("restored_at")
+  restoredById        String?  @map("restored_by_id")
 
   // Relations
   organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner               User @relation("AccountOwner", fields: [ownerId], references: [id])
+  deletedBy           User? @relation("AccountDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
+  restoredBy          User? @relation("AccountRestorer", fields: [restoredById], references: [id], onDelete: SetNull)
   contacts            Contact[]
   opportunities       Opportunity[]
   cases               Case[]
 
   @@index([organizationId])
   @@index([ownerId])
+  @@index([deletedById])
+  @@index([restoredById])
   @@map("accounts")
 }
 
@@ -176,10 +210,15 @@ model Contact {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
   deletedAt          DateTime? @map("deleted_at")
+  deletedById        String?  @map("deleted_by_id")
+  restoredAt         DateTime? @map("restored_at")
+  restoredById       String?  @map("restored_by_id")
 
   // Relations
   organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner              User @relation("ContactOwner", fields: [ownerId], references: [id])
+  deletedBy          User? @relation("ContactDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
+  restoredBy         User? @relation("ContactRestorer", fields: [restoredById], references: [id], onDelete: SetNull)
   account            Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   opportunities      Opportunity[]
   cases              Case[]
@@ -187,6 +226,8 @@ model Contact {
   @@index([organizationId])
   @@index([ownerId])
   @@index([accountId])
+  @@index([deletedById])
+  @@index([restoredById])
   @@map("contacts")
 }
 
@@ -206,13 +247,21 @@ model Opportunity {
   source          String?
   sourceDetail    String?  @map("source_detail")
   description     String?
+  stageChangedAt  DateTime? @map("stage_changed_at")
+  stageChangedById String? @map("stage_changed_by_id")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
   deletedAt       DateTime? @map("deleted_at")
+  deletedById     String?  @map("deleted_by_id")
+  restoredAt      DateTime? @map("restored_at")
+  restoredById    String?  @map("restored_by_id")
 
   // Relations
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner           User @relation("OpportunityOwner", fields: [ownerId], references: [id])
+  stageChangedBy  User? @relation("OpportunityStageChanger", fields: [stageChangedById], references: [id], onDelete: SetNull)
+  deletedBy       User? @relation("OpportunityDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
+  restoredBy      User? @relation("OpportunityRestorer", fields: [restoredById], references: [id], onDelete: SetNull)
   account         Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   contact         Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
 
@@ -221,6 +270,9 @@ model Opportunity {
   @@index([accountId])
   @@index([contactId])
   @@index([stage])
+  @@index([stageChangedById])
+  @@index([deletedById])
+  @@index([restoredById])
   @@map("opportunities")
 }
 
@@ -247,19 +299,29 @@ model Task {
   relatedId       String?  @map("related_id")
   description     String?
   completedAt     DateTime? @map("completed_at")
+  completedById   String?  @map("completed_by_id")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
   deletedAt       DateTime? @map("deleted_at")
+  deletedById     String?  @map("deleted_by_id")
+  restoredAt      DateTime? @map("restored_at")
+  restoredById    String?  @map("restored_by_id")
 
   // Relations
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner           User @relation("TaskOwner", fields: [ownerId], references: [id])
   assignedTo      User @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  completedBy     User? @relation("TaskCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+  deletedBy       User? @relation("TaskDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
+  restoredBy      User? @relation("TaskRestorer", fields: [restoredById], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([ownerId])
   @@index([assignedToId])
   @@index([status])
+  @@index([completedById])
+  @@index([deletedById])
+  @@index([restoredById])
   @@map("tasks")
 }
 
@@ -314,13 +376,21 @@ model Case {
   source          String?
   sourceDetail    String?  @map("source_detail")
   description     String?
+  closedAt        DateTime? @map("closed_at")
+  closedById      String?  @map("closed_by_id")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
   deletedAt       DateTime? @map("deleted_at")
+  deletedById     String?  @map("deleted_by_id")
+  restoredAt      DateTime? @map("restored_at")
+  restoredById    String?  @map("restored_by_id")
 
   // Relations
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner           User @relation("CaseOwner", fields: [ownerId], references: [id])
+  closedBy        User? @relation("CaseCloser", fields: [closedById], references: [id], onDelete: SetNull)
+  deletedBy       User? @relation("CaseDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
+  restoredBy      User? @relation("CaseRestorer", fields: [restoredById], references: [id], onDelete: SetNull)
   account         Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
   contact         Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
 
@@ -329,6 +399,9 @@ model Case {
   @@index([accountId])
   @@index([contactId])
   @@index([status])
+  @@index([closedById])
+  @@index([deletedById])
+  @@index([restoredById])
   @@map("cases")
 }
 

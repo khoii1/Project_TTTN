@@ -1,55 +1,37 @@
-"use client";
+﻿"use client";
 
-import { useCallback, useEffect, useState } from "react";
-import {
-  Card,
-  Descriptions,
-  Spin,
-  message,
-  Button,
-  Form,
-  Input,
-  Select,
-  DatePicker,
-} from "antd";
-import { PageHeader } from "@/components/common/PageHeader";
-import { tasksApi } from "@/features/tasks/tasks.api";
-import { Task, TaskStatus, TaskPriority } from "@/features/tasks/tasks.types";
+import React, { useCallback, useEffect, useState } from "react";
+import { Button, Card, DatePicker, Descriptions, Form, Input, Popconfirm, Select, Space, Spin, Tabs, Tag, App } from "antd";
 import dayjs from "dayjs";
-import React from "react";
-import { RelatedRecordLookup } from "@/components/crm/RelatedRecordLookup";
+import { useRouter } from "next/navigation";
+import { PageHeader } from "@/components/common/PageHeader";
+import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
 import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
 import type { EntityReferenceType } from "@/components/crm/EntityReferenceDisplay";
+import {
+  emptyValue,
+  formatDate,
+  formatDateTime,
+  SectionCard,
+} from "@/components/crm/RecordSections";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
-
-const TaskRelationFields = () => {
-  const relatedType = Form.useWatch("relatedType");
-
-  return (
-    <div className="grid grid-cols-2 gap-4">
-      <Form.Item name="relatedType" label="Related To (Type)">
-        <Select allowClear>
-          <Select.Option value="LEAD">Lead</Select.Option>
-          <Select.Option value="ACCOUNT">Account</Select.Option>
-          <Select.Option value="CONTACT">Contact</Select.Option>
-          <Select.Option value="OPPORTUNITY">Opportunity</Select.Option>
-          <Select.Option value="CASE">Case</Select.Option>
-        </Select>
-      </Form.Item>
-      <Form.Item name="relatedId" label="Related Record">
-        <RelatedRecordLookup relatedType={relatedType} />
-      </Form.Item>
-    </div>
-  );
-};
+import { tasksApi } from "@/features/tasks/tasks.api";
+import { Task, TaskPriority, TaskStatus } from "@/features/tasks/tasks.types";
+import {
+  EMPTY_STATE_LABELS,
+  FEEDBACK_LABELS,
+  getPriorityLabel,
+  getStatusLabel,
+} from "@/lib/constants/vi-labels";
 
 export default function TaskDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const unwrappedParams = React.use(params);
-  const { id } = unwrappedParams;
+  const { message } = App.useApp();
+  const router = useRouter();
+  const { id } = React.use(params);
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -58,20 +40,16 @@ export default function TaskDetailPage({
   const fetchTask = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await tasksApi.getById(id);
-      setTask(data);
+      setTask(await tasksApi.getById(id));
     } catch {
-      message.error("Failed to load task details");
+      message.error("Không thể tải chi tiết công việc");
     } finally {
       setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      fetchTask();
-    }, 0);
-
+    const timer = window.setTimeout(fetchTask, 0);
     return () => window.clearTimeout(timer);
   }, [fetchTask]);
 
@@ -81,6 +59,8 @@ export default function TaskDetailPage({
     try {
       setSaving(true);
       const { status, ...updateValues } = values;
+      delete updateValues.relatedType;
+      delete updateValues.relatedId;
       const payload = {
         ...updateValues,
         dueDate: values.dueDate ? values.dueDate.toISOString() : undefined,
@@ -89,11 +69,11 @@ export default function TaskDetailPage({
       if (status && status !== task?.status) {
         await tasksApi.updateStatus(id, status);
       }
-      message.success("Task updated");
+      message.success("Đã cập nhật công việc");
       setIsEditing(false);
       fetchTask();
     } catch {
-      message.error("Failed to update task");
+      message.error("Không thể cập nhật công việc");
     } finally {
       setSaving(false);
     }
@@ -102,42 +82,66 @@ export default function TaskDetailPage({
   const handleComplete = async () => {
     try {
       await tasksApi.complete(id);
-      message.success("Task marked as completed");
+      message.success("Đã đánh dấu hoàn thành");
       fetchTask();
     } catch {
-      message.error("Failed to complete task");
+      message.error("Không thể hoàn thành công việc");
     }
   };
 
-  if (loading)
+  const handleDelete = async () => {
+    try {
+      await tasksApi.delete(id);
+      message.success("Đã xóa công việc");
+      router.push("/dashboard/tasks");
+    } catch {
+      message.error("Không thể xóa công việc");
+    }
+  };
+
+  if (loading) {
     return (
       <div className="p-8 text-center">
         <Spin size="large" />
       </div>
     );
-  if (!task) return <div>Task not found</div>;
+  }
+
+  if (!task) return <div>{EMPTY_STATE_LABELS.recordNotFound}</div>;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={task.subject}
+        subtitle={`${getStatusLabel(task.status)} - ${getPriorityLabel(task.priority)}`}
         showBack
         action={
-          <div className="space-x-2">
+          <Space wrap>
             {!isEditing && (
-              <Button onClick={() => setIsEditing(true)}>Edit</Button>
+              <Button onClick={() => setIsEditing(true)}>Chỉnh sửa</Button>
             )}
-            {task.status !== "COMPLETED" && (
+            {!isEditing && (
+              <Popconfirm
+                title={FEEDBACK_LABELS.deleteConfirm}
+                description="Bản ghi sẽ được chuyển vào Thùng rác."
+                okText="Xóa"
+                okButtonProps={{ danger: true }}
+                onConfirm={handleDelete}
+              >
+                <Button danger>Xóa</Button>
+              </Popconfirm>
+            )}
+            {task.status !== TaskStatus.COMPLETED && (
               <Button type="primary" onClick={handleComplete}>
-                Mark Complete
+                Đánh dấu hoàn thành
               </Button>
             )}
-          </div>
+          </Space>
         }
       />
 
-      <Card className="shadow-sm">
-        {isEditing ? (
+      {isEditing ? (
+        <Card title="Chỉnh sửa công việc" className="shadow-sm">
           <Form
             layout="vertical"
             initialValues={{
@@ -148,88 +152,133 @@ export default function TaskDetailPage({
           >
             <Form.Item
               name="subject"
-              label="Subject"
+              label="Tiêu đề"
               rules={[{ required: true }]}
             >
               <Input />
             </Form.Item>
-            <Form.Item name="description" label="Description">
+            <Form.Item name="description" label="Mô tả">
               <Input.TextArea rows={3} />
             </Form.Item>
-            <div className="grid grid-cols-2 gap-4">
-              <Form.Item name="status" label="Status">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Form.Item name="status" label="Trạng thái">
                 <Select>
-                  {Object.values(TaskStatus).map((s) => (
-                    <Select.Option key={s} value={s}>
-                      {s}
+                  {Object.values(TaskStatus).map((status) => (
+                    <Select.Option key={status} value={status}>
+                      {getStatusLabel(status)}
                     </Select.Option>
                   ))}
                 </Select>
               </Form.Item>
-              <Form.Item name="priority" label="Priority">
+              <Form.Item name="priority" label="Mức độ ưu tiên">
                 <Select>
-                  {Object.values(TaskPriority).map((p) => (
-                    <Select.Option key={p} value={p}>
-                      {p}
+                  {Object.values(TaskPriority).map((priority) => (
+                    <Select.Option key={priority} value={priority}>
+                      {getPriorityLabel(priority)}
                     </Select.Option>
                   ))}
                 </Select>
               </Form.Item>
-              <Form.Item name="dueDate" label="Due Date">
+              <Form.Item name="dueDate" label="Hạn hoàn thành">
                 <DatePicker className="w-full" />
               </Form.Item>
             </div>
-            <TaskRelationFields />
+            <div className="mt-3 text-sm text-gray-500">
+              Bản ghi liên quan được hiển thị trong tab Liên quan vì form này
+              chưa hỗ trợ đổi liên kết công việc.
+            </div>
             <div className="flex justify-end space-x-2 mt-4">
-              <Button onClick={() => setIsEditing(false)}>Cancel</Button>
+              <Button onClick={() => setIsEditing(false)}>Hủy</Button>
               <Button type="primary" htmlType="submit" loading={saving}>
-                Save Changes
+                Lưu thay đổi
               </Button>
             </div>
           </Form>
-        ) : (
-          <Descriptions column={2} bordered size="middle">
-            <Descriptions.Item label="Subject">
-              {task.subject}
-            </Descriptions.Item>
-            <Descriptions.Item label="Status">{task.status}</Descriptions.Item>
-            <Descriptions.Item label="Priority">
-              {task.priority}
-            </Descriptions.Item>
-            <Descriptions.Item label="Due Date">
-              {task.dueDate
-                ? new Date(task.dueDate).toLocaleDateString()
-                : "N/A"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Related Type">
-              {task.relatedType || "N/A"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Related To">
-              {task.relatedType && task.relatedId ? (
-                <EntityReferenceDisplay
-                  entityType={task.relatedType as EntityReferenceType}
-                  entityId={task.relatedId}
-                  link
-                />
-              ) : (
-                "-"
-              )}
-            </Descriptions.Item>
-            <Descriptions.Item label="Assigned To">
-              <UserReferenceDisplay userId={task.assignedToId} />
-            </Descriptions.Item>
-            <Descriptions.Item label="Owner">
-              <UserReferenceDisplay userId={task.ownerId} />
-            </Descriptions.Item>
-            <Descriptions.Item label="Description" span={2}>
-              {task.description || "N/A"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Created">
-              {new Date(task.createdAt).toLocaleString()}
-            </Descriptions.Item>
-          </Descriptions>
-        )}
-      </Card>
+        </Card>
+      ) : (
+        <Tabs
+          defaultActiveKey="details"
+          items={[
+            {
+              key: "details",
+              label: "Chi tiết",
+              children: (
+                <div className="space-y-4">
+                  <SectionCard title="Thông tin chung">
+                    <Descriptions.Item label="Tiêu đề">
+                      {task.subject}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Trạng thái">
+                      <Tag
+                        color={
+                          task.status === TaskStatus.COMPLETED
+                            ? "green"
+                            : "blue"
+                        }
+                      >
+                        {getStatusLabel(task.status)}
+                      </Tag>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Mức độ ưu tiên">
+                      {getPriorityLabel(task.priority)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Hạn hoàn thành">
+                      {formatDate(task.dueDate)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Mô tả" span={2}>
+                      {emptyValue(task.description)}
+                    </Descriptions.Item>
+                  </SectionCard>
+                  <SectionCard title="Thông tin hệ thống">
+                    <Descriptions.Item label="Người phụ trách">
+                      <UserReferenceDisplay userId={task.ownerId} />
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Người được giao">
+                      <UserReferenceDisplay userId={task.assignedToId} />
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Người hoàn thành">
+                      <UserReferenceDisplay userId={task.completedById} />
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Ngày tạo">
+                      {formatDateTime(task.createdAt)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Ngày cập nhật">
+                      {formatDateTime(task.updatedAt)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Thời gian hoàn thành">
+                      {formatDateTime(task.completedAt)}
+                    </Descriptions.Item>
+                  </SectionCard>
+                </div>
+              ),
+            },
+            {
+              key: "related",
+              label: "Liên quan",
+              children: (
+                <SectionCard title="Liên kết công việc">
+                  <Descriptions.Item label="Liên quan đến">
+                    {task.relatedType && task.relatedId ? (
+                      <EntityReferenceDisplay
+                        entityType={task.relatedType as EntityReferenceType}
+                        entityId={task.relatedId}
+                        link
+                      />
+                    ) : (
+                      "-"
+                    )}
+                  </Descriptions.Item>
+                </SectionCard>
+              ),
+            },
+            {
+              key: "activity",
+              label: "Hoạt động",
+              children: <ActivityTimeline relatedType="TASK" relatedId={id} />,
+            },
+          ]}
+        />
+      )}
     </div>
   );
 }

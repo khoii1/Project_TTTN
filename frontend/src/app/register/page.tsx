@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Form, Input, Button, Card, Typography, message } from "antd";
+import { Form, Input, Button, Card, Typography, App } from "antd";
 import { UserOutlined, LockOutlined, MailOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/features/auth/auth.api";
@@ -19,6 +19,7 @@ type RegisterFormValues = {
 };
 
 export default function RegisterPage() {
+  const { message } = App.useApp();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -26,24 +27,24 @@ export default function RegisterPage() {
     try {
       setLoading(true);
       await authApi.register(values);
-      message.success("Registration successful. Please log in.");
+      message.success("Đăng ký thành công. Vui lòng đăng nhập.");
       router.push("/login");
     } catch (error: unknown) {
       console.error(error);
-      message.error(getApiErrorMessage(error, "Failed to register"));
+      message.error(getApiErrorMessage(error, "Không thể đăng ký"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen w-screen items-center justify-center bg-gray-50 py-10">
-      <Card className="w-full max-w-md shadow-lg p-6">
+    <div className="crm-auth-page flex min-h-screen w-screen items-center justify-center py-10">
+      <Card className="w-full max-w-md p-6 shadow-lg">
         <div className="text-center mb-8">
           <Title level={2} className="!mb-1">
-            Register
+            Đăng ký
           </Title>
-          <p className="text-gray-500">Create a new account</p>
+          <p className="text-gray-500">Tạo tài khoản mới</p>
         </div>
 
         <Form
@@ -54,29 +55,29 @@ export default function RegisterPage() {
         >
           <Form.Item
             name="firstName"
-            rules={[{ required: true, message: "First name is required" }]}
+            rules={[{ required: true, message: "Vui lòng nhập tên" }]}
           >
             <Input
               prefix={<UserOutlined className="text-gray-400" />}
-              placeholder="First Name"
+              placeholder="Tên"
             />
           </Form.Item>
 
           <Form.Item
             name="lastName"
-            rules={[{ required: true, message: "Last name is required" }]}
+            rules={[{ required: true, message: "Vui lòng nhập họ" }]}
           >
             <Input
               prefix={<UserOutlined className="text-gray-400" />}
-              placeholder="Last Name"
+              placeholder="Họ"
             />
           </Form.Item>
 
           <Form.Item
             name="email"
             rules={[
-              { required: true, message: "Email is required" },
-              { type: "email", message: "Invalid email" },
+              { required: true, message: "Vui lòng nhập Email" },
+              { type: "email", message: "Email không hợp lệ" },
             ]}
           >
             <Input
@@ -88,23 +89,21 @@ export default function RegisterPage() {
           <Form.Item
             name="password"
             rules={[
-              { required: true, message: "Password is required" },
-              { min: 6, message: "At least 6 characters" },
+              { required: true, message: "Vui lòng nhập mật khẩu" },
+              { min: 6, message: "Tối thiểu 6 ký tự" },
             ]}
           >
             <Input.Password
               prefix={<LockOutlined className="text-gray-400" />}
-              placeholder="Password"
+              placeholder="Mật khẩu"
             />
           </Form.Item>
 
           <Form.Item
             name="organizationName"
-            rules={[
-              { required: true, message: "Organization name is required" },
-            ]}
+            rules={[{ required: true, message: "Vui lòng nhập tên tổ chức" }]}
           >
-            <Input placeholder="Organization Name" />
+            <Input placeholder="Tên tổ chức" />
           </Form.Item>
 
           <Form.Item>
@@ -114,14 +113,14 @@ export default function RegisterPage() {
               className="w-full"
               loading={loading}
             >
-              Register
+              Đăng ký
             </Button>
           </Form.Item>
 
           <div className="text-center mt-4">
-            Already have an account?{" "}
+            Đã có tài khoản?{" "}
             <Link href="/login" className="text-blue-500">
-              Log in
+              Đăng nhập
             </Link>
           </div>
         </Form>

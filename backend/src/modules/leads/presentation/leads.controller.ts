@@ -17,6 +17,7 @@ import {
   ChangeLeadStatusDto,
   ConvertLeadDto,
   LeadResponseDto,
+  LeadConversionSuggestionsDto,
 } from '../application/dto/lead.dto';
 import { JwtGuard } from '../../../shared/guards/jwt.guard';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
@@ -83,6 +84,20 @@ export class LeadsController {
     return this.leadService.findById(id, user.organizationId);
   }
 
+  @Get(':id/conversion-suggestions')
+  @ApiOperation({ summary: 'Get possible existing records for lead conversion' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lead conversion suggestions',
+    type: LeadConversionSuggestionsDto,
+  })
+  async getConversionSuggestions(
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload
+  ): Promise<LeadConversionSuggestionsDto> {
+    return this.leadService.getConversionSuggestions(id, user.organizationId);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Update lead' })
   @ApiResponse({ status: 200, description: 'Lead updated', type: LeadResponseDto })
@@ -110,7 +125,7 @@ export class LeadsController {
   @ApiResponse({ status: 200, description: 'Lead converted', type: LeadResponseDto })
   async convert(
     @Param('id') id: string,
-    @Body() dto: ConvertLeadDto,
+    @Body() dto: ConvertLeadDto = {},
     @CurrentUser() user: TokenPayload
   ): Promise<LeadResponseDto> {
     return this.leadService.convert(id, user.organizationId, user.sub, dto);
@@ -123,7 +138,7 @@ export class LeadsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<LeadResponseDto> {
-    return this.leadService.restore(id, user.organizationId);
+    return this.leadService.restore(id, user.organizationId, user.sub);
   }
 
   @Delete(':id')
@@ -133,7 +148,7 @@ export class LeadsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<{ message: string }> {
-    await this.leadService.delete(id, user.organizationId);
+    await this.leadService.delete(id, user.organizationId, user.sub);
     return { message: 'Lead deleted successfully' };
   }
 }

@@ -43,6 +43,7 @@ export class ContactsController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'accountId', required: false, type: String })
   @ApiQuery({ name: 'source', required: false, type: String })
   @ApiQuery({ name: 'deleted', required: false, type: Boolean })
   @ApiResponse({
@@ -55,6 +56,7 @@ export class ContactsController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
+    @Query('accountId') accountId?: string,
     @Query('source') source?: string,
     @Query('deleted') deleted?: string
   ): Promise<PaginatedResponse<ContactResponseDto>> {
@@ -65,6 +67,7 @@ export class ContactsController {
       search,
       source,
       deleted === 'true',
+      accountId
     );
   }
 
@@ -96,7 +99,7 @@ export class ContactsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<ContactResponseDto> {
-    return this.contactService.restore(id, user.organizationId);
+    return this.contactService.restore(id, user.organizationId, user.sub);
   }
 
   @Delete(':id')
@@ -106,7 +109,7 @@ export class ContactsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<{ message: string }> {
-    await this.contactService.delete(id, user.organizationId);
+    await this.contactService.delete(id, user.organizationId, user.sub);
     return { message: 'Contact deleted successfully' };
   }
 }

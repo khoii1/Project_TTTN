@@ -45,6 +45,8 @@ export class OpportunitiesController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'stage', required: false, type: String })
+  @ApiQuery({ name: 'accountId', required: false, type: String })
+  @ApiQuery({ name: 'contactId', required: false, type: String })
   @ApiQuery({ name: 'source', required: false, type: String })
   @ApiQuery({ name: 'deleted', required: false, type: Boolean })
   @ApiResponse({
@@ -58,6 +60,8 @@ export class OpportunitiesController {
     @Query('limit') limit?: number,
     @Query('search') search?: string,
     @Query('stage') stage?: string,
+    @Query('accountId') accountId?: string,
+    @Query('contactId') contactId?: string,
     @Query('source') source?: string,
     @Query('deleted') deleted?: string
   ): Promise<PaginatedResponse<OpportunityResponseDto>> {
@@ -69,6 +73,8 @@ export class OpportunitiesController {
       stage,
       source,
       deleted === 'true',
+      accountId,
+      contactId
     );
   }
 
@@ -105,7 +111,7 @@ export class OpportunitiesController {
     @Body() dto: ChangeOpportunityStageDto,
     @CurrentUser() user: TokenPayload
   ): Promise<OpportunityResponseDto> {
-    return this.opportunityService.changeStage(id, user.organizationId, dto);
+    return this.opportunityService.changeStage(id, user.organizationId, user.sub, dto);
   }
 
   @Patch(':id/restore')
@@ -115,7 +121,7 @@ export class OpportunitiesController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<OpportunityResponseDto> {
-    return this.opportunityService.restore(id, user.organizationId);
+    return this.opportunityService.restore(id, user.organizationId, user.sub);
   }
 
   @Delete(':id')
@@ -125,7 +131,7 @@ export class OpportunitiesController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<{ message: string }> {
-    await this.opportunityService.delete(id, user.organizationId);
+    await this.opportunityService.delete(id, user.organizationId, user.sub);
     return { message: 'Opportunity deleted successfully' };
   }
 }

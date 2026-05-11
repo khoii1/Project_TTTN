@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
-import { Form, Input, Button, Card, message, Select } from "antd";
+import { Form, Input, Button, Card, Select, App } from "antd";
 import { useRouter } from "next/navigation";
 import { casesApi } from "@/features/cases/cases.api";
 import { accountsApi } from "@/features/accounts/accounts.api";
@@ -13,8 +13,10 @@ import { CaseStatus, CasePriority } from "@/features/cases/cases.types";
 import { PageHeader } from "@/components/common/PageHeader";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { SourceFields } from "@/components/crm/SourceFields";
+import { getPriorityLabel, getStatusLabel } from "@/lib/constants/vi-labels";
 
 export default function NewCasePage() {
+  const { message } = App.useApp();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -38,10 +40,10 @@ export default function NewCasePage() {
         await casesApi.updateStatus(createdCase.id, status);
       }
 
-      message.success("Case created successfully");
+      message.success("Tạo yêu cầu hỗ trợ thành công");
       router.push("/dashboard/cases");
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, "Failed to create case"));
+      message.error(getApiErrorMessage(error, "Không thể tạo yêu cầu hỗ trợ"));
     } finally {
       setLoading(false);
     }
@@ -49,7 +51,7 @@ export default function NewCasePage() {
 
   return (
     <div>
-      <PageHeader title="New Case" showBack />
+      <PageHeader title="Tạo yêu cầu hỗ trợ" showBack />
       <Card className="max-w-2xl shadow-sm">
         <Form
           layout="vertical"
@@ -61,20 +63,26 @@ export default function NewCasePage() {
         >
           <Form.Item
             name="subject"
-            label="Subject"
+            label="Tiêu đề"
             rules={[{ required: true }]}
           >
             <Input placeholder="Login issue" />
           </Form.Item>
 
-          <Form.Item name="description" label="Description">
-            <Input.TextArea rows={4} placeholder="User is unable to login..." />
+          <Form.Item name="description" label="Mô tả">
+            <Input.TextArea
+              rows={4}
+              placeholder="Người dùng không thể đăng nhập..."
+            />
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item name="accountId" label="Account (Optional)">
+            <Form.Item
+              name="accountId"
+              label="Khách hàng / Công ty (không bắt buộc)"
+            >
               <Select
-                placeholder="Select an Account"
+                placeholder="Chọn khách hàng / công ty"
                 showSearch
                 optionFilterProp="children"
                 allowClear
@@ -86,9 +94,9 @@ export default function NewCasePage() {
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item name="contactId" label="Contact (Optional)">
+            <Form.Item name="contactId" label="Người liên hệ (không bắt buộc)">
               <Select
-                placeholder="Select a Contact"
+                placeholder="Chọn người liên hệ"
                 showSearch
                 optionFilterProp="children"
                 allowClear
@@ -103,20 +111,20 @@ export default function NewCasePage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item name="status" label="Status">
+            <Form.Item name="status" label="Trạng thái">
               <Select>
                 {Object.values(CaseStatus).map((s) => (
                   <Select.Option key={s} value={s}>
-                    {s}
+                    {getStatusLabel(s)}
                   </Select.Option>
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item name="priority" label="Priority">
+            <Form.Item name="priority" label="Mức độ ưu tiên">
               <Select>
                 {Object.values(CasePriority).map((p) => (
                   <Select.Option key={p} value={p}>
-                    {p}
+                    {getPriorityLabel(p)}
                   </Select.Option>
                 ))}
               </Select>
@@ -126,9 +134,9 @@ export default function NewCasePage() {
           <SourceFields />
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button onClick={() => router.back()}>Cancel</Button>
+            <Button onClick={() => router.back()}>Hủy</Button>
             <Button type="primary" htmlType="submit" loading={loading}>
-              Save Case
+              Lưu yêu cầu hỗ trợ
             </Button>
           </div>
         </Form>

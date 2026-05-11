@@ -14,6 +14,7 @@ import { opportunitiesApi } from "@/features/opportunities/opportunities.api";
 import { Opportunity } from "@/features/opportunities/opportunities.types";
 import { tasksApi } from "@/features/tasks/tasks.api";
 import { Task } from "@/features/tasks/tasks.types";
+import { EMPTY_STATE_LABELS, ENTITY_LABELS } from "@/lib/constants/vi-labels";
 
 export type EntityReferenceType =
   | "LEAD"
@@ -87,7 +88,7 @@ const getEntityLabel = (
     case "LEAD": {
       const lead = record as Lead;
       const name = getFullName(lead.firstName, lead.lastName);
-      return [name, lead.company].filter(Boolean).join(" · ");
+      return [name, lead.company].filter(Boolean).join(" - ");
     }
     case "ACCOUNT":
       return (record as Account).name;
@@ -102,21 +103,18 @@ const getEntityLabel = (
     case "CASE":
       return (record as Case).subject;
     case "NOTE":
-      return "Note";
+      return ENTITY_LABELS.note;
   }
 };
 
-const loadEntityLabel = (
-  entityType: EntityReferenceType,
-  entityId: string,
-) => {
+const loadEntityLabel = (entityType: EntityReferenceType, entityId: string) => {
   const cacheKey = `${entityType}:${entityId}`;
   const cached = labelCache.get(cacheKey);
   if (cached) return cached;
 
   const promise = fetchEntity(entityType, entityId).then((record) => {
     const label = getEntityLabel(entityType, record);
-    return label || "Record not found";
+    return label || EMPTY_STATE_LABELS.recordNotFound;
   });
   labelCache.set(cacheKey, promise);
   return promise;
@@ -164,8 +162,8 @@ export function EntityReferenceDisplay({
   }, [entityId, entityType]);
 
   if (!entityId) return <>{fallback}</>;
-  if (loading) return <>Loading...</>;
-  if (error || !label) return <>Record not found</>;
+  if (loading) return <>{EMPTY_STATE_LABELS.loading}</>;
+  if (error || !label) return <>{EMPTY_STATE_LABELS.recordNotFound}</>;
 
   const href = getEntityPath(entityType, entityId);
   if (link && href) {

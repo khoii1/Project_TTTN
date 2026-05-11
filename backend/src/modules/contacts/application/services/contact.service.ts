@@ -10,7 +10,7 @@ import { AuditLogService, AuditAction } from '../../../../infrastructure/audit/a
 export class ContactService {
   constructor(
     private prisma: PrismaService,
-    private auditLog: AuditLogService,
+    private auditLog: AuditLogService
   ) {}
 
   async create(
@@ -87,7 +87,8 @@ export class ContactService {
     limit: number = 10,
     search?: string,
     source?: string,
-    deleted: boolean = false
+    deleted: boolean = false,
+    accountId?: string
   ): Promise<PaginatedResponse<ContactResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
@@ -102,6 +103,10 @@ export class ContactService {
         { lastName: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
       ];
+    }
+
+    if (accountId) {
+      where.accountId = accountId;
     }
 
     if (source) {
@@ -175,7 +180,7 @@ export class ContactService {
     return this.mapToResponseDto(updatedContact);
   }
 
-  async delete(contactId: string, organizationId: string): Promise<void> {
+  async delete(contactId: string, organizationId: string, deletedById: string): Promise<void> {
     const contact = await this.prisma.contact.findFirst({
       where: {
         id: contactId,
@@ -189,22 +194,28 @@ export class ContactService {
     }
 
     // Soft delete
+    const deletedAt = new Date();
     await this.prisma.contact.update({
       where: { id: contactId },
-      data: { deletedAt: new Date() },
+      data: { deletedAt, deletedById },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: contact.ownerId,
+      userId: deletedById,
       action: AuditAction.SOFT_DELETE,
       entityType: 'Contact',
       entityId: contactId,
       oldValues: { firstName: contact.firstName, lastName: contact.lastName },
+      newValues: { deletedAt, deletedById },
     });
   }
 
-  async restore(contactId: string, organizationId: string): Promise<ContactResponseDto> {
+  async restore(
+    contactId: string,
+    organizationId: string,
+    restoredById: string
+  ): Promise<ContactResponseDto> {
     const contact = await this.prisma.contact.findFirst({
       where: {
         id: contactId,
@@ -222,17 +233,25 @@ export class ContactService {
 
     const restoredContact = await this.prisma.contact.update({
       where: { id: contactId },
-      data: { deletedAt: null },
+      data: {
+        deletedAt: null,
+        restoredAt: new Date(),
+        restoredById,
+      },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: contact.ownerId,
+      userId: restoredById,
       action: AuditAction.RESTORE,
       entityType: 'Contact',
       entityId: contactId,
       oldValues: { deletedAt: contact.deletedAt },
-      newValues: { deletedAt: null },
+      newValues: {
+        deletedAt: null,
+        restoredAt: restoredContact.restoredAt,
+        restoredById,
+      },
     });
 
     return this.mapToResponseDto(restoredContact);
@@ -258,6 +277,9 @@ export class ContactService {
       ownerId: contact.ownerId,
       organizationId: contact.organizationId,
       deletedAt: contact.deletedAt,
+      deletedById: contact.deletedById,
+      restoredAt: contact.restoredAt,
+      restoredById: contact.restoredById,
       createdAt: contact.createdAt,
       updatedAt: contact.updatedAt,
     };

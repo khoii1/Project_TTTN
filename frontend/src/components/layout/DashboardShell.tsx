@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { ReactNode } from 'react';
-import { Layout } from 'antd';
-import { AppSidebar } from './AppSidebar';
-import { AppHeader } from './AppHeader';
+import React, { ReactNode } from "react";
+import { Layout } from "antd";
+import { AppSidebar } from "./AppSidebar";
+import { AppHeader } from "./AppHeader";
 
 const { Content } = Layout;
 
@@ -13,11 +13,11 @@ interface DashboardShellProps {
 
 export const DashboardShell = ({ children }: DashboardShellProps) => {
   return (
-    <Layout className="min-h-screen">
+    <Layout className="crm-app-shell min-h-screen">
       <AppSidebar />
       <Layout>
         <AppHeader />
-        <Content className="p-6 overflow-auto bg-gray-50 h-[calc(100vh-64px)]">
+        <Content className="crm-content h-[calc(100vh-64px)] overflow-auto p-6">
           {children}
         </Content>
       </Layout>

@@ -38,6 +38,7 @@ export class NotesController {
   @ApiOperation({ summary: 'Get all notes with pagination and filtering' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'relatedType', required: false, type: String })
   @ApiQuery({ name: 'relatedId', required: false, type: String })
   @ApiResponse({
     status: 200,
@@ -48,9 +49,16 @@ export class NotesController {
     @CurrentUser() user: TokenPayload,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('relatedType') relatedType?: string,
     @Query('relatedId') relatedId?: string
   ): Promise<PaginatedResponse<NoteResponseDto>> {
-    return this.noteService.findAll(user.organizationId, page || 1, limit || 10, relatedId);
+    return this.noteService.findAll(
+      user.organizationId,
+      page || 1,
+      limit || 10,
+      relatedType,
+      relatedId,
+    );
   }
 
   @Get(':id')

@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
-import { Form, Input, Button, Card, message, Select, DatePicker } from "antd";
+import { Form, Input, Button, Card, Select, DatePicker, App } from "antd";
 import { useRouter } from "next/navigation";
 import { tasksApi } from "@/features/tasks/tasks.api";
 import { Task, TaskPriority } from "@/features/tasks/tasks.types";
@@ -10,10 +10,12 @@ import dayjs from "dayjs";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { useAuthStore } from "@/features/auth/auth.store";
 import { RelatedRecordLookup } from "@/components/crm/RelatedRecordLookup";
+import { getPriorityLabel } from "@/lib/constants/vi-labels";
 
 type NewTaskFormValues = Partial<Task> & { dueDate?: dayjs.Dayjs };
 
 export default function NewTaskPage() {
+  const { message } = App.useApp();
   const router = useRouter();
   const { user } = useAuthStore();
   const [form] = Form.useForm();
@@ -23,7 +25,7 @@ export default function NewTaskPage() {
   const onFinish = async (values: NewTaskFormValues) => {
     try {
       if (!user?.id) {
-        message.error("Cannot create task without a current user");
+        message.error("Không thể tạo công việc khi chưa xác định người dùng");
         return;
       }
 
@@ -37,10 +39,10 @@ export default function NewTaskPage() {
         relatedId: values.relatedId,
         assignedToId: user.id,
       });
-      message.success("Task created successfully");
+      message.success("Tạo công việc thành công");
       router.push("/dashboard/tasks");
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, "Failed to create task"));
+      message.error(getApiErrorMessage(error, "Không thể tạo công việc"));
     } finally {
       setLoading(false);
     }
@@ -48,7 +50,7 @@ export default function NewTaskPage() {
 
   return (
     <div>
-      <PageHeader title="New Task" showBack />
+      <PageHeader title="Tạo công việc" showBack />
       <Card className="max-w-2xl shadow-sm">
         <Form
           form={form}
@@ -60,28 +62,28 @@ export default function NewTaskPage() {
         >
           <Form.Item
             name="subject"
-            label="Task Subject"
+            label="Tiêu đề công việc"
             rules={[{ required: true }]}
           >
-            <Input placeholder="Follow up call" />
+            <Input placeholder="Gọi chăm sóc khách hàng" />
           </Form.Item>
 
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label="Mô tả">
             <Input.TextArea
               rows={3}
-              placeholder="Call client regarding the proposal..."
+              placeholder="Gọi khách hàng để trao đổi về đề xuất..."
             />
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item name="dueDate" label="Due Date">
+            <Form.Item name="dueDate" label="Hạn hoàn thành">
               <DatePicker className="w-full" />
             </Form.Item>
-            <Form.Item name="priority" label="Priority">
+            <Form.Item name="priority" label="Mức độ ưu tiên">
               <Select>
                 {Object.values(TaskPriority).map((priority) => (
                   <Select.Option key={priority} value={priority}>
-                    {priority}
+                    {getPriorityLabel(priority)}
                   </Select.Option>
                 ))}
               </Select>
@@ -89,24 +91,28 @@ export default function NewTaskPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item name="relatedType" label="Related To (Type)">
+            <Form.Item name="relatedType" label="Liên quan đến (loại)">
               <Select allowClear>
-                <Select.Option value="LEAD">Lead</Select.Option>
-                <Select.Option value="ACCOUNT">Account</Select.Option>
-                <Select.Option value="CONTACT">Contact</Select.Option>
-                <Select.Option value="OPPORTUNITY">Opportunity</Select.Option>
-                <Select.Option value="CASE">Case</Select.Option>
+                <Select.Option value="LEAD">Khách hàng tiềm năng</Select.Option>
+                <Select.Option value="ACCOUNT">
+                  Khách hàng / Công ty
+                </Select.Option>
+                <Select.Option value="CONTACT">Người liên hệ</Select.Option>
+                <Select.Option value="OPPORTUNITY">
+                  Cơ hội bán hàng
+                </Select.Option>
+                <Select.Option value="CASE">Yêu cầu hỗ trợ</Select.Option>
               </Select>
             </Form.Item>
-            <Form.Item name="relatedId" label="Related Record">
+            <Form.Item name="relatedId" label="Bản ghi liên quan">
               <RelatedRecordLookup relatedType={relatedType} />
             </Form.Item>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button onClick={() => router.back()}>Cancel</Button>
+            <Button onClick={() => router.back()}>Hủy</Button>
             <Button type="primary" htmlType="submit" loading={loading}>
-              Save Task
+              Lưu công việc
             </Button>
           </div>
         </Form>

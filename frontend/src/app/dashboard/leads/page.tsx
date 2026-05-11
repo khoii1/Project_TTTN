@@ -1,16 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, Suspense } from "react";
-import {
-  Table,
-  Button,
-  Space,
-  Tag,
-  Popconfirm,
-  message,
-  Input,
-  Select,
-} from "antd";
+import { Table, Button, Space, Tag, Popconfirm, Input, Select, App } from "antd";
 import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { PlusOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -19,14 +10,22 @@ import { Lead, LeadStatus } from "@/features/leads/leads.types";
 import { PageHeader } from "@/components/common/PageHeader";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
-import { getSourceLabel } from "@/lib/constants/source-options";
+import { SOURCE_OPTIONS, getSourceLabel } from "@/lib/constants/source-options";
+import {
+  EMPTY_STATE_LABELS,
+  FEEDBACK_LABELS,
+  FIELD_LABELS,
+  getStatusLabel,
+} from "@/lib/constants/vi-labels";
 
 function LeadsList() {
+  const { message } = App.useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const currentSearch = searchParams.get("search") || "";
   const currentStatus = searchParams.get("status") || undefined;
+  const currentSource = searchParams.get("source") || undefined;
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
   const currentLimit = parseInt(searchParams.get("limit") || "10", 10);
 
@@ -39,16 +38,17 @@ function LeadsList() {
     limit: number,
     search: string,
     status?: string,
+    source?: string,
   ) => {
     try {
       setLoading(true);
-      const payload = { page, limit, search, status };
+      const payload = { page, limit, search, status, source };
       const res = await leadsApi.getAll(payload);
       const items = getDataArray<Lead>(res);
       setLeads(items);
       setTotal(getPaginationMeta(res)?.total ?? items.length);
     } catch {
-      message.error("Failed to load leads");
+      message.error("Không thể tải khách hàng tiềm năng");
     } finally {
       setLoading(false);
     }
@@ -56,11 +56,17 @@ function LeadsList() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      fetchLeads(currentPage, currentLimit, currentSearch, currentStatus);
+      fetchLeads(
+        currentPage,
+        currentLimit,
+        currentSearch,
+        currentStatus,
+        currentSource,
+      );
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [currentPage, currentLimit, currentSearch, currentStatus]);
+  }, [currentPage, currentLimit, currentSearch, currentStatus, currentSource]);
 
   const updateURL = (params: Record<string, string | number | undefined>) => {
     const urlParams = new URLSearchParams(searchParams.toString());
@@ -86,13 +92,23 @@ function LeadsList() {
     updateURL({ status: value, page: 1 });
   };
 
+  const handleSourceFilter = (value?: string) => {
+    updateURL({ source: value, page: 1 });
+  };
+
   const handleDelete = async (id: string) => {
     try {
       await leadsApi.delete(id);
-      message.success("Lead deleted");
-      fetchLeads(currentPage, currentLimit, currentSearch, currentStatus);
+      message.success("Đã xóa khách hàng tiềm năng");
+      fetchLeads(
+        currentPage,
+        currentLimit,
+        currentSearch,
+        currentStatus,
+        currentSource,
+      );
     } catch {
-      message.error("Failed to delete lead");
+      message.error("Không thể xóa khách hàng tiềm năng");
     }
   };
 
@@ -107,7 +123,7 @@ function LeadsList() {
 
   const columns: TableColumnsType<Lead> = [
     {
-      title: "Name",
+      title: FIELD_LABELS.name,
       key: "name",
       render: (_, record) => (
         <span className="font-medium">
@@ -116,43 +132,45 @@ function LeadsList() {
       ),
     },
     {
-      title: "Email",
+      title: FIELD_LABELS.email,
       dataIndex: "email",
       key: "email",
     },
     {
-      title: "Company",
+      title: FIELD_LABELS.company,
       dataIndex: "company",
       key: "company",
     },
     {
-      title: "Status",
+      title: FIELD_LABELS.status,
       dataIndex: "status",
       key: "status",
       render: (status: string) => (
-        <Tag color={statusColors[status] || "default"}>{status}</Tag>
+        <Tag color={statusColors[status] || "default"}>
+          {getStatusLabel(status)}
+        </Tag>
       ),
     },
     {
-      title: "Source",
+      title: FIELD_LABELS.source,
       dataIndex: "source",
       key: "source",
-      render: (source?: string) => getSourceLabel(source),
+      render: (source?: string) => <Tag>{getSourceLabel(source)}</Tag>,
     },
     {
-      title: "Owner",
+      title: FIELD_LABELS.owner,
       dataIndex: "ownerId",
       key: "ownerId",
       render: (ownerId?: string) => <UserReferenceDisplay userId={ownerId} />,
     },
     {
-      title: "Created At",
+      title: FIELD_LABELS.createdAt,
       dataIndex: "createdAt",
       key: "createdAt",
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
     {
-      title: "Actions",
+      title: "Thao tác",
       key: "actions",
       render: (_, record) => (
         <Space size="middle">
@@ -162,7 +180,7 @@ function LeadsList() {
             onClick={() => router.push(`/dashboard/leads/${record.id}`)}
           />
           <Popconfirm
-            title="Delete this lead?"
+            title={FEEDBACK_LABELS.deleteConfirm}
             onConfirm={() => handleDelete(record.id)}
           >
             <Button type="text" danger icon={<DeleteOutlined />} />
@@ -175,27 +193,27 @@ function LeadsList() {
   return (
     <div>
       <PageHeader
-        title="Leads"
+        title="Khách hàng tiềm năng"
         action={
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => router.push("/dashboard/leads/new")}
           >
-            New Lead
+            Tạo khách hàng tiềm năng
           </Button>
         }
       />
-      <div className="mb-4 flex space-x-4">
+      <div className="crm-filter-bar mb-4 flex flex-wrap gap-3">
         <Input.Search
-          placeholder="Search leads..."
+          placeholder="Tìm khách hàng tiềm năng..."
           defaultValue={currentSearch}
           onSearch={handleSearch}
           allowClear
           className="w-64"
         />
         <Select
-          placeholder="Filter by Status"
+          placeholder="Lọc theo trạng thái"
           allowClear
           value={currentStatus}
           onChange={handleStatusFilter}
@@ -203,10 +221,18 @@ function LeadsList() {
         >
           {Object.values(LeadStatus).map((s) => (
             <Select.Option key={s} value={s}>
-              {s}
+              {getStatusLabel(s)}
             </Select.Option>
           ))}
         </Select>
+        <Select
+          placeholder="Tất cả nguồn"
+          allowClear
+          value={currentSource}
+          onChange={handleSourceFilter}
+          className="w-52"
+          options={[...SOURCE_OPTIONS]}
+        />
       </div>
       <Table
         columns={columns}
@@ -229,7 +255,9 @@ function LeadsList() {
 export default function LeadsListPage() {
   return (
     <Suspense
-      fallback={<div className="p-4 text-center">Loading leads...</div>}
+      fallback={
+        <div className="p-4 text-center">{EMPTY_STATE_LABELS.loading}</div>
+      }
     >
       <LeadsList />
     </Suspense>

@@ -1,16 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, Suspense } from "react";
-import {
-  Table,
-  Button,
-  Space,
-  Tag,
-  Popconfirm,
-  message,
-  Select,
-  Input,
-} from "antd";
+import { Table, Button, Space, Tag, Popconfirm, Select, Input, App } from "antd";
 import type { TableColumnsType, TablePaginationConfig } from "antd";
 import {
   PlusOutlined,
@@ -26,8 +17,16 @@ import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay"
 import type { EntityReferenceType } from "@/components/crm/EntityReferenceDisplay";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
+import {
+  EMPTY_STATE_LABELS,
+  FEEDBACK_LABELS,
+  FIELD_LABELS,
+  getPriorityLabel,
+  getStatusLabel,
+} from "@/lib/constants/vi-labels";
 
 function TasksList() {
+  const { message } = App.useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -57,7 +56,7 @@ function TasksList() {
       setTasks(items);
       setTotal(getPaginationMeta(res)?.total ?? items.length);
     } catch {
-      message.error("Failed to load tasks");
+      message.error("Không thể tải công việc");
     } finally {
       setLoading(false);
     }
@@ -114,7 +113,7 @@ function TasksList() {
   const handleDelete = async (id: string) => {
     try {
       await tasksApi.delete(id);
-      message.success("Task deleted");
+      message.success("Đã xóa công việc");
       fetchTasks(
         currentPage,
         currentLimit,
@@ -123,14 +122,14 @@ function TasksList() {
         currentPriority,
       );
     } catch {
-      message.error("Failed to delete task");
+      message.error("Không thể xóa công việc");
     }
   };
 
   const handleComplete = async (id: string) => {
     try {
       await tasksApi.complete(id);
-      message.success("Task marked as completed");
+      message.success("Đã đánh dấu hoàn thành");
       fetchTasks(
         currentPage,
         currentLimit,
@@ -139,7 +138,7 @@ function TasksList() {
         currentPriority,
       );
     } catch {
-      message.error("Failed to complete task");
+      message.error("Không thể hoàn thành công việc");
     }
   };
 
@@ -158,7 +157,7 @@ function TasksList() {
 
   const columns: TableColumnsType<Task> = [
     {
-      title: "Subject",
+      title: FIELD_LABELS.subject,
       dataIndex: "subject",
       key: "subject",
       render: (text: string, record: Task) => (
@@ -170,30 +169,30 @@ function TasksList() {
       ),
     },
     {
-      title: "Status",
+      title: FIELD_LABELS.status,
       dataIndex: "status",
       key: "status",
       render: (status: string) => (
-        <Tag color={statusColors[status]}>{status}</Tag>
+        <Tag color={statusColors[status]}>{getStatusLabel(status)}</Tag>
       ),
     },
     {
-      title: "Priority",
+      title: FIELD_LABELS.priority,
       dataIndex: "priority",
       key: "priority",
       render: (priority: string) => (
-        <Tag color={priorityColors[priority]}>{priority}</Tag>
+        <Tag color={priorityColors[priority]}>{getPriorityLabel(priority)}</Tag>
       ),
     },
     {
-      title: "Due Date",
+      title: FIELD_LABELS.dueDate,
       dataIndex: "dueDate",
       key: "dueDate",
       render: (date: string) =>
-        date ? new Date(date).toLocaleDateString() : "N/A",
+        date ? new Date(date).toLocaleDateString() : "-",
     },
     {
-      title: "Related To",
+      title: FIELD_LABELS.relatedTo,
       key: "relatedTo",
       render: (_, record) =>
         record.relatedType && record.relatedId ? (
@@ -207,7 +206,7 @@ function TasksList() {
         ),
     },
     {
-      title: "Assigned To",
+      title: FIELD_LABELS.assignedTo,
       dataIndex: "assignedToId",
       key: "assignedToId",
       render: (assignedToId?: string) => (
@@ -215,7 +214,7 @@ function TasksList() {
       ),
     },
     {
-      title: "Actions",
+      title: "Thao tác",
       key: "actions",
       render: (_, record) => (
         <Space size="middle">
@@ -232,7 +231,7 @@ function TasksList() {
             onClick={() => router.push(`/dashboard/tasks/${record.id}`)}
           />
           <Popconfirm
-            title="Delete this task?"
+            title={FEEDBACK_LABELS.deleteConfirm}
             onConfirm={() => handleDelete(record.id)}
           >
             <Button type="text" danger icon={<DeleteOutlined />} />
@@ -245,47 +244,47 @@ function TasksList() {
   return (
     <div>
       <PageHeader
-        title="Tasks"
+        title="Công việc"
         action={
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => router.push("/dashboard/tasks/new")}
           >
-            New Task
+            Tạo công việc
           </Button>
         }
       />
-      <div className="mb-4 flex space-x-4">
+      <div className="crm-filter-bar mb-4 flex flex-wrap gap-3">
         <Input.Search
-          placeholder="Search tasks..."
+          placeholder="Tìm công việc..."
           defaultValue={currentSearch}
           onSearch={handleSearch}
           allowClear
           className="w-64"
         />
         <Select
-          placeholder="Filter by Status"
+          placeholder="Lọc theo trạng thái"
           onChange={handleStatusFilter}
           value={currentStatus}
           allowClear
           className="w-48"
         >
-          <Select.Option value="NOT_STARTED">Not Started</Select.Option>
-          <Select.Option value="IN_PROGRESS">In Progress</Select.Option>
-          <Select.Option value="COMPLETED">Completed</Select.Option>
-          <Select.Option value="CANCELLED">Cancelled</Select.Option>
+          <Select.Option value="NOT_STARTED">Chưa bắt đầu</Select.Option>
+          <Select.Option value="IN_PROGRESS">Đang thực hiện</Select.Option>
+          <Select.Option value="COMPLETED">Hoàn thành</Select.Option>
+          <Select.Option value="CANCELLED">Đã hủy</Select.Option>
         </Select>
         <Select
-          placeholder="Filter by Priority"
+          placeholder="Lọc theo mức ưu tiên"
           onChange={handlePriorityFilter}
           value={currentPriority}
           allowClear
           className="w-48"
         >
-          <Select.Option value="LOW">Low</Select.Option>
-          <Select.Option value="NORMAL">Normal</Select.Option>
-          <Select.Option value="HIGH">High</Select.Option>
+          <Select.Option value="LOW">Thấp</Select.Option>
+          <Select.Option value="NORMAL">Bình thường</Select.Option>
+          <Select.Option value="HIGH">Cao</Select.Option>
         </Select>
       </div>
       <Table
@@ -309,7 +308,9 @@ function TasksList() {
 export default function TasksListPage() {
   return (
     <Suspense
-      fallback={<div className="p-4 text-center">Loading tasks...</div>}
+      fallback={
+        <div className="p-4 text-center">{EMPTY_STATE_LABELS.loading}</div>
+      }
     >
       <TasksList />
     </Suspense>

@@ -1,17 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Timeline,
-  Button,
-  Modal,
-  Form,
-  Input,
-  message,
-  Tag,
-  Select,
-  DatePicker,
-} from "antd";
+import { Timeline, Button, Modal, Form, Input, Tag, Select, DatePicker, App } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import { notesApi } from "@/features/notes/notes.api";
 import { tasksApi } from "@/features/tasks/tasks.api";
@@ -20,6 +10,13 @@ import { Task, TaskPriority } from "@/features/tasks/tasks.types";
 import { useAuthStore } from "@/features/auth/auth.store";
 import type { Dayjs } from "dayjs";
 import { RelatedRecordLookup } from "./RelatedRecordLookup";
+import {
+  EMPTY_STATE_LABELS,
+  FIELD_LABELS,
+  getPriorityLabel,
+  getStatusLabel,
+  SECTION_LABELS,
+} from "@/lib/constants/vi-labels";
 
 interface ActivityTimelineProps {
   relatedType: string;
@@ -52,6 +49,7 @@ export const ActivityTimeline = ({
   relatedType,
   relatedId,
 }: ActivityTimelineProps) => {
+  const { message } = App.useApp();
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -68,19 +66,23 @@ export const ActivityTimeline = ({
       let fetchedTasks: Task[] = [];
 
       try {
-        const allNotes = await notesApi.getAll({ relatedId });
-        fetchedNotes = allNotes.filter(
-          (n) => n.relatedType === relatedType && n.relatedId === relatedId,
-        );
+        fetchedNotes = await notesApi.getAll({
+          relatedType,
+          relatedId,
+          page: 1,
+          limit: 20,
+        });
       } catch (e) {
         console.error("Failed fetching notes", e);
       }
 
       try {
-        const allTasks = await tasksApi.getAll();
-        fetchedTasks = allTasks.filter(
-          (t) => t.relatedType === relatedType && t.relatedId === relatedId,
-        );
+        fetchedTasks = await tasksApi.getAll({
+          relatedType,
+          relatedId,
+          page: 1,
+          limit: 20,
+        });
       } catch (e) {
         console.error("Failed fetching tasks", e);
       }
@@ -88,17 +90,17 @@ export const ActivityTimeline = ({
       const formattedNotes: TimelineItem[] = fetchedNotes.map((n) => ({
         type: "note",
         id: n.id,
-        title: "Note Added",
+        title: "Đã thêm ghi chú",
         description: n.content,
         date: n.createdAt,
-        author: "User", // Note: ownerId is available but author name requires separate lookup
+        author: "Người dùng", // Note: ownerId is available but author name requires separate lookup
         raw: n,
       }));
 
       const formattedTasks: TimelineItem[] = fetchedTasks.map((t) => ({
         type: "task",
         id: t.id,
-        title: `Task: ${t.subject}`,
+        title: `Công việc: ${t.subject}`,
         description: t.description,
         date: t.createdAt,
         status: t.status,
@@ -111,7 +113,7 @@ export const ActivityTimeline = ({
 
       setItems(allItems);
     } catch {
-      message.error("Failed to load activities");
+      message.error("Không thể tải hoạt động");
     } finally {
       setLoading(false);
     }
@@ -132,19 +134,19 @@ export const ActivityTimeline = ({
         relatedType,
         relatedId,
       });
-      message.success("Note added");
+      message.success("Đã thêm ghi chú");
       setIsNoteModalOpen(false);
       noteForm.resetFields();
       fetchActivities();
     } catch {
-      message.error("Failed to add note");
+      message.error("Không thể thêm ghi chú");
     }
   };
 
   const handleAddTask = async (values: NewTaskPayload) => {
     try {
       if (!user?.id) {
-        message.error("Cannot create task without a current user");
+        message.error("Không thể tạo công việc khi chưa xác định người dùng");
         return;
       }
 
@@ -157,36 +159,38 @@ export const ActivityTimeline = ({
         relatedId,
         assignedToId: user.id,
       });
-      message.success("Task created");
+      message.success("Đã tạo công việc");
       setIsTaskModalOpen(false);
       taskForm.resetFields();
       fetchActivities();
     } catch {
-      message.error("Failed to add task");
+      message.error("Không thể thêm công việc");
     }
   };
 
   const handleDeleteNote = async (id: string) => {
     try {
       await notesApi.delete(id);
-      message.success("Note deleted");
+      message.success("Đã xóa ghi chú");
       fetchActivities();
     } catch {
-      message.error("Failed to delete note");
+      message.error("Không thể xóa ghi chú");
     }
   };
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold m-0">Activity Timeline</h3>
+        <h3 className="text-lg font-semibold m-0">
+          {SECTION_LABELS.activityTimeline}
+        </h3>
         <div className="space-x-2">
           <Button
             size="small"
             icon={<PlusOutlined />}
             onClick={() => setIsNoteModalOpen(true)}
           >
-            Add Note
+            Thêm ghi chú
           </Button>
           <Button
             size="small"
@@ -195,16 +199,16 @@ export const ActivityTimeline = ({
             icon={<PlusOutlined />}
             onClick={() => setIsTaskModalOpen(true)}
           >
-            Add Task
+            Thêm công việc
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-center p-4">Loading...</div>
+        <div className="text-center p-4">{EMPTY_STATE_LABELS.loading}</div>
       ) : items.length === 0 ? (
         <div className="text-center text-gray-400 p-4">
-          No activities recorded yet.
+          Chưa có hoạt động nào.
         </div>
       ) : (
         <Timeline
@@ -215,7 +219,7 @@ export const ActivityTimeline = ({
                 : item.status === "COMPLETED"
                   ? "green"
                   : "orange",
-            children: (
+            content: (
               <div className="mb-4">
                 <div className="flex justify-between">
                   <div className="font-semibold flex items-center space-x-2">
@@ -224,7 +228,7 @@ export const ActivityTimeline = ({
                       <Tag
                         color={item.status === "COMPLETED" ? "green" : "orange"}
                       >
-                        {item.status}
+                        {getStatusLabel(item.status)}
                       </Tag>
                     )}
                   </div>
@@ -237,7 +241,7 @@ export const ActivityTimeline = ({
                 </div>
                 {item.type === "note" && (
                   <div className="mt-2 flex justify-between items-center text-xs text-gray-400">
-                    <span>By {item.author}</span>
+                    <span>Bởi {item.author}</span>
                     <Button
                       type="text"
                       danger
@@ -254,7 +258,7 @@ export const ActivityTimeline = ({
       )}
 
       <Modal
-        title="Add Note"
+        title="Thêm ghi chú"
         open={isNoteModalOpen}
         onCancel={() => setIsNoteModalOpen(false)}
         footer={null}
@@ -263,20 +267,22 @@ export const ActivityTimeline = ({
         <Form form={noteForm} onFinish={handleAddNote} layout="vertical">
           <Form.Item
             name="content"
-            rules={[{ required: true, message: "Note content is required" }]}
+            rules={[
+              { required: true, message: "Vui lòng nhập nội dung ghi chú" },
+            ]}
           >
-            <Input.TextArea rows={4} placeholder="Type your note here..." />
+            <Input.TextArea rows={4} placeholder="Nhập ghi chú tại đây..." />
           </Form.Item>
           <div className="flex justify-end">
             <Button type="primary" htmlType="submit">
-              Save Note
+              Lưu ghi chú
             </Button>
           </div>
         </Form>
       </Modal>
 
       <Modal
-        title="Add Task"
+        title="Thêm công việc"
         open={isTaskModalOpen}
         onCancel={() => setIsTaskModalOpen(false)}
         footer={null}
@@ -285,31 +291,31 @@ export const ActivityTimeline = ({
         <Form form={taskForm} onFinish={handleAddTask} layout="vertical">
           <Form.Item
             name="subject"
-            label="Subject"
+            label={FIELD_LABELS.subject}
             rules={[{ required: true }]}
           >
-            <Input placeholder="Task subject" />
+            <Input placeholder="Tiêu đề công việc" />
           </Form.Item>
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label={FIELD_LABELS.description}>
             <Input.TextArea rows={2} />
           </Form.Item>
           <Form.Item
             name="priority"
-            label="Priority"
+            label={FIELD_LABELS.priority}
             initialValue={TaskPriority.NORMAL}
           >
             <Select>
               {Object.values(TaskPriority).map((p) => (
                 <Select.Option key={p} value={p}>
-                  {p}
+                  {getPriorityLabel(p)}
                 </Select.Option>
               ))}
             </Select>
           </Form.Item>
-          <Form.Item name="dueDate" label="Due Date">
+          <Form.Item name="dueDate" label={FIELD_LABELS.dueDate}>
             <DatePicker className="w-full" />
           </Form.Item>
-          <Form.Item label="Related Record">
+          <Form.Item label={FIELD_LABELS.relatedRecord}>
             <RelatedRecordLookup
               relatedType={relatedType}
               value={relatedId}
@@ -318,7 +324,7 @@ export const ActivityTimeline = ({
           </Form.Item>
           <div className="flex justify-end">
             <Button type="primary" htmlType="submit">
-              Save Task
+              Lưu công việc
             </Button>
           </div>
         </Form>

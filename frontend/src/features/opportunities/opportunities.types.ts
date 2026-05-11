@@ -16,6 +16,8 @@ export interface Opportunity {
   source?: string;
   sourceDetail?: string;
   description?: string;
+  stageChangedAt?: string;
+  stageChangedById?: string;
   accountId: string;
   contactId?: string;
   organizationId: string;
@@ -23,4 +25,7 @@ export interface Opportunity {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
+  deletedById?: string;
+  restoredAt?: string;
+  restoredById?: string;
 }

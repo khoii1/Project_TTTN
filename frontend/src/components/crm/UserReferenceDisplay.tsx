@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { usersApi } from "@/features/users/users.api";
 import { User } from "@/features/auth/auth.types";
+import { EMPTY_STATE_LABELS } from "@/lib/constants/vi-labels";
 
 type UserReferenceDisplayProps = {
   userId?: string;
@@ -13,7 +14,7 @@ const userLabelCache = new Map<string, Promise<string>>();
 
 const getUserLabel = (user: User) => {
   const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-  return name || user.email || "Unknown User";
+  return name || user.email || EMPTY_STATE_LABELS.unknownUser;
 };
 
 const loadUserLabel = (userId: string) => {
@@ -65,8 +66,8 @@ export function UserReferenceDisplay({
   }, [userId]);
 
   if (!userId) return <>{fallback}</>;
-  if (loading) return <>Loading...</>;
-  if (error || !label) return <>Unknown User</>;
+  if (loading) return <>{EMPTY_STATE_LABELS.loading}</>;
+  if (error || !label) return <>{EMPTY_STATE_LABELS.unknownUser}</>;
 
   return <>{label}</>;
 }

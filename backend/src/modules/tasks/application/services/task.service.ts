@@ -83,6 +83,8 @@ export class TaskService {
     search?: string,
     status?: string,
     priority?: string,
+    relatedType?: string,
+    relatedId?: string,
     deleted: boolean = false
   ): Promise<PaginatedResponse<TaskResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
@@ -102,6 +104,14 @@ export class TaskService {
 
     if (priority) {
       where.priority = priority;
+    }
+
+    if (relatedType) {
+      where.relatedType = relatedType;
+    }
+
+    if (relatedId) {
+      where.relatedId = relatedId;
     }
 
     const [tasks, total] = await Promise.all([
@@ -176,7 +186,11 @@ export class TaskService {
     return this.mapToResponseDto(updatedTask);
   }
 
-  async restore(taskId: string, organizationId: string): Promise<TaskResponseDto> {
+  async restore(
+    taskId: string,
+    organizationId: string,
+    restoredById: string
+  ): Promise<TaskResponseDto> {
     const task = await this.prisma.task.findFirst({
       where: {
         id: taskId,
@@ -194,17 +208,25 @@ export class TaskService {
 
     const restoredTask = await this.prisma.task.update({
       where: { id: taskId },
-      data: { deletedAt: null },
+      data: {
+        deletedAt: null,
+        restoredAt: new Date(),
+        restoredById,
+      },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: task.ownerId,
+      userId: restoredById,
       action: AuditAction.RESTORE,
       entityType: 'Task',
       entityId: taskId,
       oldValues: { deletedAt: task.deletedAt },
-      newValues: { deletedAt: null },
+      newValues: {
+        deletedAt: null,
+        restoredAt: restoredTask.restoredAt,
+        restoredById,
+      },
     });
 
     return this.mapToResponseDto(restoredTask);
@@ -213,6 +235,7 @@ export class TaskService {
   async completeTask(
     taskId: string,
     organizationId: string,
+    completedById: string,
     dto: CompleteTaskDto
   ): Promise<TaskResponseDto> {
     const task = await this.prisma.task.findFirst({
@@ -231,24 +254,35 @@ export class TaskService {
       where: { id: taskId },
       data: {
         status: dto.status,
-        completedAt: dto.status === TaskStatus.COMPLETED ? new Date() : null,
+        completedAt:
+          dto.status === TaskStatus.COMPLETED
+            ? task.completedAt || new Date()
+            : null,
+        completedById:
+          dto.status === TaskStatus.COMPLETED
+            ? task.completedById || completedById
+            : null,
       },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: task.ownerId,
+      userId: completedById,
       action: AuditAction.TASK_COMPLETION,
       entityType: 'Task',
       entityId: taskId,
-      oldValues: { status: task.status },
-      newValues: { status: dto.status },
+      oldValues: { status: task.status, completedAt: task.completedAt, completedById: task.completedById },
+      newValues: {
+        status: dto.status,
+        completedAt: updatedTask.completedAt,
+        completedById: updatedTask.completedById,
+      },
     });
 
     return this.mapToResponseDto(updatedTask);
   }
 
-  async delete(taskId: string, organizationId: string): Promise<void> {
+  async delete(taskId: string, organizationId: string, deletedById: string): Promise<void> {
     const task = await this.prisma.task.findFirst({
       where: {
         id: taskId,
@@ -262,18 +296,20 @@ export class TaskService {
     }
 
     // Soft delete
+    const deletedAt = new Date();
     await this.prisma.task.update({
       where: { id: taskId },
-      data: { deletedAt: new Date() },
+      data: { deletedAt, deletedById },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: task.ownerId,
+      userId: deletedById,
       action: AuditAction.SOFT_DELETE,
       entityType: 'Task',
       entityId: taskId,
       oldValues: { subject: task.subject },
+      newValues: { deletedAt, deletedById },
     });
   }
 
@@ -288,10 +324,14 @@ export class TaskService {
       relatedId: task.relatedId,
       description: task.description,
       completedAt: task.completedAt,
+      completedById: task.completedById,
       ownerId: task.ownerId,
       assignedToId: task.assignedToId,
       organizationId: task.organizationId,
       deletedAt: task.deletedAt,
+      deletedById: task.deletedById,
+      restoredAt: task.restoredAt,
+      restoredById: task.restoredById,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
     };

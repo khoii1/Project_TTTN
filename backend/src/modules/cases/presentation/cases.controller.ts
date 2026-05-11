@@ -46,6 +46,8 @@ export class CasesController {
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'status', required: false, type: String })
   @ApiQuery({ name: 'priority', required: false, type: String })
+  @ApiQuery({ name: 'accountId', required: false, type: String })
+  @ApiQuery({ name: 'contactId', required: false, type: String })
   @ApiQuery({ name: 'source', required: false, type: String })
   @ApiQuery({ name: 'deleted', required: false, type: Boolean })
   @ApiResponse({
@@ -60,6 +62,8 @@ export class CasesController {
     @Query('search') search?: string,
     @Query('status') status?: string,
     @Query('priority') priority?: string,
+    @Query('accountId') accountId?: string,
+    @Query('contactId') contactId?: string,
     @Query('source') source?: string,
     @Query('deleted') deleted?: string
   ): Promise<PaginatedResponse<CaseResponseDto>> {
@@ -72,6 +76,8 @@ export class CasesController {
       priority,
       source,
       deleted === 'true',
+      accountId,
+      contactId
     );
   }
 
@@ -104,7 +110,7 @@ export class CasesController {
     @Body() dto: ChangeCaseStatusDto,
     @CurrentUser() user: TokenPayload
   ): Promise<CaseResponseDto> {
-    return this.caseService.changeStatus(id, user.organizationId, dto);
+    return this.caseService.changeStatus(id, user.organizationId, user.sub, dto);
   }
 
   @Patch(':id/restore')
@@ -114,7 +120,7 @@ export class CasesController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<CaseResponseDto> {
-    return this.caseService.restore(id, user.organizationId);
+    return this.caseService.restore(id, user.organizationId, user.sub);
   }
 
   @Delete(':id')
@@ -124,7 +130,7 @@ export class CasesController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<{ message: string }> {
-    await this.caseService.delete(id, user.organizationId);
+    await this.caseService.delete(id, user.organizationId, user.sub);
     return { message: 'Case deleted successfully' };
   }
 }

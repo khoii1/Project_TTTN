@@ -5,6 +5,7 @@ import { AccountService } from '../src/modules/accounts/application/services/acc
 import { ContactService } from '../src/modules/contacts/application/services/contact.service';
 import { OpportunityService } from '../src/modules/opportunities/application/services/opportunity.service';
 import { TaskService } from '../src/modules/tasks/application/services/task.service';
+import { NoteService } from '../src/modules/notes/application/services/note.service';
 import { CaseService } from '../src/modules/cases/application/services/case.service';
 import { PrismaService } from '../src/infrastructure/database/prisma.service';
 import { AuditLogService } from '../src/infrastructure/audit/audit-log.service';
@@ -58,7 +59,18 @@ function buildMockPrisma(entityName: string, entityRecords: Record<string, any>[
   const findMany = jest.fn().mockImplementation(({ where }) => {
     return Promise.resolve(
       entityRecords.filter(
-        (r) => r.organizationId === where.organizationId && matchesDeletedAt(r, where),
+        (r) =>
+          r.organizationId === where.organizationId &&
+          matchesDeletedAt(r, where) &&
+          Object.entries(where).every(([key, value]) => {
+            if (key === 'organizationId' || key === 'deletedAt' || key === 'OR') {
+              return true;
+            }
+            if (typeof value === 'string') {
+              return r[key] === value;
+            }
+            return true;
+          }),
       ),
     );
   });
@@ -66,7 +78,18 @@ function buildMockPrisma(entityName: string, entityRecords: Record<string, any>[
   const count = jest.fn().mockImplementation(({ where }) => {
     return Promise.resolve(
       entityRecords.filter(
-        (r) => r.organizationId === where.organizationId && matchesDeletedAt(r, where),
+        (r) =>
+          r.organizationId === where.organizationId &&
+          matchesDeletedAt(r, where) &&
+          Object.entries(where).every(([key, value]) => {
+            if (key === 'organizationId' || key === 'deletedAt' || key === 'OR') {
+              return true;
+            }
+            if (typeof value === 'string') {
+              return r[key] === value;
+            }
+            return true;
+          }),
       ).length,
     );
   });
@@ -123,7 +146,7 @@ describe('Organization Isolation — Lead', () => {
   });
 
   it('Org A user CANNOT delete Org B lead', async () => {
-    await expect(service.delete('lead-2', ORG_A)).rejects.toThrow(NotFoundException);
+    await expect(service.delete('lead-2', ORG_A, USER_A)).rejects.toThrow(NotFoundException);
   });
 
   it('findAll only returns Org A records', async () => {
@@ -170,7 +193,7 @@ describe('Organization Isolation — Account', () => {
   });
 
   it('Org A user CANNOT delete Org B account', async () => {
-    await expect(service.delete('acc-2', ORG_A)).rejects.toThrow(NotFoundException);
+    await expect(service.delete('acc-2', ORG_A, USER_A)).rejects.toThrow(NotFoundException);
   });
 
   it('findAll only returns Org A records', async () => {
@@ -219,7 +242,7 @@ describe('Organization Isolation — Contact', () => {
   });
 
   it('Org A user CANNOT delete Org B contact', async () => {
-    await expect(service.delete('con-2', ORG_A)).rejects.toThrow(NotFoundException);
+    await expect(service.delete('con-2', ORG_A, USER_A)).rejects.toThrow(NotFoundException);
   });
 
   it('findAll only returns Org A records', async () => {
@@ -268,7 +291,7 @@ describe('Organization Isolation — Opportunity', () => {
   });
 
   it('Org A user CANNOT delete Org B opportunity', async () => {
-    await expect(service.delete('opp-2', ORG_A)).rejects.toThrow(NotFoundException);
+    await expect(service.delete('opp-2', ORG_A, USER_A)).rejects.toThrow(NotFoundException);
   });
 
   it('findAll only returns Org A records', async () => {
@@ -284,11 +307,13 @@ describe('Organization Isolation — Task', () => {
 
   const taskOrgA = {
     id: 'task-1', organizationId: ORG_A, ownerId: USER_A, assignedToId: USER_A,
-    subject: 'OrgA Task', status: 'NOT_STARTED', priority: 'NORMAL', deletedAt: null,
+    subject: 'OrgA Task', status: 'NOT_STARTED', priority: 'NORMAL',
+    relatedType: 'LEAD', relatedId: 'lead-1', deletedAt: null,
   };
   const taskOrgB = {
     id: 'task-2', organizationId: ORG_B, ownerId: 'user-b', assignedToId: 'user-b',
-    subject: 'OrgB Task', status: 'NOT_STARTED', priority: 'HIGH', deletedAt: null,
+    subject: 'OrgB Task', status: 'NOT_STARTED', priority: 'HIGH',
+    relatedType: 'LEAD', relatedId: 'lead-2', deletedAt: null,
   };
   const deletedTaskOrgA = {
     id: 'task-3', organizationId: ORG_A, ownerId: USER_A, assignedToId: USER_A,
@@ -321,7 +346,7 @@ describe('Organization Isolation — Task', () => {
   });
 
   it('Org A user CANNOT delete Org B task', async () => {
-    await expect(service.delete('task-2', ORG_A)).rejects.toThrow(NotFoundException);
+    await expect(service.delete('task-2', ORG_A, USER_A)).rejects.toThrow(NotFoundException);
   });
 
   it('findAll only returns Org A records', async () => {
@@ -330,20 +355,81 @@ describe('Organization Isolation — Task', () => {
     expect(result.data[0].id).toBe('task-1');
   });
 
+  it('findAll can filter Org A tasks by related type and related id', async () => {
+    const result = await service.findAll(
+      ORG_A,
+      1,
+      10,
+      undefined,
+      undefined,
+      undefined,
+      'LEAD',
+      'lead-1',
+    );
+    expect(result.data.length).toBe(1);
+    expect(result.data[0].id).toBe('task-1');
+  });
+
   it('findAll deleted only returns deleted Org A records', async () => {
-    const result = await service.findAll(ORG_A, 1, 10, undefined, undefined, undefined, true);
+    const result = await service.findAll(
+      ORG_A,
+      1,
+      10,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    );
     expect(result.data.length).toBe(1);
     expect(result.data[0].id).toBe('task-3');
   });
 
   it('Org A user can restore Org A deleted task', async () => {
-    const result = await service.restore('task-3', ORG_A);
+    const result = await service.restore('task-3', ORG_A, USER_A);
     expect(result.id).toBe('task-3');
     expect(result.deletedAt).toBeNull();
   });
 
   it('Org A user CANNOT restore Org B task', async () => {
-    await expect(service.restore('task-2', ORG_A)).rejects.toThrow(NotFoundException);
+    await expect(service.restore('task-2', ORG_A, USER_A)).rejects.toThrow(NotFoundException);
+  });
+});
+
+// ---------- NOTE FILTERING ----------
+describe('Organization Isolation — Note', () => {
+  let service: NoteService;
+
+  const noteOrgA = {
+    id: 'note-1', organizationId: ORG_A, ownerId: USER_A,
+    content: 'OrgA Note', relatedType: 'LEAD', relatedId: 'lead-1', deletedAt: null,
+  };
+  const noteOrgAOtherRecord = {
+    id: 'note-2', organizationId: ORG_A, ownerId: USER_A,
+    content: 'OrgA Other Note', relatedType: 'OPPORTUNITY', relatedId: 'opp-1', deletedAt: null,
+  };
+  const noteOrgB = {
+    id: 'note-3', organizationId: ORG_B, ownerId: 'user-b',
+    content: 'OrgB Note', relatedType: 'LEAD', relatedId: 'lead-1', deletedAt: null,
+  };
+
+  beforeEach(async () => {
+    const mockPrisma = buildMockPrisma('note', [noteOrgA, noteOrgAOtherRecord, noteOrgB]);
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        NoteService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: AuditLogService, useValue: mockAuditLogService },
+      ],
+    }).compile();
+    service = module.get<NoteService>(NoteService);
+  });
+
+  it('findAll can filter Org A notes by related type and related id', async () => {
+    const result = await service.findAll(ORG_A, 1, 10, 'LEAD', 'lead-1');
+    expect(result.data.length).toBe(1);
+    expect(result.data[0].id).toBe('note-1');
   });
 });
 
@@ -386,7 +472,7 @@ describe('Organization Isolation — Case', () => {
   });
 
   it('Org A user CANNOT delete Org B case', async () => {
-    await expect(service.delete('case-2', ORG_A)).rejects.toThrow(NotFoundException);
+    await expect(service.delete('case-2', ORG_A, USER_A)).rejects.toThrow(NotFoundException);
   });
 
   it('findAll only returns Org A records', async () => {

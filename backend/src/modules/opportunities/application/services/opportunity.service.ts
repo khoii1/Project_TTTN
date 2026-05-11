@@ -16,7 +16,7 @@ import { AuditLogService, AuditAction } from '../../../../infrastructure/audit/a
 export class OpportunityService {
   constructor(
     private prisma: PrismaService,
-    private auditLog: AuditLogService,
+    private auditLog: AuditLogService
   ) {}
 
   async create(
@@ -105,7 +105,9 @@ export class OpportunityService {
     search?: string,
     stage?: string,
     source?: string,
-    deleted: boolean = false
+    deleted: boolean = false,
+    accountId?: string,
+    contactId?: string
   ): Promise<PaginatedResponse<OpportunityResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
@@ -120,6 +122,14 @@ export class OpportunityService {
 
     if (stage) {
       where.stage = stage;
+    }
+
+    if (accountId) {
+      where.accountId = accountId;
+    }
+
+    if (contactId) {
+      where.contactId = contactId;
     }
 
     if (source) {
@@ -188,6 +198,7 @@ export class OpportunityService {
   async changeStage(
     opportunityId: string,
     organizationId: string,
+    stageChangedById: string,
     dto: ChangeOpportunityStageDto
   ): Promise<OpportunityResponseDto> {
     const opportunity = await this.prisma.opportunity.findFirst({
@@ -204,23 +215,39 @@ export class OpportunityService {
 
     const updatedOpportunity = await this.prisma.opportunity.update({
       where: { id: opportunityId },
-      data: { stage: dto.stage },
+      data: {
+        stage: dto.stage,
+        stageChangedAt: new Date(),
+        stageChangedById,
+      },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: opportunity.ownerId,
+      userId: stageChangedById,
       action: AuditAction.STAGE_CHANGE,
       entityType: 'Opportunity',
       entityId: opportunityId,
-      oldValues: { stage: opportunity.stage },
-      newValues: { stage: dto.stage },
+      oldValues: {
+        stage: opportunity.stage,
+        stageChangedAt: opportunity.stageChangedAt,
+        stageChangedById: opportunity.stageChangedById,
+      },
+      newValues: {
+        stage: dto.stage,
+        stageChangedAt: updatedOpportunity.stageChangedAt,
+        stageChangedById: updatedOpportunity.stageChangedById,
+      },
     });
 
     return this.mapToResponseDto(updatedOpportunity);
   }
 
-  async delete(opportunityId: string, organizationId: string): Promise<void> {
+  async delete(
+    opportunityId: string,
+    organizationId: string,
+    deletedById: string
+  ): Promise<void> {
     const opportunity = await this.prisma.opportunity.findFirst({
       where: {
         id: opportunityId,
@@ -234,24 +261,27 @@ export class OpportunityService {
     }
 
     // Soft delete
+    const deletedAt = new Date();
     await this.prisma.opportunity.update({
       where: { id: opportunityId },
-      data: { deletedAt: new Date() },
+      data: { deletedAt, deletedById },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: opportunity.ownerId,
+      userId: deletedById,
       action: AuditAction.SOFT_DELETE,
       entityType: 'Opportunity',
       entityId: opportunityId,
       oldValues: { name: opportunity.name, stage: opportunity.stage },
+      newValues: { deletedAt, deletedById },
     });
   }
 
   async restore(
     opportunityId: string,
-    organizationId: string
+    organizationId: string,
+    restoredById: string
   ): Promise<OpportunityResponseDto> {
     const opportunity = await this.prisma.opportunity.findFirst({
       where: {
@@ -270,17 +300,25 @@ export class OpportunityService {
 
     const restoredOpportunity = await this.prisma.opportunity.update({
       where: { id: opportunityId },
-      data: { deletedAt: null },
+      data: {
+        deletedAt: null,
+        restoredAt: new Date(),
+        restoredById,
+      },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: opportunity.ownerId,
+      userId: restoredById,
       action: AuditAction.RESTORE,
       entityType: 'Opportunity',
       entityId: opportunityId,
       oldValues: { deletedAt: opportunity.deletedAt },
-      newValues: { deletedAt: null },
+      newValues: {
+        deletedAt: null,
+        restoredAt: restoredOpportunity.restoredAt,
+        restoredById,
+      },
     });
 
     return this.mapToResponseDto(restoredOpportunity);
@@ -297,11 +335,16 @@ export class OpportunityService {
       source: opportunity.source,
       sourceDetail: opportunity.sourceDetail,
       description: opportunity.description,
+      stageChangedAt: opportunity.stageChangedAt,
+      stageChangedById: opportunity.stageChangedById,
       accountId: opportunity.accountId,
       contactId: opportunity.contactId,
       ownerId: opportunity.ownerId,
       organizationId: opportunity.organizationId,
       deletedAt: opportunity.deletedAt,
+      deletedById: opportunity.deletedById,
+      restoredAt: opportunity.restoredAt,
+      restoredById: opportunity.restoredById,
       createdAt: opportunity.createdAt,
       updatedAt: opportunity.updatedAt,
     };

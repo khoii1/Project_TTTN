@@ -92,6 +92,8 @@ export class TaskResponseDto {
   description?: string;
   @ApiPropertyOptional({ example: '2026-05-30T12:00:00.000Z' })
   completedAt?: Date;
+  @ApiPropertyOptional({ example: '66666666-6666-6666-6666-666666666666' })
+  completedById?: string;
   @ApiProperty({ example: '44444444-4444-4444-4444-444444444444' })
   ownerId: string;
   @ApiProperty({ example: '66666666-6666-6666-6666-666666666666' })
@@ -100,6 +102,12 @@ export class TaskResponseDto {
   organizationId: string;
   @ApiPropertyOptional({ example: '2026-04-29T08:00:00.000Z' })
   deletedAt?: Date;
+  @ApiPropertyOptional({ example: '66666666-6666-6666-6666-666666666666' })
+  deletedById?: string;
+  @ApiPropertyOptional({ example: '2026-05-11T08:48:00.000Z' })
+  restoredAt?: Date;
+  @ApiPropertyOptional({ example: '66666666-6666-6666-6666-666666666666' })
+  restoredById?: string;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })

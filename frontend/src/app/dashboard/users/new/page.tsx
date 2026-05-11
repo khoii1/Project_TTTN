@@ -1,17 +1,19 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
-import { Form, Input, Button, Card, message, Select } from "antd";
+import { Form, Input, Button, Card, Select, App } from "antd";
 import { useRouter } from "next/navigation";
 import { usersApi } from "@/features/users/users.api";
 import { User } from "@/features/auth/auth.types";
 import { UserRole } from "@/features/auth/auth.types";
 import { PageHeader } from "@/components/common/PageHeader";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { getRoleLabel } from "@/lib/constants/vi-labels";
 
 type NewUserPayload = Partial<User> & { password: string };
 
 export default function NewUserPage() {
+  const { message } = App.useApp();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -19,10 +21,10 @@ export default function NewUserPage() {
     try {
       setLoading(true);
       await usersApi.create(values);
-      message.success("User created successfully");
+      message.success("Tạo người dùng thành công");
       router.push("/dashboard/users");
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, "Failed to create user"));
+      message.error(getApiErrorMessage(error, "Không thể tạo người dùng"));
     } finally {
       setLoading(false);
     }
@@ -30,7 +32,7 @@ export default function NewUserPage() {
 
   return (
     <div>
-      <PageHeader title="New User" showBack />
+      <PageHeader title="Tạo người dùng" showBack />
       <Card className="max-w-2xl shadow-sm">
         <Form
           layout="vertical"
@@ -40,16 +42,12 @@ export default function NewUserPage() {
           <div className="grid grid-cols-2 gap-4">
             <Form.Item
               name="firstName"
-              label="First Name"
+              label="Tên"
               rules={[{ required: true }]}
             >
               <Input placeholder="John" />
             </Form.Item>
-            <Form.Item
-              name="lastName"
-              label="Last Name"
-              rules={[{ required: true }]}
-            >
+            <Form.Item name="lastName" label="Họ" rules={[{ required: true }]}>
               <Input placeholder="Doe" />
             </Form.Item>
           </div>
@@ -64,26 +62,26 @@ export default function NewUserPage() {
 
           <Form.Item
             name="password"
-            label="Password"
+            label="Mật khẩu"
             rules={[{ required: true }, { min: 6 }]}
           >
-            <Input.Password placeholder="Password" />
+            <Input.Password placeholder="Mật khẩu" />
           </Form.Item>
 
-          <Form.Item name="role" label="Role" rules={[{ required: true }]}>
+          <Form.Item name="role" label="Vai trò" rules={[{ required: true }]}>
             <Select>
               {Object.values(UserRole).map((role) => (
                 <Select.Option key={role} value={role}>
-                  {role}
+                  {getRoleLabel(role)}
                 </Select.Option>
               ))}
             </Select>
           </Form.Item>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button onClick={() => router.back()}>Cancel</Button>
+            <Button onClick={() => router.back()}>Hủy</Button>
             <Button type="primary" htmlType="submit" loading={loading}>
-              Save User
+              Lưu người dùng
             </Button>
           </div>
         </Form>

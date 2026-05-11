@@ -61,6 +61,7 @@ export class NoteService {
     organizationId: string,
     page: number = 1,
     limit: number = 10,
+    relatedType?: string,
     relatedId?: string
   ): Promise<PaginatedResponse<NoteResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
@@ -69,6 +70,10 @@ export class NoteService {
       organizationId,
       deletedAt: null,
     };
+
+    if (relatedType) {
+      where.relatedType = relatedType;
+    }
 
     if (relatedId) {
       where.relatedId = relatedId;

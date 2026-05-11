@@ -20,12 +20,16 @@ export interface Case {
   priority: CasePriority;
   source?: string;
   sourceDetail?: string;
+  closedAt?: string;
+  closedById?: string;
   accountId?: string;
   contactId?: string;
   organizationId: string;
   ownerId?: string;
-  assignedToId?: string;
   deletedAt?: string;
+  deletedById?: string;
+  restoredAt?: string;
+  restoredById?: string;
   createdAt: string;
   updatedAt: string;
 }

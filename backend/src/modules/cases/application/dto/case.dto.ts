@@ -88,6 +88,10 @@ export class CaseResponseDto {
   sourceDetail?: string;
   @ApiPropertyOptional({ example: 'Need to resolve data sync issues' })
   description?: string;
+  @ApiPropertyOptional({ example: '2026-05-11T08:48:00.000Z' })
+  closedAt?: Date;
+  @ApiPropertyOptional({ example: '44444444-4444-4444-4444-444444444444' })
+  closedById?: string;
   @ApiPropertyOptional({ example: '11111111-1111-1111-1111-111111111111' })
   accountId?: string;
   @ApiPropertyOptional({ example: '22222222-2222-2222-2222-222222222222' })
@@ -98,6 +102,12 @@ export class CaseResponseDto {
   organizationId: string;
   @ApiPropertyOptional({ example: '2026-04-29T08:00:00.000Z' })
   deletedAt?: Date;
+  @ApiPropertyOptional({ example: '44444444-4444-4444-4444-444444444444' })
+  deletedById?: string;
+  @ApiPropertyOptional({ example: '2026-05-11T08:48:00.000Z' })
+  restoredAt?: Date;
+  @ApiPropertyOptional({ example: '44444444-4444-4444-4444-444444444444' })
+  restoredById?: string;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2026-04-29T08:00:00.000Z' })

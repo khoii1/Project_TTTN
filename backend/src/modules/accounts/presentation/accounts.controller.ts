@@ -96,7 +96,7 @@ export class AccountsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<AccountResponseDto> {
-    return this.accountService.restore(id, user.organizationId);
+    return this.accountService.restore(id, user.organizationId, user.sub);
   }
 
   @Delete(':id')
@@ -106,7 +106,7 @@ export class AccountsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<{ message: string }> {
-    await this.accountService.delete(id, user.organizationId);
+    await this.accountService.delete(id, user.organizationId, user.sub);
     return { message: 'Account deleted successfully' };
   }
 }

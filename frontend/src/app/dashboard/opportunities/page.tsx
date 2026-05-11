@@ -1,16 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, Suspense } from "react";
-import {
-  Table,
-  Button,
-  Space,
-  Tag,
-  Popconfirm,
-  message,
-  Input,
-  Select,
-} from "antd";
+import { Table, Button, Space, Tag, Popconfirm, Input, Select, App } from "antd";
 import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { PlusOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -24,14 +15,23 @@ import {
 import { PageHeader } from "@/components/common/PageHeader";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
-import { getSourceLabel } from "@/lib/constants/source-options";
+import { SOURCE_OPTIONS, getSourceLabel } from "@/lib/constants/source-options";
+import {
+  EMPTY_STATE_LABELS,
+  FEEDBACK_LABELS,
+  FIELD_LABELS,
+  getStatusLabel,
+} from "@/lib/constants/vi-labels";
+import { formatVndAmount } from "@/lib/utils/currency";
 
 function OpportunitiesList() {
+  const { message } = App.useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const currentSearch = searchParams.get("search") || "";
   const currentStage = searchParams.get("stage") || undefined;
+  const currentSource = searchParams.get("source") || undefined;
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
   const currentLimit = parseInt(searchParams.get("limit") || "10", 10);
 
@@ -45,10 +45,11 @@ function OpportunitiesList() {
     limit: number,
     search: string,
     stage?: string,
+    source?: string,
   ) => {
     try {
       setLoading(true);
-      const payload = { page, limit, search, stage };
+      const payload = { page, limit, search, stage, source };
 
       const [oppsRes, accountsData] = await Promise.all([
         opportunitiesApi.getAll(payload),
@@ -62,7 +63,7 @@ function OpportunitiesList() {
       // We only need to fetch accounts once ideally, but it's okay here for mapping names
       setAccounts(getDataArray(accountsData));
     } catch {
-      message.error("Failed to load opportunities");
+      message.error("Không thể tải cơ hội bán hàng");
     } finally {
       setLoading(false);
     }
@@ -75,11 +76,12 @@ function OpportunitiesList() {
         currentLimit,
         currentSearch,
         currentStage,
+        currentSource,
       );
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [currentPage, currentLimit, currentSearch, currentStage]);
+  }, [currentPage, currentLimit, currentSearch, currentStage, currentSource]);
 
   const updateURL = (params: Record<string, string | number | undefined>) => {
     const urlParams = new URLSearchParams(searchParams.toString());
@@ -105,18 +107,23 @@ function OpportunitiesList() {
     updateURL({ stage: value, page: 1 });
   };
 
+  const handleSourceFilter = (value?: string) => {
+    updateURL({ source: value, page: 1 });
+  };
+
   const handleDelete = async (id: string) => {
     try {
       await opportunitiesApi.delete(id);
-      message.success("Opportunity deleted");
+      message.success("Đã xóa cơ hội bán hàng");
       fetchOpportunities(
         currentPage,
         currentLimit,
         currentSearch,
         currentStage,
+        currentSource,
       );
     } catch {
-      message.error("Failed to delete opportunity");
+      message.error("Không thể xóa cơ hội bán hàng");
     }
   };
 
@@ -130,54 +137,56 @@ function OpportunitiesList() {
 
   const columns: TableColumnsType<Opportunity> = [
     {
-      title: "Opportunity Name",
+      title: "Tên cơ hội bán hàng",
       dataIndex: "name",
       key: "name",
       render: (text: string) => <span className="font-medium">{text}</span>,
     },
     {
-      title: "Account",
+      title: FIELD_LABELS.account,
       key: "account",
       render: (_, record) => {
         const acc = accounts.find((a) => a.id === record.accountId);
-        return acc ? acc.name : "N/A";
+        return acc ? acc.name : "-";
       },
     },
     {
-      title: "Amount",
+      title: FIELD_LABELS.amount,
       dataIndex: "amount",
       key: "amount",
-      render: (val: number) => (val ? `$${val.toLocaleString()}` : "N/A"),
+      render: (val: number) => formatVndAmount(val),
     },
     {
-      title: "Stage",
+      title: FIELD_LABELS.stage,
       dataIndex: "stage",
       key: "stage",
       render: (stage: string) => (
-        <Tag color={stageColors[stage] || "default"}>{stage}</Tag>
+        <Tag color={stageColors[stage] || "default"}>
+          {getStatusLabel(stage)}
+        </Tag>
       ),
     },
     {
-      title: "Source",
+      title: FIELD_LABELS.source,
       dataIndex: "source",
       key: "source",
-      render: (source?: string) => getSourceLabel(source),
+      render: (source?: string) => <Tag>{getSourceLabel(source)}</Tag>,
     },
     {
-      title: "Owner",
+      title: FIELD_LABELS.owner,
       dataIndex: "ownerId",
       key: "ownerId",
       render: (ownerId?: string) => <UserReferenceDisplay userId={ownerId} />,
     },
     {
-      title: "Close Date",
+      title: FIELD_LABELS.closeDate,
       dataIndex: "closeDate",
       key: "closeDate",
       render: (date: string) =>
-        date ? new Date(date).toLocaleDateString() : "N/A",
+        date ? new Date(date).toLocaleDateString() : "-",
     },
     {
-      title: "Actions",
+      title: "Thao tác",
       key: "actions",
       render: (_, record) => (
         <Space size="middle">
@@ -187,7 +196,7 @@ function OpportunitiesList() {
             onClick={() => router.push(`/dashboard/opportunities/${record.id}`)}
           />
           <Popconfirm
-            title="Delete this opportunity?"
+            title={FEEDBACK_LABELS.deleteConfirm}
             onConfirm={() => handleDelete(record.id)}
           >
             <Button type="text" danger icon={<DeleteOutlined />} />
@@ -200,27 +209,27 @@ function OpportunitiesList() {
   return (
     <div>
       <PageHeader
-        title="Opportunities"
+        title="Cơ hội bán hàng"
         action={
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => router.push("/dashboard/opportunities/new")}
           >
-            New Opportunity
+            Tạo cơ hội bán hàng
           </Button>
         }
       />
-      <div className="mb-4 flex space-x-4">
+      <div className="crm-filter-bar mb-4 flex flex-wrap gap-3">
         <Input.Search
-          placeholder="Search opportunities..."
+          placeholder="Tìm cơ hội bán hàng..."
           defaultValue={currentSearch}
           onSearch={handleSearch}
           allowClear
           className="w-64"
         />
         <Select
-          placeholder="Filter by Stage"
+          placeholder="Lọc theo giai đoạn"
           allowClear
           value={currentStage}
           onChange={handleStageFilter}
@@ -228,10 +237,18 @@ function OpportunitiesList() {
         >
           {Object.values(OpportunityStage).map((s) => (
             <Select.Option key={s} value={s}>
-              {s}
+              {getStatusLabel(s)}
             </Select.Option>
           ))}
         </Select>
+        <Select
+          placeholder="Tất cả nguồn"
+          allowClear
+          value={currentSource}
+          onChange={handleSourceFilter}
+          className="w-52"
+          options={[...SOURCE_OPTIONS]}
+        />
       </div>
       <Table
         columns={columns}
@@ -254,7 +271,9 @@ function OpportunitiesList() {
 export default function OpportunitiesListPage() {
   return (
     <Suspense
-      fallback={<div className="p-4 text-center">Loading opportunities...</div>}
+      fallback={
+        <div className="p-4 text-center">{EMPTY_STATE_LABELS.loading}</div>
+      }
     >
       <OpportunitiesList />
     </Suspense>

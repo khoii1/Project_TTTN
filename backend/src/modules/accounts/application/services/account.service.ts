@@ -173,7 +173,7 @@ export class AccountService {
     return this.mapToResponseDto(updatedAccount);
   }
 
-  async delete(accountId: string, organizationId: string): Promise<void> {
+  async delete(accountId: string, organizationId: string, deletedById: string): Promise<void> {
     const account = await this.prisma.account.findFirst({
       where: {
         id: accountId,
@@ -187,22 +187,28 @@ export class AccountService {
     }
 
     // Soft delete
+    const deletedAt = new Date();
     await this.prisma.account.update({
       where: { id: accountId },
-      data: { deletedAt: new Date() },
+      data: { deletedAt, deletedById },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: account.ownerId,
+      userId: deletedById,
       action: AuditAction.SOFT_DELETE,
       entityType: 'Account',
       entityId: accountId,
       oldValues: { name: account.name },
+      newValues: { deletedAt, deletedById },
     });
   }
 
-  async restore(accountId: string, organizationId: string): Promise<AccountResponseDto> {
+  async restore(
+    accountId: string,
+    organizationId: string,
+    restoredById: string
+  ): Promise<AccountResponseDto> {
     const account = await this.prisma.account.findFirst({
       where: {
         id: accountId,
@@ -220,17 +226,25 @@ export class AccountService {
 
     const restoredAccount = await this.prisma.account.update({
       where: { id: accountId },
-      data: { deletedAt: null },
+      data: {
+        deletedAt: null,
+        restoredAt: new Date(),
+        restoredById,
+      },
     });
 
     await this.auditLog.log({
       organizationId,
-      userId: account.ownerId,
+      userId: restoredById,
       action: AuditAction.RESTORE,
       entityType: 'Account',
       entityId: accountId,
       oldValues: { deletedAt: account.deletedAt },
-      newValues: { deletedAt: null },
+      newValues: {
+        deletedAt: null,
+        restoredAt: restoredAccount.restoredAt,
+        restoredById,
+      },
     });
 
     return this.mapToResponseDto(restoredAccount);
@@ -259,6 +273,9 @@ export class AccountService {
       ownerId: account.ownerId,
       organizationId: account.organizationId,
       deletedAt: account.deletedAt,
+      deletedById: account.deletedById,
+      restoredAt: account.restoredAt,
+      restoredById: account.restoredById,
       createdAt: account.createdAt,
       updatedAt: account.updatedAt,
     };

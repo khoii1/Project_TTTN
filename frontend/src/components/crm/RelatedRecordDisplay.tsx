@@ -12,6 +12,7 @@ import { Account } from "@/features/accounts/accounts.types";
 import { Contact } from "@/features/contacts/contacts.types";
 import { Opportunity } from "@/features/opportunities/opportunities.types";
 import { Case } from "@/features/cases/cases.types";
+import { EMPTY_STATE_LABELS } from "@/lib/constants/vi-labels";
 
 interface RelatedRecordDisplayProps {
   relatedType?: string;
@@ -42,7 +43,7 @@ const getRecordLabel = (relatedType: string, record: RelatedRecord) => {
   switch (relatedType) {
     case "LEAD": {
       const lead = record as Lead;
-      return [lead.lastName, lead.company].filter(Boolean).join(" · ");
+      return [lead.lastName, lead.company].filter(Boolean).join(" - ");
     }
     case "ACCOUNT":
       return (record as Account).name;
@@ -101,14 +102,17 @@ export const RelatedRecordDisplay = ({
         }
 
         if (!record) {
-          setLabel("Record not found");
+          setLabel(EMPTY_STATE_LABELS.recordNotFound);
           return;
         }
 
-        setLabel(getRecordLabel(relatedType, record) || "Record not found");
+        setLabel(
+          getRecordLabel(relatedType, record) ||
+            EMPTY_STATE_LABELS.recordNotFound,
+        );
       } catch {
         if (isActive) {
-          setLabel("Record not found");
+          setLabel(EMPTY_STATE_LABELS.recordNotFound);
         }
       } finally {
         if (isActive) {
@@ -129,11 +133,11 @@ export const RelatedRecordDisplay = ({
   }
 
   if (loading) {
-    return <span className="text-gray-500">Loading...</span>;
+    return <span className="text-gray-500">{EMPTY_STATE_LABELS.loading}</span>;
   }
 
-  if (!label || label === "Record not found") {
-    return <span>{label || "Record not found"}</span>;
+  if (!label || label === EMPTY_STATE_LABELS.recordNotFound) {
+    return <span>{label || EMPTY_STATE_LABELS.recordNotFound}</span>;
   }
 
   if (!link) {
@@ -141,7 +145,10 @@ export const RelatedRecordDisplay = ({
   }
 
   return (
-    <Link href={getDetailPath(relatedType, relatedId)} className="text-blue-600">
+    <Link
+      href={getDetailPath(relatedType, relatedId)}
+      className="text-blue-600"
+    >
       {label}
     </Link>
   );

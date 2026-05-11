@@ -6,6 +6,14 @@ Tài liệu liên quan:
 
 - [API contract](../docs/api-contract.md)
 - [Full-stack QA checklist](../docs/fullstack-qa-checklist.md)
+- [Demo script](../docs/demo-script.md)
+- [Deployment guide](../docs/deployment-guide.md)
+
+## MVP Status
+
+- Vietnamese UI is available in the frontend.
+- Dashboard Analytics, Global Search, Recycle Bin, actor tracking, Lead Conversion Wizard, and VNĐ currency display are implemented.
+- Demo/staging deployment can use Supabase Free PostgreSQL; see [Deployment guide](../docs/deployment-guide.md).
 
 ---
 
@@ -90,6 +98,7 @@ JWT_REFRESH_TOKEN_EXPIRATION=7d
 # API
 API_PORT=3000
 API_VERSION=v1
+CORS_ORIGIN=http://localhost:3001
 NODE_ENV=development
 
 # Bcrypt

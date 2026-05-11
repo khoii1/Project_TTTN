@@ -3,6 +3,17 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+const parseCorsOrigins = (value?: string): string[] =>
+  value
+    ? value
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+    : [];
+
+const isLocalDevOrigin = (origin: string): boolean =>
+  /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -15,8 +26,23 @@ async function bootstrap() {
     })
   );
 
-  // Enable CORS
-  app.enableCors();
+  const isProduction = process.env.NODE_ENV === 'production';
+  const allowedProductionOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (isProduction) {
+        return callback(null, allowedProductionOrigins.includes(origin));
+      }
+
+      return callback(null, isLocalDevOrigin(origin));
+    },
+    credentials: true,
+  });
 
   // Swagger setup
   const config = new DocumentBuilder()
@@ -49,7 +75,7 @@ async function bootstrap() {
     customSiteTitle: 'CRM API Guide',
   });
 
-  const port = process.env.API_PORT || 3000;
+  const port = process.env.PORT || process.env.API_PORT || 3000;
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}`);
   console.log(`Swagger documentation: http://localhost:${port}/api/docs`);

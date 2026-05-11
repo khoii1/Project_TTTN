@@ -123,6 +123,18 @@ Shared contract docs:
 
 - `../docs/api-contract.md`
 - `../docs/fullstack-qa-checklist.md`
+- `../docs/demo-script.md`
+- `../docs/deployment-guide.md`
+
+## Current MVP Status
+
+- Vietnamese UI is implemented across the main CRM screens.
+- Dashboard Analytics is implemented with dedicated backend endpoints.
+- Global Search is available in the AppHeader.
+- Recycle Bin is available for Leads, Accounts, Contacts, Opportunities, Tasks, and Cases.
+- Actor Tracking is available for important actions such as completing tasks, converting leads, changing opportunity stage, closing cases, deleting, and restoring records.
+- Opportunity and dashboard amount values are displayed as VNĐ/VND on the frontend while the backend keeps numeric `amount` values.
+- Supabase Free deployment preparation is documented in `../docs/deployment-guide.md`.
 
 ## Test Credentials
 

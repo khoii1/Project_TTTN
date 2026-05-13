@@ -142,6 +142,7 @@ npx prisma studio          # Mở Prisma Studio (visual DB browser)
 | ----------------- | ----------------------------- | ---------------------------- |
 | `start:dev`       | `nest start --watch`          | Dev server với hot reload    |
 | `build`           | `nest build`                  | Build production             |
+| `start`           | `node dist/src/main`          | Chạy bản production          |
 | `start:prod`      | `node dist/src/main`          | Chạy bản production          |
 | `test`            | `jest`                        | Chạy toàn bộ unit tests      |
 | `test:e2e`        | `jest --config jest-e2e.json` | Chạy E2E tests               |

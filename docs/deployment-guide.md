@@ -125,6 +125,8 @@ npm run prisma:migrate:prod
 npm run start:prod
 ```
 
+Nếu Render đang dùng default start command `yarn start` hoặc `npm run start`, script `start` của backend cũng chạy production entrypoint `node dist/src/main`.
+
 Staging có thể giữ Swagger tại `/api/docs` để demo và kiểm thử API bằng cách đặt `ENABLE_SWAGGER=true`. Production thật nên đặt `ENABLE_SWAGGER=false` hoặc không khai báo biến này khi `NODE_ENV=production` để không expose Swagger public.
 
 Lưu ý hosting: backend hỗ trợ thứ tự đọc port `PORT > API_PORT > 3000`. Render/Railway thường cấp `PORT`; local/dev có thể tiếp tục dùng `API_PORT`.

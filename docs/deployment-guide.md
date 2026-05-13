@@ -125,6 +125,8 @@ npm run prisma:migrate:prod
 npm run start:prod
 ```
 
+Render backend đang chạy build command mặc định `yarn`, nên backend có `postinstall` để tự chạy `npm run build` và tạo thư mục `dist` trước khi `yarn start`.
+
 Nếu Render đang dùng default start command `yarn start` hoặc `npm run start`, script `start` của backend cũng chạy production entrypoint `node dist/src/main.js`.
 
 Staging có thể giữ Swagger tại `/api/docs` để demo và kiểm thử API bằng cách đặt `ENABLE_SWAGGER=true`. Production thật nên đặt `ENABLE_SWAGGER=false` hoặc không khai báo biến này khi `NODE_ENV=production` để không expose Swagger public.

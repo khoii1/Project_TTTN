@@ -29,6 +29,7 @@ JWT_REFRESH_TOKEN_EXPIRATION=7d
 API_PORT=3000
 API_VERSION=v1
 CORS_ORIGIN=https://your-frontend-domain.com
+ENABLE_SWAGGER=false
 NODE_ENV=production
 BCRYPT_ROUNDS=10
 ```
@@ -45,6 +46,7 @@ Giải thích:
 - `API_PORT`: port fallback/local nếu hosting không cấp `PORT`.
 - `API_VERSION`: version config của API.
 - `CORS_ORIGIN`: domain frontend production được phép gọi API. Có thể khai báo nhiều domain bằng dấu phẩy, ví dụ `https://app.example.com,https://www.example.com`.
+- `ENABLE_SWAGGER`: bật/tắt Swagger public. Dev bật mặc định nếu không khai báo. Production nên để `false`, riêng staging/demo có thể đặt `true`.
 - `NODE_ENV`: dùng `production` khi deploy.
 - `BCRYPT_ROUNDS`: số rounds bcrypt, mặc định `10`.
 
@@ -74,7 +76,7 @@ npx prisma migrate deploy
 Nếu cần seed demo data:
 
 ```bash
-npx prisma db seed
+npm run prisma:seed
 ```
 
 Lưu ý:
@@ -82,7 +84,8 @@ Lưu ý:
 - Production dùng `migrate deploy`, không dùng `migrate dev`.
 - Prisma migration sẽ dùng `DIRECT_URL` nếu Prisma schema có `directUrl = env("DIRECT_URL")`.
 - Nếu `DIRECT_URL` dạng `db.<project-ref>.supabase.co:5432` báo `P1001`, hãy đổi sang Supabase Session pooler dạng `<region>.pooler.supabase.com:5432/postgres`.
-- Seed chỉ dùng cho demo/staging, không dùng bừa cho production thật.
+- Seed tạo dữ liệu demo tiếng Việt có liên kết đầy đủ cho 2 tenant: `Công ty Mẫu Việt Nam` và `Công ty Đối Thủ`.
+- Seed sẽ xóa dữ liệu hiện có trước khi tạo lại demo data; chỉ dùng cho demo/staging, không dùng bừa cho production thật.
 
 ## 6. Deploy Order Checklist
 
@@ -93,7 +96,8 @@ Lưu ý:
 - [ ] Deploy backend
 - [ ] Run `npx prisma generate`
 - [ ] Run `npx prisma migrate deploy`
-- [ ] Optional: seed demo data with `npx prisma db seed`
+- [ ] Optional: seed demo data with `npm run prisma:seed`
+- [ ] Check backend health endpoint `/health`
 - [ ] Set frontend `NEXT_PUBLIC_API_BASE_URL`
 - [ ] Deploy frontend
 - [ ] Run post-deploy QA
@@ -106,6 +110,7 @@ Lưu ý:
 - [ ] Run `npx prisma generate`
 - [ ] Run `npx prisma migrate deploy`
 - [ ] Start backend production
+- [ ] Kiểm tra `/health`
 - [ ] Kiểm tra `/api/docs` nếu Swagger còn bật
 - [ ] Kiểm tra login/register
 - [ ] Kiểm tra CORS với frontend
@@ -120,7 +125,7 @@ npm run prisma:migrate:prod
 npm run start:prod
 ```
 
-Staging có thể giữ Swagger tại `/api/docs` để demo và kiểm thử API. Production thật nên cân nhắc giới hạn hoặc tắt Swagger public nếu API không cần công khai.
+Staging có thể giữ Swagger tại `/api/docs` để demo và kiểm thử API bằng cách đặt `ENABLE_SWAGGER=true`. Production thật nên đặt `ENABLE_SWAGGER=false` hoặc không khai báo biến này khi `NODE_ENV=production` để không expose Swagger public.
 
 Lưu ý hosting: backend hỗ trợ thứ tự đọc port `PORT > API_PORT > 3000`. Render/Railway thường cấp `PORT`; local/dev có thể tiếp tục dùng `API_PORT`.
 
@@ -164,7 +169,7 @@ Trên Vercel, `NEXT_PUBLIC_API_BASE_URL` phải trỏ đến backend staging/dem
 
 ## 11. Post-Deploy QA Checklist
 
-- [ ] Login Sample admin
+- [ ] Login Công ty Mẫu Việt Nam admin
 - [ ] Dashboard
 - [ ] Create Lead
 - [ ] Convert Lead
@@ -172,8 +177,8 @@ Trên Vercel, `NEXT_PUBLIC_API_BASE_URL` phải trỏ đến backend staging/dem
 - [ ] Global Search
 - [ ] Recycle Bin
 - [ ] Logout
-- [ ] Login Rival Org
-- [ ] Kiểm tra không thấy dữ liệu Sample Company
+- [ ] Login Công ty Đối Thủ
+- [ ] Kiểm tra không thấy dữ liệu Công ty Mẫu Việt Nam
 
 ## 12. Known Deploy Risks
 

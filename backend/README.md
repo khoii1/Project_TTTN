@@ -69,7 +69,7 @@ npm run prisma:migrate
 # 4. Generate Prisma client
 npm run prisma:generate
 
-# 5. Seed dữ liệu mẫu (2 organizations)
+# 5. Seed dữ liệu demo tiếng Việt có liên kết đầy đủ (2 organizations)
 npm run prisma:seed
 
 # 6. Chạy server dev
@@ -99,6 +99,7 @@ JWT_REFRESH_TOKEN_EXPIRATION=7d
 API_PORT=3000
 API_VERSION=v1
 CORS_ORIGIN=http://localhost:3001
+ENABLE_SWAGGER=true
 NODE_ENV=development
 
 # Bcrypt
@@ -128,7 +129,7 @@ Khởi động PostgreSQL trên port **5432**, user `postgres`, password `12345`
 ```bash
 npm run prisma:migrate     # Chạy migrations
 npm run prisma:generate    # Generate Prisma client
-npm run prisma:seed        # Seed dữ liệu mẫu (2 organizations)
+npm run prisma:seed        # Seed dữ liệu demo tiếng Việt có liên kết đầy đủ (2 organizations)
 npm run prisma:reset       # Reset DB + re-seed (xóa hết data)
 npx prisma studio          # Mở Prisma Studio (visual DB browser)
 ```
@@ -137,20 +138,20 @@ npx prisma studio          # Mở Prisma Studio (visual DB browser)
 
 ## NPM Scripts
 
-| Script            | Lệnh                          | Mô tả                     |
-| ----------------- | ----------------------------- | ------------------------- |
-| `start:dev`       | `nest start --watch`          | Dev server với hot reload |
-| `build`           | `nest build`                  | Build production          |
-| `start:prod`      | `node dist/main`              | Chạy bản production       |
-| `test`            | `jest`                        | Chạy toàn bộ unit tests   |
-| `test:e2e`        | `jest --config jest-e2e.json` | Chạy E2E tests            |
-| `test:cov`        | `jest --coverage`             | Báo cáo test coverage     |
-| `lint`            | `eslint --fix`                | Lint + auto-fix           |
-| `format`          | `prettier --write`            | Format code               |
-| `prisma:migrate`  | `prisma migrate dev`          | Chạy migrations           |
-| `prisma:seed`     | `ts-node prisma/seed.ts`      | Seed dữ liệu              |
-| `prisma:generate` | `prisma generate`             | Generate Prisma client    |
-| `prisma:reset`    | `prisma migrate reset`        | Reset + re-seed           |
+| Script            | Lệnh                          | Mô tả                        |
+| ----------------- | ----------------------------- | ---------------------------- |
+| `start:dev`       | `nest start --watch`          | Dev server với hot reload    |
+| `build`           | `nest build`                  | Build production             |
+| `start:prod`      | `node dist/src/main`          | Chạy bản production          |
+| `test`            | `jest`                        | Chạy toàn bộ unit tests      |
+| `test:e2e`        | `jest --config jest-e2e.json` | Chạy E2E tests               |
+| `test:cov`        | `jest --coverage`             | Báo cáo test coverage        |
+| `lint`            | `eslint --fix`                | Lint + auto-fix              |
+| `format`          | `prettier --write`            | Format code                  |
+| `prisma:migrate`  | `prisma migrate dev`          | Chạy migrations              |
+| `prisma:seed`     | `ts-node prisma/seed.ts`      | Seed dữ liệu demo tiếng Việt |
+| `prisma:generate` | `prisma generate`             | Generate Prisma client       |
+| `prisma:reset`    | `prisma migrate reset`        | Reset + re-seed              |
 
 ---
 
@@ -242,6 +243,14 @@ modules/<feature>/
 ## API Endpoints
 
 **Swagger UI**: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+
+Swagger mặc định bật ở môi trường không phải production. Với production, chỉ đặt `ENABLE_SWAGGER=true` cho staging/demo khi cần expose API docs.
+
+### Health
+
+| Method | Endpoint  | Mô tả                         |
+| ------ | --------- | ----------------------------- |
+| GET    | `/health` | Basic service health response |
 
 ### Auth (Public — không cần token)
 
@@ -508,23 +517,24 @@ Mỗi entity (Lead, Account, Contact, Opportunity, Task, Case) được test 5 t
 
 ## Tài khoản test
 
-Sau khi chạy `npm run prisma:seed`, có **2 tổ chức**:
+Sau khi chạy `npm run prisma:seed`, hệ thống xóa dữ liệu hiện có rồi tạo lại **2 tổ chức** với dữ liệu demo tiếng Việt có liên kết đầy đủ giữa Leads, Accounts, Contacts, Opportunities, Tasks, Notes, Cases và Recycle Bin.
 
-### Organization: Sample Company Inc.
+### Organization: Công ty Mẫu Việt Nam
 
 | Role    | Email               | Password    |
 | ------- | ------------------- | ----------- |
 | ADMIN   | admin@example.com   | Admin@123   |
 | MANAGER | manager@example.com | Manager@123 |
 | SALES   | sales@example.com   | Sales@123   |
+| SUPPORT | support@example.com | Support@123 |
 
-### Organization: Rival Corp
+### Organization: Công ty Đối Thủ
 
 | Role  | Email           | Password  |
 | ----- | --------------- | --------- |
 | ADMIN | admin@rival.com | Rival@123 |
 
-> Dùng 2 tổ chức để test multi-tenant isolation: login Org A, không thấy data Org B.
+> Dùng 2 tổ chức để test multi-tenant isolation: login Công ty Mẫu Việt Nam không thấy dữ liệu Công ty Đối Thủ, và ngược lại.
 
 ---
 
@@ -547,14 +557,14 @@ Code review toàn diện được thực hiện ngày **29/04/2026**, bao gồm 
 
 ### Đã hoàn thành trong đợt hardening
 
-| Công việc                    | Trạng thái | Chi tiết                                        |
-| ---------------------------- | ---------- | ----------------------------------------------- |
-| AuditLogService              | ✅ Done    | Tạo service + tích hợp vào 7 entity services    |
-| Seed data 2 organizations    | ✅ Done    | Thêm "Rival Corp" với admin user, lead, account |
-| Organization isolation tests | ✅ Done    | 30 tests cho 6 entities                         |
-| Lead conversion E2E tests    | ✅ Done    | 6 tests bao gồm cross-org + audit log           |
-| Fix broken existing tests    | ✅ Done    | Sửa 2 tests có mock thiếu return value          |
-| jest-e2e.json                | ✅ Done    | Tạo E2E test config                             |
+| Công việc                    | Trạng thái | Chi tiết                                                                |
+| ---------------------------- | ---------- | ----------------------------------------------------------------------- |
+| AuditLogService              | ✅ Done    | Tạo service + tích hợp vào 7 entity services                            |
+| Seed data 2 organizations    | ✅ Done    | Tạo dữ liệu demo tiếng Việt cho Công ty Mẫu Việt Nam và Công ty Đối Thủ |
+| Organization isolation tests | ✅ Done    | 30 tests cho 6 entities                                                 |
+| Lead conversion E2E tests    | ✅ Done    | 6 tests bao gồm cross-org + audit log                                   |
+| Fix broken existing tests    | ✅ Done    | Sửa 2 tests có mock thiếu return value                                  |
+| jest-e2e.json                | ✅ Done    | Tạo E2E test config                                                     |
 
 ### Kết quả
 

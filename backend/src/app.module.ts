@@ -20,6 +20,7 @@ import { TasksModule } from './modules/tasks/tasks.module';
 import { NotesModule } from './modules/notes/notes.module';
 import { CasesModule } from './modules/cases/cases.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     NotesModule,
     CasesModule,
     DashboardModule,
+    HealthModule,
   ],
   providers: [
     {

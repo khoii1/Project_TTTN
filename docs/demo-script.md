@@ -10,13 +10,18 @@ Flow chính của hệ thống:
 
 ## 2. Tài Khoản Demo
 
-Sample Company:
+Công ty Mẫu Việt Nam:
 
 - `admin@example.com` / `Admin@123`
+- `manager@example.com` / `Manager@123`
+- `sales@example.com` / `Sales@123`
+- `support@example.com` / `Support@123`
 
-Rival Org:
+Công ty Đối Thủ:
 
 - `admin@rival.com` / `Rival@123`
+
+`npm run prisma:seed` tạo sẵn dữ liệu demo tiếng Việt có liên kết đầy đủ: Lead, Account, Contact, Opportunity, Task, Note, Case, Recycle Bin và dữ liệu riêng cho tenant đối thủ.
 
 ## 3. Demo Flow Chính
 
@@ -133,7 +138,7 @@ Dữ liệu case gợi ý:
 
 - Đăng xuất.
 - Đăng nhập `admin@rival.com` / `Rival@123`.
-- Kiểm tra Rival Org không thấy dữ liệu của Sample Company.
+- Kiểm tra Công ty Đối Thủ không thấy dữ liệu của Công ty Mẫu Việt Nam.
 
 ## 4. Điểm Nổi Bật Kỹ Thuật
 

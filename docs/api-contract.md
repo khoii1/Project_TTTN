@@ -52,6 +52,20 @@ Backend errors follow the global exception filter shape:
 
 ## CRM Endpoints
 
+### Health
+
+- `GET /health`
+
+Response:
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-05-13T10:00:00.000Z",
+  "service": "crm-backend"
+}
+```
+
 ### Auth
 
 - `POST /auth/register`

@@ -5,6 +5,7 @@ export const validationSchema = Joi.object({
   PORT: Joi.number().optional(),
   API_PORT: Joi.number().default(3000),
   API_VERSION: Joi.string().default('v1'),
+  ENABLE_SWAGGER: Joi.string().valid('true', 'false').allow('').optional(),
   DATABASE_URL: Joi.string().required(),
   DIRECT_URL: Joi.string().optional(),
   JWT_ACCESS_TOKEN_SECRET: Joi.string().default('access_secret'),

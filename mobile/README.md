@@ -2,6 +2,21 @@
 
 A new Flutter project.
 
+## Import CSV Status
+
+Import CSV was not changed in the mobile app during this phase.
+
+Current CSV import support is web-only for these CRM modules:
+
+- Lead
+- Account
+- Contact
+- Opportunity
+- Task
+- Case
+
+Use the web CRM list pages to download sample CSV files, upload CSV files, and review per-row import results. Mobile can continue using the existing CRM API flows, but it does not currently expose an Import CSV screen.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

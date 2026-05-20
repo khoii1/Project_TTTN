@@ -103,6 +103,23 @@ Use this checklist to validate the end-to-end CRM flow after backend/frontend co
 - [ ] Click an Account result and verify it navigates to the Account detail page
 - [ ] Search for a keyword that does not exist and verify `No results found`
 
+## CSV Import QA
+
+- [ ] Open Leads list, import a valid Lead CSV, and verify the list reloads
+- [ ] Open Accounts list, import a valid Account CSV, and verify the list reloads
+- [ ] Open Contacts list, import a valid Contact CSV with `accountName`, and verify the Contact is linked to the Account
+- [ ] Import Contact CSV with a missing `accountName` and verify the row-level error is displayed
+- [ ] Open Opportunities list, import CSV with numeric `amount`, and verify VND display remains correct after reload
+- [ ] Open Tasks list, import CSV with `relatedType` + `relatedName`, and verify Related To shows a readable record name
+- [ ] Open Cases list, import a valid Case CSV, and verify the list reloads
+- [ ] Try importing a non-CSV file and verify it is rejected
+- [ ] Import a CSV with some invalid rows and verify valid rows still import
+- [ ] Import duplicate Lead email, Account name, and Contact email and verify rows are counted as skipped
+- [ ] Verify imported Lead/Opportunity/Task/Case records update Dashboard metrics
+- [ ] Verify Global Search can find recently imported records
+- [ ] Login as Rival Org and verify imported Sample Org records are not visible
+- [ ] Verify import screens do not require users to manually enter raw UUIDs when name/email lookup is available
+
 ## Dashboard Analytics QA
 
 - [ ] Login as admin

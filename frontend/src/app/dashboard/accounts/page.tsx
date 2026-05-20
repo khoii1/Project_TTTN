@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { accountsApi } from "@/features/accounts/accounts.api";
 import { Account } from "@/features/accounts/accounts.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import { CsvImportButton } from "@/components/crm/csv-import/CsvImportButton";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
 import { SOURCE_OPTIONS, getSourceLabel } from "@/lib/constants/source-options";
@@ -171,13 +172,42 @@ function AccountsList() {
       <PageHeader
         title="Khách hàng / Công ty"
         action={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => router.push("/dashboard/accounts/new")}
-          >
-            Tạo khách hàng / công ty
-          </Button>
+          <Space wrap>
+            <CsvImportButton
+              entityName="Khách hàng / Công ty"
+              importEndpoint="/accounts/import-csv"
+              sampleCsvColumns={[
+                "name",
+                "website",
+                "type",
+                "phone",
+                "source",
+                "sourceDetail",
+                "description",
+                "billingCountry",
+                "billingStreet",
+                "billingCity",
+                "billingState",
+                "billingPostalCode",
+                "shippingCountry",
+                "shippingStreet",
+                "shippingCity",
+                "shippingState",
+                "shippingPostalCode",
+              ]}
+              templateFileName="account-import-template.csv"
+              onSuccess={() =>
+                fetchAccounts(currentPage, currentLimit, currentSearch, currentSource)
+              }
+            />
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => router.push("/dashboard/accounts/new")}
+            >
+              Tạo khách hàng / công ty
+            </Button>
+          </Space>
         }
       />
       <div className="crm-filter-bar mb-4 flex flex-wrap gap-3">

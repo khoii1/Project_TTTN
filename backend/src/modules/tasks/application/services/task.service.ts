@@ -3,9 +3,24 @@ import { PrismaService } from '../../../../infrastructure/database/prisma.servic
 import { CreateTaskDto, UpdateTaskDto, CompleteTaskDto, TaskResponseDto } from '../dto/task.dto';
 import { calculatePagination, calculateMeta } from '../../../../common/pagination/pagination.utils';
 import { PaginatedResponse } from '../../../../common/types/response.types';
-import { TaskStatus } from '@prisma/client';
+import { TaskPriority, TaskStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { AuditLogService, AuditAction } from '../../../../infrastructure/audit/audit-log.service';
+import { ImportCsvResult } from '../../../../common/import-csv/import-csv.types';
+import {
+  addImportError,
+  buildEmptyImportResult,
+  compactString,
+  enumValues,
+  hasSystemFields,
+  isValidEmail,
+  normalizeEnumValue,
+  parseCsvBuffer,
+  parseOptionalDate,
+  pickAllowedFields,
+  taskPriorityLabels,
+  taskStatusLabels,
+} from '../../../../common/import-csv/import-csv.utils';
 
 @Injectable()
 export class TaskService {
@@ -58,6 +73,128 @@ export class TaskService {
     });
 
     return this.mapToResponseDto(task);
+  }
+
+  async importCsv(
+    organizationId: string,
+    ownerId: string,
+    buffer: Buffer
+  ): Promise<ImportCsvResult> {
+    const rows = parseCsvBuffer(buffer);
+    const result = buildEmptyImportResult(rows.length);
+    const allowedFields = [
+      'subject',
+      'description',
+      'dueDate',
+      'priority',
+      'status',
+      'relatedType',
+      'relatedName',
+      'relatedId',
+      'assigneeEmail',
+    ];
+
+    for (const row of rows) {
+      const systemField = hasSystemFields(row.values);
+      if (systemField && systemField !== 'relatedId') {
+        addImportError(
+          result,
+          row.rowNumber,
+          systemField,
+          `Khong duoc import field he thong "${systemField}".`,
+        );
+        continue;
+      }
+
+      const data = pickAllowedFields(row.values, allowedFields);
+      const subject = compactString(data.subject);
+      if (!subject) {
+        addImportError(result, row.rowNumber, 'subject', 'Tieu de la bat buoc.');
+        continue;
+      }
+
+      const dueDate = parseOptionalDate(data.dueDate);
+      if (data.dueDate && !dueDate) {
+        addImportError(result, row.rowNumber, 'dueDate', 'dueDate khong hop le.');
+        continue;
+      }
+
+      const parsedPriority = normalizeEnumValue(data.priority, TaskPriority, taskPriorityLabels);
+      if (data.priority && !parsedPriority) {
+        addImportError(
+          result,
+          row.rowNumber,
+          'priority',
+          `Muc uu tien khong hop le. Gia tri hop le: ${enumValues(TaskPriority)}.`,
+        );
+        continue;
+      }
+
+      const parsedStatus = normalizeEnumValue(data.status, TaskStatus, taskStatusLabels);
+      if (data.status && !parsedStatus) {
+        addImportError(
+          result,
+          row.rowNumber,
+          'status',
+          `Trang thai khong hop le. Gia tri hop le: ${enumValues(TaskStatus)}.`,
+        );
+        continue;
+      }
+
+      const assigneeResult = await this.resolveAssigneeId(
+        organizationId,
+        ownerId,
+        compactString(data.assigneeEmail),
+      );
+      if (assigneeResult.error) {
+        addImportError(result, row.rowNumber, assigneeResult.field, assigneeResult.error);
+        continue;
+      }
+
+      const relatedResult = await this.resolveRelatedId(
+        organizationId,
+        compactString(data.relatedType),
+        compactString(data.relatedId),
+        compactString(data.relatedName),
+      );
+      if (relatedResult.error) {
+        addImportError(result, row.rowNumber, relatedResult.field, relatedResult.error);
+        continue;
+      }
+
+      try {
+        const task = await this.prisma.task.create({
+          data: {
+            id: randomUUID(),
+            organizationId,
+            ownerId,
+            assignedToId: assigneeResult.assignedToId!,
+            subject,
+            dueDate: dueDate || null,
+            status: parsedStatus || TaskStatus.NOT_STARTED,
+            priority: parsedPriority || TaskPriority.NORMAL,
+            relatedType: relatedResult.relatedType,
+            relatedId: relatedResult.relatedId,
+            description: compactString(data.description),
+          },
+        });
+
+        await this.auditLog.log({
+          organizationId,
+          userId: ownerId,
+          action: AuditAction.CREATE,
+          entityType: 'Task',
+          entityId: task.id,
+          newValues: { subject: task.subject, assignedToId: task.assignedToId },
+        });
+
+        result.successCount += 1;
+      } catch {
+        addImportError(result, row.rowNumber, undefined, 'Khong the import dong nay.');
+      }
+    }
+
+    return result;
   }
 
   async findById(taskId: string, organizationId: string): Promise<TaskResponseDto> {
@@ -335,5 +472,137 @@ export class TaskService {
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
     };
+  }
+
+  private async resolveAssigneeId(
+    organizationId: string,
+    ownerId: string,
+    assigneeEmail?: string,
+  ): Promise<{ assignedToId?: string; field?: string; error?: string }> {
+    if (!assigneeEmail) {
+      return { assignedToId: ownerId };
+    }
+
+    if (!isValidEmail(assigneeEmail)) {
+      return { field: 'assigneeEmail', error: 'Email nguoi duoc giao khong hop le.' };
+    }
+
+    const assignee = await this.prisma.user.findFirst({
+      where: { organizationId, deletedAt: null, email: assigneeEmail },
+    });
+
+    return assignee
+      ? { assignedToId: assignee.id }
+      : { field: 'assigneeEmail', error: 'Khong tim thay user trong cung to chuc.' };
+  }
+
+  private async resolveRelatedId(
+    organizationId: string,
+    relatedType?: string,
+    relatedId?: string,
+    relatedName?: string,
+  ): Promise<{ relatedType?: string; relatedId?: string; field?: string; error?: string }> {
+    if (!relatedType && !relatedId && !relatedName) {
+      return {};
+    }
+
+    const normalizedType = relatedType?.toUpperCase();
+    const allowedTypes = ['LEAD', 'ACCOUNT', 'CONTACT', 'OPPORTUNITY', 'CASE'];
+    if (!normalizedType || !allowedTypes.includes(normalizedType)) {
+      return { field: 'relatedType', error: `relatedType hop le: ${allowedTypes.join(', ')}.` };
+    }
+
+    if (relatedId) {
+      const exists = await this.findRelatedById(organizationId, normalizedType, relatedId);
+      return exists
+        ? { relatedType: normalizedType, relatedId }
+        : { field: 'relatedId', error: 'Khong tim thay ban ghi lien quan trong cung to chuc.' };
+    }
+
+    if (!relatedName) {
+      return { field: 'relatedName', error: 'relatedName hoac relatedId la bat buoc khi co relatedType.' };
+    }
+
+    const matches = await this.findRelatedByName(organizationId, normalizedType, relatedName);
+    if (matches.length === 0) {
+      return { field: 'relatedName', error: 'Khong tim thay ban ghi lien quan trong cung to chuc.' };
+    }
+
+    if (matches.length > 1) {
+      return {
+        field: 'relatedName',
+        error: 'Tim thay nhieu ban ghi trung, vui long dung ID hoac du lieu cu the hon.',
+      };
+    }
+
+    return { relatedType: normalizedType, relatedId: matches[0].id };
+  }
+
+  private findRelatedById(organizationId: string, relatedType: string, id: string): Promise<any> {
+    const where = { id, organizationId, deletedAt: null };
+    switch (relatedType) {
+      case 'LEAD':
+        return this.prisma.lead.findFirst({ where });
+      case 'ACCOUNT':
+        return this.prisma.account.findFirst({ where });
+      case 'CONTACT':
+        return this.prisma.contact.findFirst({ where });
+      case 'OPPORTUNITY':
+        return this.prisma.opportunity.findFirst({ where });
+      case 'CASE':
+        return this.prisma.case.findFirst({ where });
+      default:
+        return Promise.resolve(null);
+    }
+  }
+
+  private findRelatedByName(
+    organizationId: string,
+    relatedType: string,
+    relatedName: string,
+  ): Promise<any[]> {
+    const baseWhere = { organizationId, deletedAt: null };
+    switch (relatedType) {
+      case 'LEAD':
+        return this.prisma.lead.findMany({
+          where: {
+            ...baseWhere,
+            OR: [
+              { company: { equals: relatedName, mode: 'insensitive' } },
+              { lastName: { equals: relatedName, mode: 'insensitive' } },
+              { email: { equals: relatedName, mode: 'insensitive' } },
+            ],
+          },
+          take: 2,
+        });
+      case 'ACCOUNT':
+        return this.prisma.account.findMany({
+          where: { ...baseWhere, name: { equals: relatedName, mode: 'insensitive' } },
+          take: 2,
+        });
+      case 'CONTACT':
+        return this.prisma.contact.findMany({
+          where: {
+            ...baseWhere,
+            OR: [
+              { email: { equals: relatedName, mode: 'insensitive' } },
+              { lastName: { equals: relatedName, mode: 'insensitive' } },
+            ],
+          },
+          take: 2,
+        });
+      case 'OPPORTUNITY':
+        return this.prisma.opportunity.findMany({
+          where: { ...baseWhere, name: { equals: relatedName, mode: 'insensitive' } },
+          take: 2,
+        });
+      case 'CASE':
+        return this.prisma.case.findMany({
+          where: { ...baseWhere, subject: { equals: relatedName, mode: 'insensitive' } },
+          take: 2,
+        });
+      default:
+        return Promise.resolve([]);
+    }
   }
 }

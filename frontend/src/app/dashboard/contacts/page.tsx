@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { contactsApi } from "@/features/contacts/contacts.api";
 import { Contact } from "@/features/contacts/contacts.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import { CsvImportButton } from "@/components/crm/csv-import/CsvImportButton";
 import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
@@ -175,13 +176,39 @@ function ContactsList() {
       <PageHeader
         title="Người liên hệ"
         action={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => router.push("/dashboard/contacts/new")}
-          >
-            Tạo người liên hệ
-          </Button>
+          <Space wrap>
+            <CsvImportButton
+              entityName="Người liên hệ"
+              importEndpoint="/contacts/import-csv"
+              sampleCsvColumns={[
+                "firstName",
+                "lastName",
+                "title",
+                "email",
+                "phone",
+                "source",
+                "sourceDetail",
+                "description",
+                "accountName",
+                "mailingCountry",
+                "mailingStreet",
+                "mailingCity",
+                "mailingState",
+                "mailingPostalCode",
+              ]}
+              templateFileName="contact-import-template.csv"
+              onSuccess={() =>
+                fetchContacts(currentPage, currentLimit, currentSearch, currentSource)
+              }
+            />
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => router.push("/dashboard/contacts/new")}
+            >
+              Tạo người liên hệ
+            </Button>
+          </Space>
         }
       />
       <div className="crm-filter-bar mb-4 flex flex-wrap gap-3">

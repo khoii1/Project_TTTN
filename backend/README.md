@@ -587,6 +587,61 @@ docker build -t crm-backend:latest .
 docker run -p 3000:3000 --env-file .env crm-backend:latest
 ```
 
+## CSV Import
+
+Protected CSV import endpoints are available for bulk CRM data entry:
+
+- `POST /leads/import-csv`
+- `POST /accounts/import-csv`
+- `POST /contacts/import-csv`
+- `POST /opportunities/import-csv`
+- `POST /tasks/import-csv`
+- `POST /cases/import-csv`
+
+All import endpoints require authentication:
+
+```http
+Authorization: Bearer <accessToken>
+Content-Type: multipart/form-data
+```
+
+Send the CSV file in the multipart field named `file`:
+
+```bash
+curl -X POST http://localhost:3000/leads/import-csv \
+  -H "Authorization: Bearer <accessToken>" \
+  -F "file=@leads.csv;type=text/csv"
+```
+
+Limits and safety rules:
+
+- Only `.csv` files are accepted.
+- Maximum file size: 5MB.
+- Maximum data rows per import: 1000 rows.
+- Imported rows are always scoped to the authenticated user's `organizationId`.
+- CSV data cannot override system fields such as `id`, `organizationId`, `createdAt`, `updatedAt`, `deletedAt`, `deletedById`, `restoredById`, `convertedAt`, `convertedById`, or actor tracking fields.
+- Rows are processed independently, so invalid or duplicate rows do not block valid rows.
+
+Import response:
+
+```json
+{
+  "totalRows": 100,
+  "successCount": 92,
+  "failedCount": 6,
+  "skippedCount": 2,
+  "errors": [
+    {
+      "row": 5,
+      "field": "email",
+      "message": "Email không hợp lệ"
+    }
+  ]
+}
+```
+
+Duplicate handling uses `skippedCount` where applicable, for example duplicate Lead email, Account name, or Contact email in the same organization.
+
 ### Production Checklist
 
 - [ ] Tạo JWT secrets mạnh (tối thiểu 256-bit)

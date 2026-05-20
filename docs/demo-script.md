@@ -190,3 +190,11 @@ Dữ liệu case gợi ý:
 - [ ] Recycle Bin
 - [ ] Global Search
 - [ ] Rival Org isolation
+- [ ] Import CSV Lead/Account/Contact/Opportunity/Task/Case
+
+## 8. Demo Import CSV
+
+- Mở danh sách Lead, Account, Contact, Opportunity, Task hoặc Case.
+- Bấm `Import CSV`, tải file mẫu, điền dữ liệu và import.
+- Nhấn mạnh import xử lý từng dòng độc lập: dòng hợp lệ vẫn được tạo, dòng lỗi hoặc trùng dữ liệu được hiển thị trong bảng kết quả.
+- Với Contact/Opportunity/Case có thể dùng `accountName` hoặc `contactEmail`; với Task có thể dùng `relatedType` + `relatedName`, không cần nhập UUID thủ công.

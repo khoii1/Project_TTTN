@@ -13,6 +13,20 @@ import { PaginatedResponse } from '../../../../common/types/response.types';
 import { LeadStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { AuditLogService, AuditAction } from '../../../../infrastructure/audit/audit-log.service';
+import { ImportCsvResult } from '../../../../common/import-csv/import-csv.types';
+import {
+  addImportError,
+  addImportSkipped,
+  buildEmptyImportResult,
+  compactString,
+  enumValues,
+  hasSystemFields,
+  isValidEmail,
+  leadStatusLabels,
+  normalizeEnumValue,
+  parseCsvBuffer,
+  pickAllowedFields,
+} from '../../../../common/import-csv/import-csv.utils';
 
 @Injectable()
 export class LeadService {
@@ -56,6 +70,131 @@ export class LeadService {
     });
 
     return this.mapToResponseDto(lead);
+  }
+
+  async importCsv(
+    organizationId: string,
+    ownerId: string,
+    buffer: Buffer
+  ): Promise<ImportCsvResult> {
+    const rows = parseCsvBuffer(buffer);
+    const result = buildEmptyImportResult(rows.length);
+    const allowedFields = [
+      'firstName',
+      'lastName',
+      'company',
+      'title',
+      'website',
+      'email',
+      'phone',
+      'source',
+      'sourceDetail',
+      'industry',
+      'description',
+      'status',
+    ];
+
+    for (const row of rows) {
+      const systemField = hasSystemFields(row.values);
+      if (systemField) {
+        addImportError(
+          result,
+          row.rowNumber,
+          systemField,
+          `Khong duoc import field he thong "${systemField}".`,
+        );
+        continue;
+      }
+
+      const data = pickAllowedFields(row.values, allowedFields);
+      const lastName = compactString(data.lastName);
+      const company = compactString(data.company);
+      const email = compactString(data.email);
+
+      if (!lastName) {
+        addImportError(result, row.rowNumber, 'lastName', 'Ho la bat buoc.');
+        continue;
+      }
+
+      if (!company) {
+        addImportError(result, row.rowNumber, 'company', 'Cong ty la bat buoc.');
+        continue;
+      }
+
+      if (!isValidEmail(email)) {
+        addImportError(result, row.rowNumber, 'email', 'Email khong hop le.');
+        continue;
+      }
+
+      const parsedStatus = normalizeEnumValue(data.status, LeadStatus, leadStatusLabels);
+      if (data.status && !parsedStatus) {
+        addImportError(
+          result,
+          row.rowNumber,
+          'status',
+          `Trang thai khong hop le. Gia tri hop le: ${enumValues(LeadStatus)}.`,
+        );
+        continue;
+      }
+      const status = parsedStatus || LeadStatus.NEW;
+
+      if (email) {
+        const duplicatedLead = await this.prisma.lead.findFirst({
+          where: {
+            organizationId,
+            deletedAt: null,
+            email,
+          },
+        });
+
+        if (duplicatedLead) {
+          addImportSkipped(
+            result,
+            row.rowNumber,
+            'email',
+            `Lead co email "${email}" da ton tai trong to chuc.`,
+          );
+          continue;
+        }
+      }
+
+      try {
+        const lead = await this.prisma.lead.create({
+          data: {
+            id: randomUUID(),
+            organizationId,
+            ownerId,
+            firstName: compactString(data.firstName),
+            lastName,
+            company,
+            title: compactString(data.title),
+            website: compactString(data.website),
+            email,
+            phone: compactString(data.phone),
+            source: compactString(data.source) || 'IMPORT_CSV',
+            sourceDetail: compactString(data.sourceDetail),
+            industry: compactString(data.industry),
+            description: compactString(data.description),
+            status,
+          },
+        });
+
+        await this.auditLog.log({
+          organizationId,
+          userId: ownerId,
+          action: AuditAction.CREATE,
+          entityType: 'Lead',
+          entityId: lead.id,
+          newValues: { firstName: lead.firstName, lastName: lead.lastName, company: lead.company },
+        });
+
+        result.successCount += 1;
+      } catch (error) {
+        addImportError(result, row.rowNumber, undefined, 'Khong the import dong nay.');
+      }
+    }
+
+    return result;
   }
 
   async findById(leadId: string, organizationId: string): Promise<LeadResponseDto> {

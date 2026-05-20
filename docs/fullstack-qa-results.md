@@ -538,3 +538,93 @@ Validation:
 Remaining QA:
 
 - None for this VND display pass. QA created real Sample Company test records with `VNDQA...` stamps.
+
+## CSV Import Implementation QA
+
+- Date: 2026-05-20
+- Scope: Backend CSV import endpoints and frontend reusable CSV import modal
+- Backend changes: added shared CSV import parsing/result utilities and `POST /import-csv` endpoints for Leads, Accounts, Contacts, Opportunities, Tasks, and Cases
+- Frontend changes: added reusable CSV import button/modal/result/error-table components and wired them into the six CRM list pages
+- Mobile changes: none
+
+### Checks
+
+| Area | Check | Result |
+|---|---|---|
+| Lead import | Valid Lead row imports; duplicate email is skipped | Pass by unit test |
+| Account import | Valid Account row imports; duplicate name is skipped | Pass by unit test |
+| Contact import | `accountName` resolves inside current organization | Pass by unit test |
+| Contact relation error | Missing `accountName` returns row-level error | Pass by unit test |
+| Ambiguous relation | Duplicate `accountName` fails instead of auto-selecting | Pass by unit test |
+| Opportunity import | Numeric `amount` imports and invalid amount returns row-level error | Pass by unit test |
+| Task import | `relatedType` + `relatedName` resolves related record | Pass by unit test |
+| Case import | Case imports with `accountName` | Pass by unit test |
+| File validation | Non-CSV file is rejected | Pass by unit test |
+| Tenant isolation | Cross-organization Account ID is not resolved for Contact import | Pass by unit test |
+| Frontend UI | Import buttons, shared modal, template download, result summary, and error table compile | Pass by lint/build |
+
+### Validation
+
+- Backend `npm run build`: pass
+- Backend `npm test -- --runInBand`: pass, 11 suites / 87 tests
+- Backend `npm run test:e2e -- --runInBand`: pass, 11 suites / 87 tests
+- Frontend `npm run lint`: pass with existing non-blocking `react-hooks/exhaustive-deps` warnings
+- Frontend `npm run build`: pass
+
+### Remaining QA
+
+- Browser QA with real CSV uploads has been completed in the follow-up run below.
+
+## CSV Import Browser QA
+
+- Date: 2026-05-20
+- Scope: Real browser QA for CSV Import on web frontend against running backend/frontend
+- Browser used: Chromium via Playwright with local Chrome
+- QA data stamp: `CSVQA1779269957430`
+- Login checked: `admin@example.com` for Sample Org and `admin@rival.com` for Rival Org
+- Source code changes during this QA run: none; only the temporary QA script selectors were adjusted
+
+### CSV Files Used
+
+| Module | Valid CSV | Partial/error CSV |
+|---|---|---|
+| Lead | `lead-valid-CSVQA1779269957430.csv` | `lead-partial-CSVQA1779269957430.csv` |
+| Account | `account-valid-CSVQA1779269957430.csv` | `account-partial-CSVQA1779269957430.csv` |
+| Contact | `contact-valid-CSVQA1779269957430.csv` | `contact-partial-CSVQA1779269957430.csv` |
+| Opportunity | `opportunity-valid-CSVQA1779269957430.csv` | `opportunity-partial-CSVQA1779269957430.csv` |
+| Task | `task-valid-CSVQA1779269957430.csv` | `task-partial-CSVQA1779269957430.csv` |
+| Case | `case-valid-CSVQA1779269957430.csv` | `case-partial-CSVQA1779269957430.csv` |
+| Invalid file | `bad-CSVQA1779269957430.txt` | N/A |
+
+### Browser Checks
+
+| Area | Check | Result |
+|---|---|---|
+| Lead list | Import CSV button, modal, template download, valid import, partial error table, invalid file block, list reload, no unnecessary raw UUID | Pass |
+| Account list | Import CSV button, modal, template download, valid import, duplicate/name error handling, invalid file block, list reload, no unnecessary raw UUID | Pass |
+| Contact list | Import CSV with `accountName`, partial relation errors, invalid file block, list reload, no unnecessary raw UUID | Pass |
+| Opportunity list | Import CSV with numeric `amount`, partial invalid amount/relation errors, invalid file block, list reload, VND display preserved | Pass |
+| Task list | Import CSV with `relatedType` + `relatedName`, partial related/status errors, invalid file block, list reload, no unnecessary raw UUID | Pass |
+| Case list | Import CSV with account/contact relation, partial status/relation errors, invalid file block, list reload, no unnecessary raw UUID | Pass |
+| Dashboard | Dashboard loads after Lead/Opportunity/Task/Case imports and VND display remains intact | Pass |
+| Global Search | Search finds imported records by QA stamp | Pass |
+| Lead Conversion Wizard | Imported Lead detail opens conversion wizard | Pass |
+| Activity Timeline | Imported Account detail renders Activity tab/timeline | Pass |
+| Recycle Bin | Imported Task can be deleted and appears in Recycle Bin without unnecessary raw UUID | Pass |
+| Multi-tenant isolation | Rival Org cannot see Sample Org imported Account | Pass |
+
+### Bugs Found
+
+- Blocking application bugs: none.
+- UI/upload bugs: none.
+- Script-only adjustments: Ant Design v5 modal class and Vietnamese button/placeholder selectors were corrected in the temporary browser QA script.
+
+### Result
+
+- CSV Import browser QA: pass.
+- Final validation after Browser QA:
+  - Backend `npm run build`: pass
+  - Backend `npm test -- --runInBand`: pass, 11 suites / 87 tests
+  - Frontend `npm run lint`: pass with 18 existing `react-hooks/exhaustive-deps` warnings
+  - Frontend `npm run build`: pass
+- Import CSV is ready for demo.

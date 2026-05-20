@@ -5,6 +5,17 @@ import { calculatePagination, calculateMeta } from '../../../../common/paginatio
 import { PaginatedResponse } from '../../../../common/types/response.types';
 import { randomUUID } from 'crypto';
 import { AuditLogService, AuditAction } from '../../../../infrastructure/audit/audit-log.service';
+import { ImportCsvResult } from '../../../../common/import-csv/import-csv.types';
+import {
+  addImportError,
+  addImportSkipped,
+  buildEmptyImportResult,
+  compactString,
+  hasSystemFields,
+  isValidEmail,
+  parseCsvBuffer,
+  pickAllowedFields,
+} from '../../../../common/import-csv/import-csv.utils';
 
 @Injectable()
 export class ContactService {
@@ -63,6 +74,127 @@ export class ContactService {
     });
 
     return this.mapToResponseDto(contact);
+  }
+
+  async importCsv(
+    organizationId: string,
+    ownerId: string,
+    buffer: Buffer
+  ): Promise<ImportCsvResult> {
+    const rows = parseCsvBuffer(buffer);
+    const result = buildEmptyImportResult(rows.length);
+    const allowedFields = [
+      'firstName',
+      'lastName',
+      'title',
+      'email',
+      'phone',
+      'source',
+      'sourceDetail',
+      'description',
+      'accountName',
+      'accountId',
+      'mailingCountry',
+      'mailingStreet',
+      'mailingCity',
+      'mailingState',
+      'mailingPostalCode',
+    ];
+
+    for (const row of rows) {
+      const systemField = hasSystemFields(row.values);
+      if (systemField && systemField !== 'accountId') {
+        addImportError(
+          result,
+          row.rowNumber,
+          systemField,
+          `Khong duoc import field he thong "${systemField}".`,
+        );
+        continue;
+      }
+
+      const data = pickAllowedFields(row.values, allowedFields);
+      const lastName = compactString(data.lastName);
+      const email = compactString(data.email);
+      if (!lastName) {
+        addImportError(result, row.rowNumber, 'lastName', 'Ho la bat buoc.');
+        continue;
+      }
+
+      if (!isValidEmail(email)) {
+        addImportError(result, row.rowNumber, 'email', 'Email khong hop le.');
+        continue;
+      }
+
+      if (email) {
+        const duplicatedContact = await this.prisma.contact.findFirst({
+          where: {
+            organizationId,
+            deletedAt: null,
+            email,
+          },
+        });
+
+        if (duplicatedContact) {
+          addImportSkipped(
+            result,
+            row.rowNumber,
+            'email',
+            `Contact co email "${email}" da ton tai trong to chuc.`,
+          );
+          continue;
+        }
+      }
+
+      const accountResult = await this.resolveAccountId(
+        organizationId,
+        compactString(data.accountId),
+        compactString(data.accountName),
+      );
+      if (accountResult.error) {
+        addImportError(result, row.rowNumber, accountResult.field, accountResult.error);
+        continue;
+      }
+
+      try {
+        const contact = await this.prisma.contact.create({
+          data: {
+            id: randomUUID(),
+            organizationId,
+            ownerId,
+            accountId: accountResult.accountId!,
+            firstName: compactString(data.firstName),
+            lastName,
+            title: compactString(data.title),
+            email,
+            phone: compactString(data.phone),
+            source: compactString(data.source) || 'IMPORT_CSV',
+            sourceDetail: compactString(data.sourceDetail),
+            description: compactString(data.description),
+            mailingCountry: compactString(data.mailingCountry),
+            mailingStreet: compactString(data.mailingStreet),
+            mailingCity: compactString(data.mailingCity),
+            mailingState: compactString(data.mailingState),
+            mailingPostalCode: compactString(data.mailingPostalCode),
+          },
+        });
+
+        await this.auditLog.log({
+          organizationId,
+          userId: ownerId,
+          action: AuditAction.CREATE,
+          entityType: 'Contact',
+          entityId: contact.id,
+          newValues: { firstName: contact.firstName, lastName: contact.lastName, email: contact.email },
+        });
+
+        result.successCount += 1;
+      } catch {
+        addImportError(result, row.rowNumber, undefined, 'Khong the import dong nay.');
+      }
+    }
+
+    return result;
   }
 
   async findById(contactId: string, organizationId: string): Promise<ContactResponseDto> {
@@ -283,5 +415,46 @@ export class ContactService {
       createdAt: contact.createdAt,
       updatedAt: contact.updatedAt,
     };
+  }
+
+  private async resolveAccountId(
+    organizationId: string,
+    accountId?: string,
+    accountName?: string,
+  ): Promise<{ accountId?: string; field?: string; error?: string }> {
+    if (accountId) {
+      const account = await this.prisma.account.findFirst({
+        where: { id: accountId, organizationId, deletedAt: null },
+      });
+      return account
+        ? { accountId: account.id }
+        : { field: 'accountId', error: 'Khong tim thay Account trong cung to chuc.' };
+    }
+
+    if (!accountName) {
+      return { field: 'accountName', error: 'accountName hoac accountId la bat buoc.' };
+    }
+
+    const accounts = await this.prisma.account.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+        name: { equals: accountName, mode: 'insensitive' },
+      },
+      take: 2,
+    });
+
+    if (accounts.length === 0) {
+      return { field: 'accountName', error: 'Khong tim thay Account trong cung to chuc.' };
+    }
+
+    if (accounts.length > 1) {
+      return {
+        field: 'accountName',
+        error: 'Tim thay nhieu ban ghi trung, vui long dung ID hoac du lieu cu the hon.',
+      };
+    }
+
+    return { accountId: accounts[0].id };
   }
 }

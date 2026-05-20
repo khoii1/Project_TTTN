@@ -13,6 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { tasksApi } from "@/features/tasks/tasks.api";
 import { Task } from "@/features/tasks/tasks.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import { CsvImportButton } from "@/components/crm/csv-import/CsvImportButton";
 import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
 import type { EntityReferenceType } from "@/components/crm/EntityReferenceDisplay";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
@@ -246,13 +247,39 @@ function TasksList() {
       <PageHeader
         title="Công việc"
         action={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => router.push("/dashboard/tasks/new")}
-          >
-            Tạo công việc
-          </Button>
+          <Space wrap>
+            <CsvImportButton
+              entityName="Công việc"
+              importEndpoint="/tasks/import-csv"
+              sampleCsvColumns={[
+                "subject",
+                "description",
+                "dueDate",
+                "priority",
+                "status",
+                "relatedType",
+                "relatedName",
+                "assigneeEmail",
+              ]}
+              templateFileName="task-import-template.csv"
+              onSuccess={() =>
+                fetchTasks(
+                  currentPage,
+                  currentLimit,
+                  currentSearch,
+                  currentStatus,
+                  currentPriority,
+                )
+              }
+            />
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => router.push("/dashboard/tasks/new")}
+            >
+              Tạo công việc
+            </Button>
+          </Space>
         }
       />
       <div className="crm-filter-bar mb-4 flex flex-wrap gap-3">

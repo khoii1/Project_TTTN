@@ -154,6 +154,7 @@ Amount fields are numeric values in API payloads and responses. The backend does
 - `GET /leads`
 - `GET /leads?deleted=true`
 - `POST /leads`
+- `POST /leads/import-csv`
 - `GET /leads/:id`
 - `PATCH /leads/:id`
 - `PATCH /leads/:id/status`
@@ -220,6 +221,7 @@ Conversion suggestions:
 - `GET /accounts`
 - `GET /accounts?deleted=true`
 - `POST /accounts`
+- `POST /accounts/import-csv`
 - `GET /accounts/:id`
 - `PATCH /accounts/:id`
 - `PATCH /accounts/:id/restore`
@@ -231,6 +233,7 @@ Conversion suggestions:
 - `GET /contacts?deleted=true`
 - `GET /contacts?accountId=<account-id>`
 - `POST /contacts`
+- `POST /contacts/import-csv`
 - `GET /contacts/:id`
 - `PATCH /contacts/:id`
 - `PATCH /contacts/:id/restore`
@@ -243,6 +246,7 @@ Conversion suggestions:
 - `GET /opportunities?accountId=<account-id>`
 - `GET /opportunities?contactId=<contact-id>`
 - `POST /opportunities`
+- `POST /opportunities/import-csv`
 - `GET /opportunities/:id`
 - `PATCH /opportunities/:id`
 - `PATCH /opportunities/:id/stage`
@@ -260,6 +264,7 @@ Notes:
 - `GET /tasks?deleted=true`
 - `GET /tasks?relatedType=LEAD&relatedId=<lead-id>`
 - `POST /tasks`
+- `POST /tasks/import-csv`
 - `GET /tasks/:id`
 - `PATCH /tasks/:id`
 - `PATCH /tasks/:id/complete`
@@ -298,6 +303,7 @@ Notes:
 - `GET /cases?accountId=<account-id>`
 - `GET /cases?contactId=<contact-id>`
 - `POST /cases`
+- `POST /cases/import-csv`
 - `GET /cases/:id`
 - `PATCH /cases/:id`
 - `PATCH /cases/:id/status`
@@ -309,6 +315,73 @@ Notes:
 - `PATCH /cases/:id/status` sets backend-managed action tracking fields `closedAt` and `closedById` when status becomes `CLOSED`.
 - If a Case is moved away from `CLOSED`, `closedAt` and `closedById` are cleared.
 - The frontend does not send `closedAt` or `closedById`.
+
+## CSV Import
+
+CSV import endpoints are additive and do not change existing create/list/detail/update/delete
+contracts.
+
+- `POST /leads/import-csv`
+- `POST /accounts/import-csv`
+- `POST /contacts/import-csv`
+- `POST /opportunities/import-csv`
+- `POST /tasks/import-csv`
+- `POST /cases/import-csv`
+
+Request:
+
+- `multipart/form-data`
+- Field name: `file`
+- File type: `.csv`
+- Max file size: 5MB
+- Max data rows: 1000 rows per import
+- Protected by `Authorization: Bearer <accessToken>`
+
+Response:
+
+```json
+{
+  "totalRows": 100,
+  "successCount": 92,
+  "failedCount": 4,
+  "skippedCount": 4,
+  "errors": [
+    {
+      "row": 5,
+      "field": "email",
+      "message": "Email khong hop le.",
+      "type": "ERROR"
+    },
+    {
+      "row": 9,
+      "field": "email",
+      "message": "Lead co email \"an@example.com\" da ton tai trong to chuc.",
+      "type": "SKIPPED"
+    }
+  ]
+}
+```
+
+Rules:
+
+- Import uses the authenticated user's `organizationId`.
+- CSV `organizationId`, `ownerId`, timestamps, soft-delete fields, conversion fields, and action tracking fields are rejected.
+- `ownerId` defaults to the authenticated user.
+- Rows are processed independently; one bad row does not fail the whole file.
+- Source-capable records default `source` to `IMPORT_CSV` when CSV omits `source`.
+- Enum values must match backend enum values. Common Vietnamese labels are mapped only when recognized; unknown labels fail that row.
+- Relation lookups by `accountName`, `contactEmail`, `relatedName`, and `assigneeEmail` are scoped to the current organization.
+- If a name/email lookup finds multiple records, the row fails with a message asking the user to use ID or more specific data.
+- Duplicate Lead email, Account name, and Contact email in the current organization are skipped and counted in `skippedCount`.
+
+CSV templates:
+
+- Lead: `firstName,lastName,company,title,website,email,phone,source,sourceDetail,industry,description,status`
+- Account: `name,website,type,phone,source,sourceDetail,description,billingCountry,billingStreet,billingCity,billingState,billingPostalCode,shippingCountry,shippingStreet,shippingCity,shippingState,shippingPostalCode`
+- Contact: `firstName,lastName,title,email,phone,source,sourceDetail,description,accountName,mailingCountry,mailingStreet,mailingCity,mailingState,mailingPostalCode`
+- Opportunity: `name,amount,stage,closeDate,nextStep,source,sourceDetail,description,accountName,contactEmail`
+- Task: `subject,description,dueDate,priority,status,relatedType,relatedName,assigneeEmail`
+- Case: `subject,description,priority,status,source,sourceDetail,accountName,contactEmail`
 
 ## Query Params Supported by List Endpoints
 
@@ -473,4 +546,4 @@ Lead conversion source propagation:
 - Frontend Global Search is implemented as MVP parallel search against existing list endpoints. A backend aggregate search endpoint with ranking/highlighting is future work.
 - Recycle Bin supports Leads, Accounts, Contacts, Opportunities, Tasks, and Cases. Users and Notes are not part of the current Recycle Bin UI.
 - Some endpoints still allow raw-array fallback in the frontend for backward compatibility, but the preferred contract is paginated `{ data, meta }`.
-- Flutter mobile app is not implemented yet.
+- Flutter mobile app exists for core CRM flows, but CSV import is currently web-only.

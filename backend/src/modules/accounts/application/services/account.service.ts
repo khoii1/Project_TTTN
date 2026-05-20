@@ -5,6 +5,16 @@ import { calculatePagination, calculateMeta } from '../../../../common/paginatio
 import { PaginatedResponse } from '../../../../common/types/response.types';
 import { randomUUID } from 'crypto';
 import { AuditLogService, AuditAction } from '../../../../infrastructure/audit/audit-log.service';
+import { ImportCsvResult } from '../../../../common/import-csv/import-csv.types';
+import {
+  addImportError,
+  addImportSkipped,
+  buildEmptyImportResult,
+  compactString,
+  hasSystemFields,
+  parseCsvBuffer,
+  pickAllowedFields,
+} from '../../../../common/import-csv/import-csv.utils';
 
 @Injectable()
 export class AccountService {
@@ -53,6 +63,114 @@ export class AccountService {
     });
 
     return this.mapToResponseDto(account);
+  }
+
+  async importCsv(
+    organizationId: string,
+    ownerId: string,
+    buffer: Buffer
+  ): Promise<ImportCsvResult> {
+    const rows = parseCsvBuffer(buffer);
+    const result = buildEmptyImportResult(rows.length);
+    const allowedFields = [
+      'name',
+      'website',
+      'type',
+      'phone',
+      'source',
+      'sourceDetail',
+      'description',
+      'billingCountry',
+      'billingStreet',
+      'billingCity',
+      'billingState',
+      'billingPostalCode',
+      'shippingCountry',
+      'shippingStreet',
+      'shippingCity',
+      'shippingState',
+      'shippingPostalCode',
+    ];
+
+    for (const row of rows) {
+      const systemField = hasSystemFields(row.values);
+      if (systemField) {
+        addImportError(
+          result,
+          row.rowNumber,
+          systemField,
+          `Khong duoc import field he thong "${systemField}".`,
+        );
+        continue;
+      }
+
+      const data = pickAllowedFields(row.values, allowedFields);
+      const name = compactString(data.name);
+      if (!name) {
+        addImportError(result, row.rowNumber, 'name', 'Ten Account la bat buoc.');
+        continue;
+      }
+
+      const duplicatedAccount = await this.prisma.account.findFirst({
+        where: {
+          organizationId,
+          deletedAt: null,
+          name: { equals: name, mode: 'insensitive' },
+        },
+      });
+
+      if (duplicatedAccount) {
+        addImportSkipped(
+          result,
+          row.rowNumber,
+          'name',
+          `Account co ten "${name}" da ton tai trong to chuc.`,
+        );
+        continue;
+      }
+
+      try {
+        const account = await this.prisma.account.create({
+          data: {
+            id: randomUUID(),
+            organizationId,
+            ownerId,
+            name,
+            website: compactString(data.website),
+            type: compactString(data.type),
+            phone: compactString(data.phone),
+            source: compactString(data.source) || 'IMPORT_CSV',
+            sourceDetail: compactString(data.sourceDetail),
+            description: compactString(data.description),
+            billingCountry: compactString(data.billingCountry),
+            billingStreet: compactString(data.billingStreet),
+            billingCity: compactString(data.billingCity),
+            billingState: compactString(data.billingState),
+            billingPostalCode: compactString(data.billingPostalCode),
+            shippingCountry: compactString(data.shippingCountry),
+            shippingStreet: compactString(data.shippingStreet),
+            shippingCity: compactString(data.shippingCity),
+            shippingState: compactString(data.shippingState),
+            shippingPostalCode: compactString(data.shippingPostalCode),
+          },
+        });
+
+        await this.auditLog.log({
+          organizationId,
+          userId: ownerId,
+          action: AuditAction.CREATE,
+          entityType: 'Account',
+          entityId: account.id,
+          newValues: { name: account.name, type: account.type },
+        });
+
+        result.successCount += 1;
+      } catch {
+        addImportError(result, row.rowNumber, undefined, 'Khong the import dong nay.');
+      }
+    }
+
+    return result;
   }
 
   async findById(accountId: string, organizationId: string): Promise<AccountResponseDto> {

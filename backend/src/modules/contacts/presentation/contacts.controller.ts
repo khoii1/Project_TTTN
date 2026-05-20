@@ -8,8 +8,11 @@ import {
   Body,
   UseGuards,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ContactService } from '../application/services/contact.service';
 import {
   CreateContactDto,
@@ -20,6 +23,8 @@ import { JwtGuard } from '../../../shared/guards/jwt.guard';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { TokenPayload } from '../../../infrastructure/security/token.service';
 import { PaginatedResponse } from '../../../common/types/response.types';
+import { ImportCsvResult } from '../../../common/import-csv/import-csv.types';
+import { assertCsvFile, CSV_MAX_FILE_SIZE_BYTES } from '../../../common/import-csv/import-csv.utils';
 
 @ApiTags('Contacts')
 @Controller('contacts')
@@ -36,6 +41,17 @@ export class ContactsController {
     @CurrentUser() user: TokenPayload
   ): Promise<ContactResponseDto> {
     return this.contactService.create(user.organizationId, user.sub, dto);
+  }
+
+  @Post('import-csv')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: CSV_MAX_FILE_SIZE_BYTES } }))
+  @ApiOperation({ summary: 'Import contacts from CSV' })
+  async importCsv(
+    @UploadedFile() file: any,
+    @CurrentUser() user: TokenPayload
+  ): Promise<ImportCsvResult> {
+    const buffer = assertCsvFile(file);
+    return this.contactService.importCsv(user.organizationId, user.sub, buffer);
   }
 
   @Get()

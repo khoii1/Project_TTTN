@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { casesApi } from "@/features/cases/cases.api";
 import { Case } from "@/features/cases/cases.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import { CsvImportButton } from "@/components/crm/csv-import/CsvImportButton";
 import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
@@ -234,13 +235,40 @@ function CasesList() {
       <PageHeader
         title="Yêu cầu hỗ trợ"
         action={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => router.push("/dashboard/cases/new")}
-          >
-            Tạo yêu cầu hỗ trợ
-          </Button>
+          <Space wrap>
+            <CsvImportButton
+              entityName="Yêu cầu hỗ trợ"
+              importEndpoint="/cases/import-csv"
+              sampleCsvColumns={[
+                "subject",
+                "description",
+                "priority",
+                "status",
+                "source",
+                "sourceDetail",
+                "accountName",
+                "contactEmail",
+              ]}
+              templateFileName="case-import-template.csv"
+              onSuccess={() =>
+                fetchCases(
+                  currentPage,
+                  currentLimit,
+                  currentSearch,
+                  currentStatus,
+                  currentPriority,
+                  currentSource,
+                )
+              }
+            />
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => router.push("/dashboard/cases/new")}
+            >
+              Tạo yêu cầu hỗ trợ
+            </Button>
+          </Space>
         }
       />
       <div className="crm-filter-bar mb-4 flex flex-wrap gap-3">

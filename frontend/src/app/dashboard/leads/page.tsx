@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { leadsApi } from "@/features/leads/leads.api";
 import { Lead, LeadStatus } from "@/features/leads/leads.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import { CsvImportButton } from "@/components/crm/csv-import/CsvImportButton";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
 import { SOURCE_OPTIONS, getSourceLabel } from "@/lib/constants/source-options";
@@ -195,13 +196,43 @@ function LeadsList() {
       <PageHeader
         title="Khách hàng tiềm năng"
         action={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => router.push("/dashboard/leads/new")}
-          >
-            Tạo khách hàng tiềm năng
-          </Button>
+          <Space wrap>
+            <CsvImportButton
+              entityName="Khách hàng tiềm năng"
+              importEndpoint="/leads/import-csv"
+              sampleCsvColumns={[
+                "firstName",
+                "lastName",
+                "company",
+                "title",
+                "website",
+                "email",
+                "phone",
+                "source",
+                "sourceDetail",
+                "industry",
+                "description",
+                "status",
+              ]}
+              templateFileName="lead-import-template.csv"
+              onSuccess={() =>
+                fetchLeads(
+                  currentPage,
+                  currentLimit,
+                  currentSearch,
+                  currentStatus,
+                  currentSource,
+                )
+              }
+            />
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => router.push("/dashboard/leads/new")}
+            >
+              Tạo khách hàng tiềm năng
+            </Button>
+          </Space>
         }
       />
       <div className="crm-filter-bar mb-4 flex flex-wrap gap-3">

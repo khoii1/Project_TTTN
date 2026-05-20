@@ -48,6 +48,16 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       error = exception.name;
     }
 
+    if (
+      exception instanceof Error &&
+      exception.name === 'MulterError' &&
+      (exception as any).code === 'LIMIT_FILE_SIZE'
+    ) {
+      status = HttpStatus.BAD_REQUEST;
+      message = 'File CSV khong duoc vuot qua 5MB.';
+      error = 'Bad Request';
+    }
+
     const errorResponse: ErrorResponse = {
       statusCode: status,
       message,

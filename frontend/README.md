@@ -132,9 +132,42 @@ Shared contract docs:
 - Dashboard Analytics is implemented with dedicated backend endpoints.
 - Global Search is available in the AppHeader.
 - Recycle Bin is available for Leads, Accounts, Contacts, Opportunities, Tasks, and Cases.
+- CSV Import is available on the Leads, Accounts, Contacts, Opportunities, Tasks, and Cases list pages with reusable modal UI, sample CSV download, per-row result summary, and list reload after successful or partially successful imports.
 - Actor Tracking is available for important actions such as completing tasks, converting leads, changing opportunity stage, closing cases, deleting, and restoring records.
 - Opportunity and dashboard amount values are displayed as VNĐ/VND on the frontend while the backend keeps numeric `amount` values.
 - Supabase Free deployment preparation is documented in `../docs/deployment-guide.md`.
+
+## CSV Import UI
+
+The web CRM supports CSV import on these list pages:
+
+- `/dashboard/leads`
+- `/dashboard/accounts`
+- `/dashboard/contacts`
+- `/dashboard/opportunities`
+- `/dashboard/tasks`
+- `/dashboard/cases`
+
+Each page shows an `Import CSV` button in the page header next to the create button. Clicking it opens a Vietnamese import modal.
+
+Import flow:
+
+1. Click `Import CSV` on one of the six list pages.
+2. Click `Tải file mẫu CSV` to download the module-specific sample CSV template.
+3. Choose or drag a `.csv` file into the modal.
+4. Click `Import`.
+5. Review the result summary: total rows, successful rows, failed rows, and skipped rows.
+6. If some rows fail, review the error table by row, field, and message.
+7. When at least one row imports successfully, the current list reloads automatically.
+
+Frontend validation blocks non-CSV files before upload. Backend validation still remains the source of truth for file size, row limit, enum values, duplicate handling, organization isolation, and relation lookup.
+
+Shared CSV import components live in `src/components/crm/csv-import/`:
+
+- `CsvImportButton`
+- `CsvImportModal`
+- `ImportResultSummary`
+- `ImportErrorTable`
 
 ## Test Credentials
 

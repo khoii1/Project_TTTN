@@ -8,9 +8,23 @@ import {
 } from '../dto/case.dto';
 import { calculatePagination, calculateMeta } from '../../../../common/pagination/pagination.utils';
 import { PaginatedResponse } from '../../../../common/types/response.types';
-import { CaseStatus } from '@prisma/client';
+import { CasePriority, CaseStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { AuditLogService, AuditAction } from '../../../../infrastructure/audit/audit-log.service';
+import { ImportCsvResult } from '../../../../common/import-csv/import-csv.types';
+import {
+  addImportError,
+  buildEmptyImportResult,
+  casePriorityLabels,
+  caseStatusLabels,
+  compactString,
+  enumValues,
+  hasSystemFields,
+  isValidEmail,
+  normalizeEnumValue,
+  parseCsvBuffer,
+  pickAllowedFields,
+} from '../../../../common/import-csv/import-csv.utils';
 
 @Injectable()
 export class CaseService {
@@ -80,6 +94,123 @@ export class CaseService {
     });
 
     return this.mapToResponseDto(crmCase);
+  }
+
+  async importCsv(
+    organizationId: string,
+    ownerId: string,
+    buffer: Buffer
+  ): Promise<ImportCsvResult> {
+    const rows = parseCsvBuffer(buffer);
+    const result = buildEmptyImportResult(rows.length);
+    const allowedFields = [
+      'subject',
+      'description',
+      'priority',
+      'status',
+      'source',
+      'sourceDetail',
+      'accountName',
+      'accountId',
+      'contactEmail',
+      'contactId',
+    ];
+
+    for (const row of rows) {
+      const systemField = hasSystemFields(row.values);
+      if (systemField) {
+        addImportError(
+          result,
+          row.rowNumber,
+          systemField,
+          `Khong duoc import field he thong "${systemField}".`,
+        );
+        continue;
+      }
+
+      const data = pickAllowedFields(row.values, allowedFields);
+      const subject = compactString(data.subject);
+      if (!subject) {
+        addImportError(result, row.rowNumber, 'subject', 'Tieu de la bat buoc.');
+        continue;
+      }
+
+      const parsedPriority = normalizeEnumValue(data.priority, CasePriority, casePriorityLabels);
+      if (data.priority && !parsedPriority) {
+        addImportError(
+          result,
+          row.rowNumber,
+          'priority',
+          `Muc uu tien khong hop le. Gia tri hop le: ${enumValues(CasePriority)}.`,
+        );
+        continue;
+      }
+
+      const parsedStatus = normalizeEnumValue(data.status, CaseStatus, caseStatusLabels);
+      if (data.status && !parsedStatus) {
+        addImportError(
+          result,
+          row.rowNumber,
+          'status',
+          `Trang thai khong hop le. Gia tri hop le: ${enumValues(CaseStatus)}.`,
+        );
+        continue;
+      }
+
+      const accountResult = await this.resolveAccountId(
+        organizationId,
+        compactString(data.accountId),
+        compactString(data.accountName),
+      );
+      if (accountResult.error) {
+        addImportError(result, row.rowNumber, accountResult.field, accountResult.error);
+        continue;
+      }
+
+      const contactResult = await this.resolveContactId(
+        organizationId,
+        accountResult.accountId,
+        compactString(data.contactId),
+        compactString(data.contactEmail),
+      );
+      if (contactResult.error) {
+        addImportError(result, row.rowNumber, contactResult.field, contactResult.error);
+        continue;
+      }
+
+      try {
+        const crmCase = await this.prisma.case.create({
+          data: {
+            id: randomUUID(),
+            organizationId,
+            ownerId,
+            subject,
+            status: parsedStatus || CaseStatus.NEW,
+            priority: parsedPriority || CasePriority.MEDIUM,
+            source: compactString(data.source) || 'IMPORT_CSV',
+            sourceDetail: compactString(data.sourceDetail),
+            description: compactString(data.description),
+            accountId: accountResult.accountId,
+            contactId: contactResult.contactId,
+          },
+        });
+
+        await this.auditLog.log({
+          organizationId,
+          userId: ownerId,
+          action: AuditAction.CREATE,
+          entityType: 'Case',
+          entityId: crmCase.id,
+          newValues: { subject: crmCase.subject, priority: crmCase.priority },
+        });
+
+        result.successCount += 1;
+      } catch {
+        addImportError(result, row.rowNumber, undefined, 'Khong the import dong nay.');
+      }
+    }
+
+    return result;
   }
 
   async findById(caseId: string, organizationId: string): Promise<CaseResponseDto> {
@@ -345,5 +476,96 @@ export class CaseService {
       createdAt: crmCase.createdAt,
       updatedAt: crmCase.updatedAt,
     };
+  }
+
+  private async resolveAccountId(
+    organizationId: string,
+    accountId?: string,
+    accountName?: string,
+  ): Promise<{ accountId?: string; field?: string; error?: string }> {
+    if (!accountId && !accountName) {
+      return {};
+    }
+
+    if (accountId) {
+      const account = await this.prisma.account.findFirst({
+        where: { id: accountId, organizationId, deletedAt: null },
+      });
+      return account
+        ? { accountId: account.id }
+        : { field: 'accountId', error: 'Khong tim thay Account trong cung to chuc.' };
+    }
+
+    const accounts = await this.prisma.account.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+        name: { equals: accountName, mode: 'insensitive' },
+      },
+      take: 2,
+    });
+
+    if (accounts.length === 0) {
+      return { field: 'accountName', error: 'Khong tim thay Account trong cung to chuc.' };
+    }
+
+    if (accounts.length > 1) {
+      return {
+        field: 'accountName',
+        error: 'Tim thay nhieu ban ghi trung, vui long dung ID hoac du lieu cu the hon.',
+      };
+    }
+
+    return { accountId: accounts[0].id };
+  }
+
+  private async resolveContactId(
+    organizationId: string,
+    accountId?: string,
+    contactId?: string,
+    contactEmail?: string,
+  ): Promise<{ contactId?: string; field?: string; error?: string }> {
+    if (!contactId && !contactEmail) {
+      return {};
+    }
+
+    if (contactId) {
+      const contact = await this.prisma.contact.findFirst({
+        where: { id: contactId, organizationId, deletedAt: null },
+      });
+      if (!contact) {
+        return { field: 'contactId', error: 'Khong tim thay Contact trong cung to chuc.' };
+      }
+      if (accountId && contact.accountId !== accountId) {
+        return { field: 'contactId', error: 'Contact khong thuoc Account da chon.' };
+      }
+      return { contactId: contact.id };
+    }
+
+    if (!isValidEmail(contactEmail)) {
+      return { field: 'contactEmail', error: 'Email contact khong hop le.' };
+    }
+
+    const contacts = await this.prisma.contact.findMany({
+      where: { organizationId, deletedAt: null, email: contactEmail },
+      take: 2,
+    });
+
+    if (contacts.length === 0) {
+      return { field: 'contactEmail', error: 'Khong tim thay Contact trong cung to chuc.' };
+    }
+
+    if (contacts.length > 1) {
+      return {
+        field: 'contactEmail',
+        error: 'Tim thay nhieu ban ghi trung, vui long dung ID hoac du lieu cu the hon.',
+      };
+    }
+
+    if (accountId && contacts[0].accountId !== accountId) {
+      return { field: 'contactEmail', error: 'Contact khong thuoc Account da chon.' };
+    }
+
+    return { contactId: contacts[0].id };
   }
 }

@@ -13,6 +13,7 @@ import {
   OpportunityStage,
 } from "@/features/opportunities/opportunities.types";
 import { PageHeader } from "@/components/common/PageHeader";
+import { CsvImportButton } from "@/components/crm/csv-import/CsvImportButton";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { getDataArray, getPaginationMeta } from "@/lib/api/pagination";
 import { SOURCE_OPTIONS, getSourceLabel } from "@/lib/constants/source-options";
@@ -211,13 +212,41 @@ function OpportunitiesList() {
       <PageHeader
         title="Cơ hội bán hàng"
         action={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => router.push("/dashboard/opportunities/new")}
-          >
-            Tạo cơ hội bán hàng
-          </Button>
+          <Space wrap>
+            <CsvImportButton
+              entityName="Cơ hội bán hàng"
+              importEndpoint="/opportunities/import-csv"
+              sampleCsvColumns={[
+                "name",
+                "amount",
+                "stage",
+                "closeDate",
+                "nextStep",
+                "source",
+                "sourceDetail",
+                "description",
+                "accountName",
+                "contactEmail",
+              ]}
+              templateFileName="opportunity-import-template.csv"
+              onSuccess={() =>
+                fetchOpportunities(
+                  currentPage,
+                  currentLimit,
+                  currentSearch,
+                  currentStage,
+                  currentSource,
+                )
+              }
+            />
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => router.push("/dashboard/opportunities/new")}
+            >
+              Tạo cơ hội bán hàng
+            </Button>
+          </Space>
         }
       />
       <div className="crm-filter-bar mb-4 flex flex-wrap gap-3">

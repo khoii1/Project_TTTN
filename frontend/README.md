@@ -20,6 +20,7 @@ This is a Next.js (App Router) frontend application for a Salesforce-style CRM b
 src/
 ├── app/                  # Next.js App Router (Pages & Layouts)
 │   ├── dashboard/        # Protected CRM routes (leads, accounts, tasks, etc.)
+│   ├── dang-ky-tu-van/   # Public Web-to-Lead consultation form
 │   ├── login/            # Authentication
 │   ├── register/         # Registration
 │   └── globals.css       # Global styles & Tailwind directives
@@ -133,6 +134,7 @@ Shared contract docs:
 - Global Search is available in the AppHeader.
 - Recycle Bin is available for Leads, Accounts, Contacts, Opportunities, Tasks, and Cases.
 - CSV Import is available on the Leads, Accounts, Contacts, Opportunities, Tasks, and Cases list pages with reusable modal UI, sample CSV download, per-row result summary, and list reload after successful or partially successful imports.
+- Web-to-Lead is available at `/dang-ky-tu-van` as a public consultation form that creates a new Lead with `source = Website`.
 - Actor Tracking is available for important actions such as completing tasks, converting leads, changing opportunity stage, closing cases, deleting, and restoring records.
 - Opportunity and dashboard amount values are displayed as VNĐ/VND on the frontend while the backend keeps numeric `amount` values.
 - Supabase Free deployment preparation is documented in `../docs/deployment-guide.md`.
@@ -168,6 +170,45 @@ Shared CSV import components live in `src/components/crm/csv-import/`:
 - `CsvImportModal`
 - `ImportResultSummary`
 - `ImportErrorTable`
+
+## Web-to-Lead UI
+
+The public consultation form is available at:
+
+- `/dang-ky-tu-van`
+
+It is not inside the dashboard shell and is not protected by the dashboard route guard. `/dashboard` still requires login.
+
+On deploy, `NEXT_PUBLIC_API_BASE_URL` must point to the deployed backend that includes `POST /public/lead-capture`. The public page does not use the dashboard auth interceptor.
+
+Form fields:
+
+- Họ và tên
+- Số điện thoại
+- Email
+- Tên công ty
+- Chức vụ
+- Website công ty
+- Lĩnh vực hoạt động
+- Quy mô công ty
+- Thời gian muốn được liên hệ
+- Nhu cầu tư vấn
+
+Required rules:
+
+- Họ và tên, tên công ty, and nhu cầu tư vấn are required.
+- The visitor must enter either email or phone.
+- Email is validated on the frontend and backend.
+
+Submit flow:
+
+1. The page calls `POST /public/lead-capture`.
+2. While submitting, the Ant Design button shows loading state.
+3. On success, the page shows: `Cảm ơn bạn đã đăng ký tư vấn. Chúng tôi sẽ liên hệ lại trong thời gian sớm nhất.`
+4. The form resets after a successful submission.
+5. Errors are shown as friendly Vietnamese messages.
+
+The hidden `companyFaxHidden` field is a honeypot for simple bot filtering. Real users do not see it.
 
 ## Test Credentials
 

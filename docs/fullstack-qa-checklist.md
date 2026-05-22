@@ -9,6 +9,22 @@ Use this checklist to validate the end-to-end CRM flow after backend/frontend co
 - [ ] Seed data available
 - [ ] Logged in with a seeded test user
 
+## Web-to-Lead QA
+
+- [ ] Open `/dang-ky-tu-van` while logged out and verify it does not redirect to `/login`
+- [ ] Submit a valid public consultation form and verify the Vietnamese thank-you message
+- [ ] Login as `admin@example.com` / `Admin@123`
+- [ ] Open Leads list and verify the new Website Lead appears
+- [ ] Open Lead detail and verify name, company, email/phone, description, `source = Website`, `sourceDetail = Form đăng ký tư vấn trên website`, and `status = NEW`
+- [ ] Verify the Lead owner matches `PUBLIC_LEAD_OWNER_ID`
+- [ ] Convert the Website Lead to Account + Contact + Opportunity
+- [ ] Refresh Dashboard and verify Lead metrics update
+- [ ] Use Global Search to find the Website Lead
+- [ ] Login as `admin@rival.com` / `Rival@123` and verify Rival Org cannot see or search the Website Lead
+- [ ] Submit validation cases: missing full name, missing both email and phone, invalid email
+- [ ] Submit a honeypot-filled request and verify no Lead is created
+- [ ] Verify `/dashboard` remains protected and `/login` / `/register` continue to work
+
 ## Main Flow
 
 - [ ] Login as `admin@example.com` / `Admin@123`

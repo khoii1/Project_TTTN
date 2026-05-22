@@ -32,6 +32,8 @@ CORS_ORIGIN=https://your-frontend-domain.com
 ENABLE_SWAGGER=false
 NODE_ENV=production
 BCRYPT_ROUNDS=10
+PUBLIC_LEAD_ORGANIZATION_ID=
+PUBLIC_LEAD_OWNER_ID=
 ```
 
 Giải thích:
@@ -49,6 +51,8 @@ Giải thích:
 - `ENABLE_SWAGGER`: bật/tắt Swagger public. Dev bật mặc định nếu không khai báo. Production nên để `false`, riêng staging/demo có thể đặt `true`.
 - `NODE_ENV`: dùng `production` khi deploy.
 - `BCRYPT_ROUNDS`: số rounds bcrypt, mặc định `10`.
+- `PUBLIC_LEAD_ORGANIZATION_ID`: organization nhận Lead từ form public `/dang-ky-tu-van`.
+- `PUBLIC_LEAD_OWNER_ID`: user phụ trách Lead từ form public. User này phải thuộc đúng `PUBLIC_LEAD_ORGANIZATION_ID`.
 
 JWT secrets phải mạnh và không dùng secret mặc định.
 
@@ -98,6 +102,8 @@ Lưu ý:
 - [ ] Run `npx prisma migrate deploy`
 - [ ] Optional: seed demo data with `npm run prisma:seed`
 - [ ] Check backend health endpoint `/health`
+- [ ] Check Web-to-Lead endpoint `POST /public/lead-capture`
+- [ ] Verify `PUBLIC_LEAD_OWNER_ID` belongs to `PUBLIC_LEAD_ORGANIZATION_ID`
 - [ ] Set frontend `NEXT_PUBLIC_API_BASE_URL`
 - [ ] Deploy frontend
 - [ ] Run post-deploy QA
@@ -114,6 +120,7 @@ Lưu ý:
 - [ ] Kiểm tra `/api/docs` nếu Swagger còn bật
 - [ ] Kiểm tra login/register
 - [ ] Kiểm tra CORS với frontend
+- [ ] Kiểm tra `POST /public/lead-capture` không cần JWT và tạo Lead với `source = Website`
 
 Recommended backend commands:
 
@@ -141,6 +148,8 @@ Lưu ý hosting: backend hỗ trợ thứ tự đọc port `PORT > API_PORT > 30
 - [ ] Kiểm tra proxy route protection
 - [ ] Kiểm tra login/logout
 - [ ] Kiểm tra dashboard gọi API thật
+- [ ] Kiểm tra `/dang-ky-tu-van` là public route, không redirect về `/login`
+- [ ] Kiểm tra submit form gọi đúng `NEXT_PUBLIC_API_BASE_URL`
 
 Recommended frontend commands:
 
@@ -183,6 +192,10 @@ Trên Vercel, `NEXT_PUBLIC_API_BASE_URL` phải trỏ đến backend staging/dem
 - [ ] Logout
 - [ ] Login Công ty Đối Thủ
 - [ ] Kiểm tra không thấy dữ liệu Công ty Mẫu Việt Nam
+- [ ] Mở `/dang-ky-tu-van`
+- [ ] Submit form Web-to-Lead
+- [ ] Kiểm tra Lead mới trong CRM có `source = Website`, `status = NEW`, và owner đúng env
+- [ ] Convert Lead từ website bằng Lead Conversion Wizard
 
 ## 12. Known Deploy Risks
 

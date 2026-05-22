@@ -21,6 +21,7 @@ import { NotesModule } from './modules/notes/notes.module';
 import { CasesModule } from './modules/cases/cases.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
+import { PublicModule } from './modules/public/public.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { HealthModule } from './modules/health/health.module';
     CasesModule,
     DashboardModule,
     HealthModule,
+    PublicModule,
   ],
   providers: [
     {

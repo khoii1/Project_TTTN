@@ -14,4 +14,6 @@ export const validationSchema = Joi.object({
   JWT_REFRESH_TOKEN_EXPIRATION: Joi.string().default('7d'),
   CORS_ORIGIN: Joi.string().allow('').optional(),
   BCRYPT_ROUNDS: Joi.number().default(10),
+  PUBLIC_LEAD_ORGANIZATION_ID: Joi.string().allow('').optional(),
+  PUBLIC_LEAD_OWNER_ID: Joi.string().allow('').optional(),
 });

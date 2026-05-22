@@ -104,6 +104,10 @@ NODE_ENV=development
 
 # Bcrypt
 BCRYPT_ROUNDS=10
+
+# Public Web-to-Lead capture
+PUBLIC_LEAD_ORGANIZATION_ID=
+PUBLIC_LEAD_OWNER_ID=
 ```
 
 ---
@@ -641,6 +645,62 @@ Import response:
 ```
 
 Duplicate handling uses `skippedCount` where applicable, for example duplicate Lead email, Account name, or Contact email in the same organization.
+
+## Web-to-Lead
+
+The backend exposes a public endpoint for the website consultation form:
+
+- `POST /public/lead-capture`
+
+This endpoint does not require `Authorization`. It is separate from the protected `/leads` endpoints and does not change manual Lead creation, CSV Import, Lead Conversion, Dashboard, Recycle Bin, Global Search, or Activity Timeline behavior.
+
+Request body:
+
+```json
+{
+  "fullName": "Nguyễn Minh An",
+  "company": "Công ty TNHH Nội Thất An Phát",
+  "title": "Giám đốc kinh doanh",
+  "email": "an.nguyen@noithatanphat.vn",
+  "phone": "0908456789",
+  "website": "https://noithatanphat.vn",
+  "industry": "Nội thất",
+  "companySize": "20-50 nhân sự",
+  "preferredContactTime": "Buổi sáng",
+  "message": "Tôi muốn được tư vấn hệ thống CRM để quản lý khách hàng và đội kinh doanh.",
+  "companyFaxHidden": ""
+}
+```
+
+Mapping into Lead:
+
+- `fullName` is split into `firstName` and `lastName`.
+- `message`, `companySize`, and `preferredContactTime` are combined into `description`.
+- `source` is always `Website`.
+- `sourceDetail` is always `Form đăng ký tư vấn trên website`.
+- `status` is always `NEW`.
+- `organizationId` comes from `PUBLIC_LEAD_ORGANIZATION_ID`.
+- `ownerId` comes from `PUBLIC_LEAD_OWNER_ID`.
+
+Validation and spam protection:
+
+- `fullName`, `company`, and `message` are required.
+- At least one of `email` or `phone` is required.
+- Email format and field lengths are validated.
+- System fields such as `id`, `organizationId`, `ownerId`, `source`, and `status` are rejected.
+- `companyFaxHidden` is a honeypot. If filled, the API returns success but does not create a Lead.
+- TODO: add rate limiting for this public endpoint when production traffic requires it.
+
+Deploy note: set `PUBLIC_LEAD_ORGANIZATION_ID` and `PUBLIC_LEAD_OWNER_ID` on the backend hosting environment, not only in local `.env`. If `POST /public/lead-capture` returns `404` on staging, the backend deploy is still running an older build without Web-to-Lead code.
+
+Success response:
+
+```json
+{
+  "message": "Cảm ơn bạn đã đăng ký tư vấn. Chúng tôi sẽ liên hệ lại trong thời gian sớm nhất.",
+  "leadId": "lead-id"
+}
+```
 
 ### Production Checklist
 

@@ -628,3 +628,86 @@ Remaining QA:
   - Frontend `npm run lint`: pass with 18 existing `react-hooks/exhaustive-deps` warnings
   - Frontend `npm run build`: pass
 - Import CSV is ready for demo.
+
+## Web-to-Lead Implementation and Browser QA
+
+- Date: 2026-05-22
+- Scope: Public Web-to-Lead form, public backend lead capture endpoint, CRM verification, and regression checks for existing flows
+- Browser used: Chromium via Playwright against local backend/frontend
+- Main QA data stamp: `W2LQA1779469887647`
+- Main Lead checked: `b5ce27ba-225a-43f7-8041-3ee284652542`
+- Lead Conversion Wizard UI stamp: `WIZQA1779470045490`
+- Lead Conversion Wizard UI Lead: `73839c94-7a65-4ce2-83e8-ab4a33a037a6`
+- Final public form smoke stamp after frontend submit-handler hardening: `SMOKEW2L1779470255616`
+
+### Checks
+
+| Area | Check | Result |
+|---|---|---|
+| Public route | Opened `/dang-ky-tu-van` while logged out and was not redirected to `/login` | Pass |
+| Public form validation | Missing required fields showed Ant Design validation messages | Pass |
+| Email validation | Invalid email was blocked on the public form | Pass |
+| Contact validation | Missing both email and phone kept the user on the public form with a Vietnamese error | Pass |
+| Valid submit | Browser submitted a valid public consultation form | Pass |
+| Lead mapping | Lead was created with `source = Website`, `sourceDetail = Form đăng ký tư vấn trên website`, `status = NEW`, and configured owner | Pass |
+| Honeypot | Request with `companyFaxHidden` returned success but did not create a Lead | Pass |
+| Backend validation | Missing `fullName`, missing both email/phone, and invalid email were rejected | Pass |
+| CRM login | `admin@example.com` logged in successfully in browser | Pass |
+| Leads list | Website Lead appeared in Leads list/search | Pass |
+| Lead detail | Website Lead detail rendered the QA stamp and Website source | Pass |
+| Dashboard | Dashboard loaded after Web-to-Lead data creation | Pass |
+| Global Search | Global Search found the Website Lead by QA stamp | Pass |
+| Lead Conversion Wizard | Browser opened the Lead Conversion Wizard and converted a Website Lead to Account + Contact + Opportunity | Pass |
+| Rival isolation | `admin@rival.com` could not find Sample Org Website Lead | Pass |
+| Protected routes | `/dashboard` behavior remained protected/authenticated normally | Pass |
+| Final smoke | Public form still created a Website Lead after switching the page to a standalone public Axios call with loading state | Pass |
+
+### Bugs Found
+
+- Blocking application bugs: none.
+- UI bugs: none.
+- QA-script-only issue: PowerShell here-string encoding made one Unicode string assertion unreliable, so the script compared stable API fields and browser-visible ASCII/record stamps instead. No application code change was needed for this.
+
+### Validation
+
+- Backend targeted Web-to-Lead test: pass, 8 tests.
+- Backend full unit test: pass, 12 suites / 95 tests.
+- Backend e2e command: pass, 12 suites / 95 tests.
+- Backend build: pass.
+- Frontend lint: pass with existing non-blocking `react-hooks/exhaustive-deps` warnings.
+- Frontend build: pass.
+
+### Result
+
+- Web-to-Lead is ready for demo.
+- Existing login/logout, manual Lead creation endpoint, CSV Import, Lead Conversion Wizard, Dashboard, Global Search, Recycle Bin, Activity Timeline, and mobile app contract were not changed.
+
+## Web-to-Lead Deploy/Staging QA
+
+- Date: 2026-05-23
+- Backend URL checked: `https://project-tttn.onrender.com`
+- Frontend deploy URL checked: not available in repo docs or frontend env files
+- Local git state during check: Web-to-Lead code exists locally but is not present in the latest committed deploy branch; latest local commit is `9cc8938 feat: add CSV import for CRM modules`
+
+### Checks
+
+| Area | Check | Actual | Result |
+|---|---|---|---|
+| Backend health | `GET https://project-tttn.onrender.com/health` | Returned `{"status":"ok","service":"crm-backend"}` | Pass |
+| Public endpoint | `POST https://project-tttn.onrender.com/public/lead-capture` without JWT | Returned `404 Cannot POST /public/lead-capture` | Fail / blocked |
+| Backend env | Verify `PUBLIC_LEAD_ORGANIZATION_ID` and `PUBLIC_LEAD_OWNER_ID` on deploy | Could not verify via API because deployed backend does not expose Web-to-Lead endpoint yet | Blocked |
+| Owner/org relation | Verify configured owner belongs to configured organization | Blocked until backend deploy has Web-to-Lead code and env | Blocked |
+| Frontend deploy | Open `/dang-ky-tu-van` on frontend deploy | Blocked because frontend deploy URL is not documented in repo | Blocked |
+| CORS | Form calls backend deploy from frontend deploy | Blocked until frontend URL and backend endpoint are available | Blocked |
+| CRM data | Verify Website Lead appears in deployed CRM | Blocked because deployed endpoint returned 404 | Blocked |
+| Dashboard/Search/Convert/Rival Org | Verify downstream CRM flows after deployed Web-to-Lead submit | Blocked because no deployed Website Lead was created | Blocked |
+
+### Result
+
+- Web-to-Lead is not ready for deploy/staging demo yet.
+- Required next steps:
+  - Commit and push Web-to-Lead backend/frontend/docs changes.
+  - Redeploy backend and frontend.
+  - Set backend env `PUBLIC_LEAD_ORGANIZATION_ID` and `PUBLIC_LEAD_OWNER_ID`.
+  - Set frontend env `NEXT_PUBLIC_API_BASE_URL=https://project-tttn.onrender.com`.
+  - Re-run deploy QA after `POST /public/lead-capture` no longer returns 404.

@@ -80,6 +80,59 @@ Logout:
 - The frontend calls this endpoint first, then clears local `js-cookie` tokens and auth state.
 - If the logout API fails because the token is expired or invalid, the frontend still clears the local session and redirects to `/login`.
 
+### Public Web-to-Lead
+
+- `POST /public/lead-capture`
+
+This endpoint is public and does not require `Authorization`. It is only used by the public consultation form at `/dang-ky-tu-van`.
+
+Request:
+
+```json
+{
+  "fullName": "Nguyễn Minh An",
+  "company": "Công ty TNHH Nội Thất An Phát",
+  "title": "Giám đốc kinh doanh",
+  "email": "an.nguyen@noithatanphat.vn",
+  "phone": "0908456789",
+  "website": "https://noithatanphat.vn",
+  "industry": "Nội thất",
+  "companySize": "20-50 nhân sự",
+  "preferredContactTime": "Buổi sáng",
+  "message": "Tôi muốn được tư vấn hệ thống CRM để quản lý khách hàng và đội kinh doanh.",
+  "companyFaxHidden": ""
+}
+```
+
+Rules:
+
+- `fullName`, `company`, and `message` are required.
+- At least one of `email` or `phone` is required.
+- `email` must be a valid email when provided.
+- Client-supplied system fields such as `id`, `organizationId`, `ownerId`, `source`, `sourceDetail`, `status`, `convertedAt`, and `deletedAt` are rejected.
+- `companyFaxHidden` is a honeypot field. If it contains data, the API returns a normal thank-you response but does not create a Lead.
+- The backend uses `PUBLIC_LEAD_ORGANIZATION_ID` and `PUBLIC_LEAD_OWNER_ID`; the owner must belong to the configured organization.
+
+Lead mapping:
+
+- `fullName` is split into `firstName` and `lastName`.
+- `company`, `title`, `email`, `phone`, `website`, and `industry` map directly to Lead fields.
+- `message`, `companySize`, and `preferredContactTime` are combined into `description`.
+- `source` is always `Website`.
+- `sourceDetail` is always `Form đăng ký tư vấn trên website`.
+- `status` is always `NEW`.
+
+Response:
+
+```json
+{
+  "message": "Cảm ơn bạn đã đăng ký tư vấn. Chúng tôi sẽ liên hệ lại trong thời gian sớm nhất.",
+  "leadId": "lead-id"
+}
+```
+
+The public response never returns user credentials, refresh token hashes, password hashes, or organization-sensitive data.
+
 ### Organizations
 
 - `GET /organizations/me`

@@ -25,6 +25,15 @@ Công ty Đối Thủ:
 
 ## 3. Demo Flow Chính
 
+### A0. Web-to-Lead
+
+- Mở `/dang-ky-tu-van` khi chưa đăng nhập.
+- Nhập thông tin khách hàng đang cần tư vấn CRM.
+- Gửi form và kiểm tra thông báo cảm ơn.
+- Đăng nhập `admin@example.com`, mở danh sách Lead và tìm Lead vừa gửi.
+- Nhấn mạnh Lead được tạo tự động với `source = Website`, `sourceDetail = Form đăng ký tư vấn trên website`, `status = NEW`.
+- Convert Lead này bằng Lead Conversion Wizard để chứng minh luồng chăm sóc sau đăng ký vẫn dùng quy trình CRM cũ.
+
 ### A. Đăng nhập
 
 - Đăng nhập bằng `admin@example.com`.
@@ -156,6 +165,7 @@ Dữ liệu case gợi ý:
 - ActivityTimeline
 - Global Search
 - Dashboard Analytics
+- Web-to-Lead public capture
 - Vietnamese UI
 - VNĐ currency display
 
@@ -191,6 +201,7 @@ Dữ liệu case gợi ý:
 - [ ] Global Search
 - [ ] Rival Org isolation
 - [ ] Import CSV Lead/Account/Contact/Opportunity/Task/Case
+- [ ] Web-to-Lead public form
 
 ## 8. Demo Import CSV
 
@@ -198,3 +209,17 @@ Dữ liệu case gợi ý:
 - Bấm `Import CSV`, tải file mẫu, điền dữ liệu và import.
 - Nhấn mạnh import xử lý từng dòng độc lập: dòng hợp lệ vẫn được tạo, dòng lỗi hoặc trùng dữ liệu được hiển thị trong bảng kết quả.
 - Với Contact/Opportunity/Case có thể dùng `accountName` hoặc `contactEmail`; với Task có thể dùng `relatedType` + `relatedName`, không cần nhập UUID thủ công.
+
+## 9. Demo Web-to-Lead
+
+- Mở trang public `/dang-ky-tu-van`.
+- Điền họ tên, công ty, email hoặc số điện thoại, và nhu cầu tư vấn.
+- Gửi form, sau đó đăng nhập CRM để kiểm tra Lead mới.
+- Lead từ website luôn có `source = Website`, không cho người ngoài truyền `organizationId`, `ownerId`, `source`, hoặc `status`.
+- Backend lấy tenant nhận Lead từ `PUBLIC_LEAD_ORGANIZATION_ID` và người phụ trách từ `PUBLIC_LEAD_OWNER_ID`.
+
+Khi demo trên môi trường deploy/staging:
+
+- Frontend deploy phải set `NEXT_PUBLIC_API_BASE_URL` trỏ đến backend deploy.
+- Backend deploy phải có `PUBLIC_LEAD_ORGANIZATION_ID` và `PUBLIC_LEAD_OWNER_ID`.
+- Kiểm tra nhanh `POST /public/lead-capture` trước buổi demo; nếu endpoint trả `404`, bản backend deploy chưa có code Web-to-Lead mới.

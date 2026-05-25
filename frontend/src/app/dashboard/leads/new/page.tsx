@@ -10,6 +10,8 @@ import { getApiErrorMessage } from "@/lib/api/error";
 import { SourceFields } from "@/components/crm/SourceFields";
 import { getStatusLabel } from "@/lib/constants/vi-labels";
 
+const { TextArea } = Input;
+
 export default function NewLeadPage() {
   const { message } = App.useApp();
   const router = useRouter();
@@ -86,6 +88,13 @@ export default function NewLeadPage() {
           </Form.Item>
 
           <SourceFields />
+
+          <Form.Item name="description" label="Mô tả / Nhu cầu tư vấn">
+            <TextArea
+              rows={5}
+              placeholder="Nhập nhu cầu tư vấn, ghi chú hoặc bối cảnh chăm sóc khách hàng"
+            />
+          </Form.Item>
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button onClick={() => router.back()}>Hủy</Button>

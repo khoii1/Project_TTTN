@@ -208,6 +208,8 @@ Submit flow:
 4. The form resets after a successful submission.
 5. Errors are shown as friendly Vietnamese messages.
 
+The submitted consultation need is stored in Lead `description` and appears on the Lead detail page in the `Nhu cầu tư vấn` section, together with company size and preferred contact time when provided.
+
 The hidden `companyFaxHidden` field is a honeypot for simple bot filtering. Real users do not see it.
 
 ## Test Credentials

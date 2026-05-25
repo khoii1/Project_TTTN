@@ -197,6 +197,14 @@ Trên Vercel, `NEXT_PUBLIC_API_BASE_URL` phải trỏ đến backend staging/dem
 - [ ] Kiểm tra Lead mới trong CRM có `source = Website`, `status = NEW`, và owner đúng env
 - [ ] Convert Lead từ website bằng Lead Conversion Wizard
 
+Web-to-Lead env setup on Render:
+
+1. Login to the deployed backend with the CRM admin account for the organization that should receive website Leads.
+2. Use that deployed database user's `organizationId` as `PUBLIC_LEAD_ORGANIZATION_ID`.
+3. Use that deployed database user's `id` as `PUBLIC_LEAD_OWNER_ID`, or another active user ID in the same organization.
+4. Save env vars on Render and redeploy/restart the backend.
+5. Recheck `POST /public/lead-capture`; a valid payload should return the thank-you response instead of `503`.
+
 ## 12. Known Deploy Risks
 
 - Supabase Free có giới hạn.

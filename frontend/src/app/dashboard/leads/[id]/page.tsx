@@ -24,10 +24,13 @@ import { getApiErrorMessage } from "@/lib/api/error";
 import { getSourceLabel } from "@/lib/constants/source-options";
 import {
   EMPTY_STATE_LABELS,
+  FIELD_LABELS,
   FEEDBACK_LABELS,
   getStatusLabel,
   SECTION_LABELS,
 } from "@/lib/constants/vi-labels";
+
+const { TextArea } = Input;
 
 export default function LeadDetailPage({
   params,
@@ -126,6 +129,8 @@ export default function LeadDetailPage({
   const isConverted = lead.status === LeadStatus.CONVERTED;
   const isQualified = lead.status === LeadStatus.QUALIFIED;
   const leadName = [lead.firstName, lead.lastName].filter(Boolean).join(" ");
+  const descriptionSectionTitle =
+    lead.source === "Website" ? "Nhu cầu tư vấn" : "Nhu cầu tư vấn / Mô tả";
 
   return (
     <div className="space-y-6">
@@ -203,6 +208,12 @@ export default function LeadDetailPage({
               </Form.Item>
             </div>
             <SourceFields />
+            <Form.Item name="description" label="Mô tả / Nhu cầu tư vấn">
+              <TextArea
+                rows={5}
+                placeholder="Nhập nhu cầu tư vấn, ghi chú hoặc bối cảnh chăm sóc khách hàng"
+              />
+            </Form.Item>
             <div className="flex justify-end space-x-2 mt-4">
               <Button onClick={() => setIsEditing(false)}>Hủy</Button>
               <Button type="primary" htmlType="submit" loading={saving}>
@@ -253,6 +264,19 @@ export default function LeadDetailPage({
                     </Descriptions.Item>
                     <Descriptions.Item label="Chi tiết nguồn">
                       {emptyValue(lead.sourceDetail)}
+                    </Descriptions.Item>
+                  </SectionCard>
+                  <SectionCard title={descriptionSectionTitle}>
+                    <Descriptions.Item label={FIELD_LABELS.description} span={2}>
+                      {lead.description ? (
+                        <div className="whitespace-pre-wrap leading-6">
+                          {lead.description}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500">
+                          Chưa có thông tin nhu cầu tư vấn.
+                        </span>
+                      )}
                     </Descriptions.Item>
                   </SectionCard>
                   <SectionCard title="Thông tin hệ thống">

@@ -215,6 +215,7 @@ Dữ liệu case gợi ý:
 - Mở trang public `/dang-ky-tu-van`.
 - Điền họ tên, công ty, email hoặc số điện thoại, và nhu cầu tư vấn.
 - Gửi form, sau đó đăng nhập CRM để kiểm tra Lead mới.
+- Mở Lead detail và chỉ ra section `Nhu cầu tư vấn`; nội dung này lấy từ field `description` và bao gồm nhu cầu khách nhập, quy mô công ty, thời gian muốn được liên hệ.
 - Lead từ website luôn có `source = Website`, không cho người ngoài truyền `organizationId`, `ownerId`, `source`, hoặc `status`.
 - Backend lấy tenant nhận Lead từ `PUBLIC_LEAD_ORGANIZATION_ID` và người phụ trách từ `PUBLIC_LEAD_OWNER_ID`.
 

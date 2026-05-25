@@ -711,3 +711,117 @@ Remaining QA:
   - Set backend env `PUBLIC_LEAD_ORGANIZATION_ID` and `PUBLIC_LEAD_OWNER_ID`.
   - Set frontend env `NEXT_PUBLIC_API_BASE_URL=https://project-tttn.onrender.com`.
   - Re-run deploy QA after `POST /public/lead-capture` no longer returns 404.
+
+## Web-to-Lead Deploy QA After Redeploy
+
+- Date: 2026-05-25
+- Backend URL checked: `https://project-tttn.onrender.com`
+- Frontend URL checked: `https://project-tttn.vercel.app`
+- QA stamp attempted from frontend: `WEBTOLEAD_DEPLOY_1779672950526`
+- Product code changes during this QA run: none
+
+### Checks
+
+| Area | Check | Actual | Result |
+|---|---|---|---|
+| Backend health | `GET https://project-tttn.onrender.com/health` | Returned `{"status":"ok","service":"crm-backend"}` | Pass |
+| Public endpoint existence | `POST /public/lead-capture` without JWT | Endpoint exists and no longer returns 404 | Pass |
+| Valid public submit | POST valid Web-to-Lead payload | Returned `503 Chưa cấu hình tổ chức hoặc người phụ trách nhận Lead từ website.` | Fail / env blocked |
+| Backend env | `PUBLIC_LEAD_ORGANIZATION_ID` / `PUBLIC_LEAD_OWNER_ID` | Missing or empty on deployed backend | Fail |
+| No-JWT behavior | Public endpoint called without Authorization | Request reached endpoint and returned config error, not `401` | Pass |
+| Honeypot | Public payload with `companyFaxHidden` | Returned thank-you message and did not require env validation | Pass |
+| Frontend public route | Opened `https://project-tttn.vercel.app/dang-ky-tu-van` logged out | Page opened and was not redirected to `/login` | Pass |
+| Frontend UI | Vietnamese form and layout | Form rendered Vietnamese labels and did not show broken layout in desktop viewport | Pass |
+| Frontend validation | Missing required fields and invalid email | Vietnamese Ant Design validation messages displayed | Pass |
+| Frontend submit backend target | Submit from Vercel form | Browser called `https://project-tttn.onrender.com/public/lead-capture`; CORS did not block the response | Pass |
+| Lead creation | Verify Website Lead in deployed CRM | Blocked because valid submit returned 503 | Blocked |
+| Dashboard/Search/Convert/Rival Org | Verify downstream CRM flows for deployed Website Lead | Blocked because no Lead was created | Blocked |
+
+### Deploy Finding
+
+The redeployed backend has the Web-to-Lead route, but Render is missing one or both required environment variables:
+
+- `PUBLIC_LEAD_ORGANIZATION_ID`
+- `PUBLIC_LEAD_OWNER_ID`
+
+`admin@example.com` login on the deployed backend succeeded, so the Sample Org/user IDs can be taken from the deployed database, not from local assumptions. Set those IDs in Render, redeploy/restart the backend, then rerun this QA.
+
+### Result
+
+- Web-to-Lead is not ready for deploy demo yet because the backend deploy env is incomplete.
+- No product files were changed during this deploy QA run.
+
+## Web-to-Lead Deploy QA After Env Fix
+
+- Date: 2026-05-25
+- Backend URL checked: `https://project-tttn.onrender.com`
+- Frontend URL checked: `https://project-tttn.vercel.app`
+- Backend env configured:
+  - `PUBLIC_LEAD_ORGANIZATION_ID=c904fa9e-ea2d-4908-8225-b646160449e7`
+  - `PUBLIC_LEAD_OWNER_ID=b6b807f1-9362-4029-8cdf-8134a9e5eb5f`
+- QA stamp: `WEBTOLEAD_DEPLOY_ENV_1779673950639`
+- Website Lead: `a9d32e5a-1f10-4265-a6c7-08b5be66b5f0`
+- Converted Account: `87090d68-4c78-4d07-82bc-afc24bbda938`
+- Converted Contact: `55dde5dd-43e4-465a-9fea-0f501205c37a`
+- Converted Opportunity: `9dc1c31d-6ead-425d-88fd-ba9d7e92c694`
+- Product code changes during this QA run: none
+
+### Checks
+
+| Area | Check | Actual | Result |
+|---|---|---|---|
+| Backend health | `GET /health` | Returned `status = ok` | Pass |
+| Public endpoint | `POST /public/lead-capture` without JWT | Returned `201` thank-you response with `leadId`; no `404` or `503` | Pass |
+| Env ownership | Website Lead organization/owner | `organizationId` and `ownerId` matched configured Render env | Pass |
+| Lead mapping | Source fields and status | `source = Website`, `sourceDetail = Form đăng ký tư vấn trên website`, `status = NEW` before conversion | Pass |
+| Frontend public route | Open `/dang-ky-tu-van` while logged out | Page opened, no `/login` redirect, form rendered | Pass |
+| Frontend submit | Submit QA form from Vercel | Browser received `201` from Render API; no CORS block, no infinite loading | Pass |
+| CRM Lead list/detail | Login admin and search QA stamp | Lead appeared in list/detail; no unnecessary raw UUID shown in checked list/detail text | Pass |
+| Description mapping | Message, company size, contact time | Description included CRM consultation message, `20-50 nhân sự`, and `Buổi sáng` | Pass |
+| Dashboard | Summary after submit | `totalLeads` increased after Web-to-Lead submit | Pass |
+| Global Search | Search QA stamp from dashboard header | Website Lead appeared in search results | Pass |
+| Lead Conversion Wizard | Convert Website Lead | Wizard converted Lead to Account + Contact + Opportunity | Pass |
+| Converted records | Account/Contact/Opportunity after conversion | Account name included QA stamp, Contact email matched submitted email, Opportunity existed | Pass |
+| Activity Timeline | Lead detail after conversion | Detail page continued rendering activity area without crash | Pass smoke |
+| Recycle Bin | Create/delete/restore a QA Lead through deployed API | Deleted Lead appeared in deleted list and restored back to active list | Pass API smoke |
+| Import CSV | Import one Lead CSV through deployed API | CSV import returned success and imported Lead was searchable | Pass API smoke |
+| Rival isolation | Login `admin@rival.com` and search QA stamp | Rival Org could not find Sample Org Website Lead; dashboard metrics remained separate | Pass |
+| Validation | Missing required fields, invalid email, missing contact | Public form blocked invalid submit with validation state and did not call backend for missing contact | Pass |
+| Honeypot | `companyFaxHidden` payload | Returned thank-you response and did not create a searchable Lead | Pass |
+
+### Result
+
+- Web-to-Lead is ready for deploy demo.
+- No backend/frontend product files were changed during this final deploy QA run.
+- Build/lint/test were not rerun because only this QA result document was updated.
+
+## Lead Detail Consultation Need Display QA
+
+- Date: 2026-05-25
+- Scope: Frontend Lead detail display for Web-to-Lead `description`
+- Backend changes: none; `POST /public/lead-capture` already stores `message`, `companySize`, and `preferredContactTime` in `Lead.description`, and `GET /leads/:id` already returns `description`
+- Frontend changes: Lead detail now shows a dedicated `Nhu cầu tư vấn` section for Website Leads and `Nhu cầu tư vấn / Mô tả` for other Leads; Lead create/edit forms now include optional `Mô tả / Nhu cầu tư vấn`
+- Local QA stamps: `DESCQA_1779676487719`, `DESCQA2_1779676646790`
+
+### Checks
+
+| Area | Check | Result |
+|---|---|---|
+| Backend mapping | Web-to-Lead API created Lead with `description` containing consultation message, company size, and preferred contact time | Pass |
+| Lead detail UI | Website Lead detail displayed the consultation need section with the submitted text | Pass |
+| Source/status | Website Lead still showed `source = Website` and `status = NEW` before conversion | Pass |
+| Lead Conversion Wizard | Website Lead converted successfully after the detail section change | Pass |
+| Manual Lead | Manually created Lead with `description` displayed that description on detail | Pass |
+| Empty description | Lead without `description` opened without UI crash | Pass |
+| CSV import | Imported Lead with `description` displayed that description on detail | Pass |
+| Dashboard | Dashboard still loaded after the change | Pass |
+| Recycle Bin | Delete/restore smoke test for a Lead still worked | Pass |
+
+### Validation
+
+- Frontend `npm run lint`: pass with existing non-blocking `react-hooks/exhaustive-deps` warnings.
+- Frontend `npm run build`: pass.
+
+### Result
+
+- Web-to-Lead consultation needs are now visible to CRM users before contacting the customer.

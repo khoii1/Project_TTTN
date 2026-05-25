@@ -11,7 +11,6 @@ import {
   LineChartOutlined,
   CheckSquareOutlined,
   ExceptionOutlined,
-  SettingOutlined,
   TeamOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
@@ -84,11 +83,6 @@ export const AppSidebar = () => {
           },
         ]
       : []),
-    {
-      key: "/dashboard/settings",
-      icon: <SettingOutlined />,
-      label: ENTITY_LABELS.settings,
-    },
   ];
 
   return (

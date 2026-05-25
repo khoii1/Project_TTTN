@@ -181,12 +181,12 @@ export default function LeadDetailPage({
         <Card title="Chỉnh sửa khách hàng tiềm năng" className="shadow-sm">
           <Form layout="vertical" initialValues={lead} onFinish={handleUpdate}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Form.Item name="firstName" label="Tên">
+              <Form.Item name="firstName" label="Họ">
                 <Input />
               </Form.Item>
               <Form.Item
                 name="lastName"
-                label="Họ"
+                label="Tên"
                 rules={[{ required: true }]}
               >
                 <Input />

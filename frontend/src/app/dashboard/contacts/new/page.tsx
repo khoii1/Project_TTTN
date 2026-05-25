@@ -42,13 +42,13 @@ export default function NewContactPage() {
           <div className="grid grid-cols-2 gap-4">
             <Form.Item
               name="firstName"
-              label="Tên"
+              label="Họ"
               rules={[{ required: true }]}
             >
-              <Input placeholder="John" />
+              <Input placeholder="Trần Quốc" />
             </Form.Item>
-            <Form.Item name="lastName" label="Họ" rules={[{ required: true }]}>
-              <Input placeholder="Doe" />
+            <Form.Item name="lastName" label="Tên" rules={[{ required: true }]}>
+              <Input placeholder="Huy" />
             </Form.Item>
           </div>
 

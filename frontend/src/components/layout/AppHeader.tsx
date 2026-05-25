@@ -1,19 +1,21 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Layout, Dropdown, Avatar, Spin } from "antd";
+import { Layout, Dropdown, Avatar, Spin, Typography, Tag } from "antd";
 import type { MenuProps } from "antd";
-import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
+import { UserOutlined, LogoutOutlined, SettingOutlined } from "@ant-design/icons";
 import { useAuthStore } from "@/features/auth/auth.store";
 import { useRouter } from "next/navigation";
 import { organizationsApi } from "@/features/organizations/organizations.api";
 import { jwtDecode } from "jwt-decode";
 import { tokenStorage } from "@/lib/api/token-storage";
 import { authApi } from "@/features/auth/auth.api";
+import { usersApi } from "@/features/users/users.api";
 import { GlobalSearch } from "./GlobalSearch";
-import { ACTION_LABELS, ENTITY_LABELS } from "@/lib/constants/vi-labels";
+import { ACTION_LABELS, ENTITY_LABELS, getRoleLabel } from "@/lib/constants/vi-labels";
 
 const { Header } = Layout;
+const { Text } = Typography;
 
 type JwtUserPayload = {
   sub: string;
@@ -64,6 +66,19 @@ export const AppHeader = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    usersApi
+      .getById(user.id)
+      .then((res) => {
+        setUser(res);
+      })
+      .catch(console.error);
+  }, [user?.id, setUser]);
+
   const handleLogout = async () => {
     try {
       await authApi.logout();
@@ -76,23 +91,53 @@ export const AppHeader = () => {
   };
 
   const handleMenuClick: MenuProps["onClick"] = ({ key }) => {
+    if (key === "settings") {
+      router.push("/dashboard/settings");
+    }
+
     if (key === "logout") {
       void handleLogout();
     }
   };
 
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
+
   const userMenuItems: MenuProps["items"] = [
     {
       key: "profile",
       label: (
-        <span className="font-semibold">
-          {user?.firstName} {user?.lastName}
-        </span>
+        <div className="w-72 px-1 py-2">
+          <div className="flex items-start gap-3">
+            <Avatar size={44} icon={<UserOutlined />} className="bg-blue-600" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-semibold text-gray-900">
+                {fullName || "Người dùng"}
+              </div>
+              <Text type="secondary" className="block truncate text-xs">
+                {user?.email || "Chưa có email"}
+              </Text>
+              <div className="mt-2 flex flex-wrap gap-1">
+                <Tag color="blue" className="m-0">
+                  {getRoleLabel(user?.role)}
+                </Tag>
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">
+            <div className="font-medium text-gray-700">{ENTITY_LABELS.organization}</div>
+            <div className="mt-0.5 truncate">{orgName || "Đang tải..."}</div>
+          </div>
+        </div>
       ),
       disabled: true,
     },
     {
       type: "divider",
+    },
+    {
+      key: "settings",
+      icon: <SettingOutlined />,
+      label: "Cài đặt tài khoản",
     },
     {
       key: "logout",

@@ -85,7 +85,7 @@ export const AppSidebar = () => {
         ]
       : []),
     {
-      key: "/dashboard/settings/organization",
+      key: "/dashboard/settings",
       icon: <SettingOutlined />,
       label: ENTITY_LABELS.settings,
     },

@@ -98,7 +98,7 @@ Built comprehensive CRUD interfaces (List, Create, Detail, Edit) for all core mo
 - **Tasks**: General task management with priority levels and "Mark Complete" functionality. Related to other CRM entities.
 - **Cases**: Customer support ticket tracking with dynamic status and priority.
 - **Users**: Admin-restricted user management dashboard (RBAC enforced).
-- **Settings**: View current Organization metadata.
+- **Settings**: View organization/account details, Web-to-Lead integration information, and change the current user's password.
 
 ### 5. Notes & Activity Timeline
 
@@ -135,6 +135,8 @@ Shared contract docs:
 - Recycle Bin is available for Leads, Accounts, Contacts, Opportunities, Tasks, and Cases.
 - CSV Import is available on the Leads, Accounts, Contacts, Opportunities, Tasks, and Cases list pages with reusable modal UI, sample CSV download, per-row result summary, and list reload after successful or partially successful imports.
 - Web-to-Lead is available at `/dang-ky-tu-van` as a public consultation form that creates a new Lead with `source = Website`.
+- Profile dropdown shows the signed-in user's name, email, role, current organization, a Settings shortcut, and Logout.
+- `/dashboard/settings` is organized into cards for Organization, Account, Website integration, and Change Password.
 - Actor Tracking is available for important actions such as completing tasks, converting leads, changing opportunity stage, closing cases, deleting, and restoring records.
 - Opportunity and dashboard amount values are displayed as VNĐ/VND on the frontend while the backend keeps numeric `amount` values.
 - Supabase Free deployment preparation is documented in `../docs/deployment-guide.md`.
@@ -211,6 +213,33 @@ Submit flow:
 The submitted consultation need is stored in Lead `description` and appears on the Lead detail page in the `Nhu cầu tư vấn` section, together with company size and preferred contact time when provided.
 
 The hidden `companyFaxHidden` field is a honeypot for simple bot filtering. Real users do not see it.
+
+## Profile and Settings
+
+The profile dropdown in the dashboard header shows:
+
+- Avatar/icon
+- User full name
+- Email
+- Vietnamese role label
+- Current organization
+- `Cài đặt tài khoản` shortcut to `/dashboard/settings`
+- `Đăng xuất`, using the existing logout flow
+
+`/dashboard/settings` contains four cards:
+
+- `Thông tin tổ chức`: organization name, created date, and last updated date.
+- `Thông tin tài khoản`: user full name, email, role, and organization.
+- `Tích hợp Website`: public Web-to-Lead route `/dang-ky-tu-van`, default source `Website`, default status `Mới`, plus buttons to open the form and copy the full form URL.
+- `Đổi mật khẩu`: current password, new password, and confirmation password form.
+
+Change password rules:
+
+- The form calls `PATCH /auth/change-password`.
+- The user must be logged in.
+- The new password must be at least 8 characters and contain at least one letter and one number.
+- The confirmation password must match.
+- On success, the app shows a Vietnamese success message, clears the local session, and redirects to `/login`.
 
 ## Test Credentials
 

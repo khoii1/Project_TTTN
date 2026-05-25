@@ -825,3 +825,44 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 ### Result
 
 - Web-to-Lead consultation needs are now visible to CRM users before contacting the customer.
+
+## Profile, Settings, and Change Password QA
+
+- Date: 2026-05-25
+- Scope: Profile dropdown polish, `/dashboard/settings` cards, and authenticated password change
+- Browser used: Chromium headless via Playwright against local backend/frontend
+- Backend: `http://localhost:3000`
+- Frontend: `http://localhost:3001`
+- Test account: `admin@example.com`
+- Mobile changes: none
+
+### Checks
+
+| Area | Check | Result |
+|---|---|---|
+| Profile dropdown | Dropdown opened from the dashboard header and showed user email, Vietnamese admin role label, and organization area | Pass |
+| Settings shortcut | `Cài đặt tài khoản` navigated to `/dashboard/settings` | Pass |
+| Settings organization card | Organization metadata card rendered without API errors | Pass |
+| Settings account card | Account card showed `admin@example.com` and role information | Pass |
+| Website integration card | Card showed `/dang-ky-tu-van`; open-form and copy-link actions worked | Pass |
+| Change password auth guard | `PATCH /auth/change-password` without token returned `401` | Pass |
+| Change password validation | Mismatched confirmation showed frontend validation | Pass |
+| Wrong current password | Wrong current password did not change the password and kept the user on settings | Pass |
+| Successful change | Correct current password changed the password, cleared session, and redirected to `/login` | Pass |
+| Old/new password behavior | Old password failed after change; new password logged in successfully | Pass |
+| Demo password restore | The password for `admin@example.com` was changed back to `Admin@123` after QA | Pass |
+| Web-to-Lead smoke | Public Web-to-Lead endpoint still created a Lead with local Web-to-Lead env configured | Pass |
+
+### Validation
+
+- Backend `npm run build`: pass
+- Backend `npm test -- --runInBand`: pass, 12 suites / 100 tests
+- Backend `npm run test:e2e -- --runInBand`: pass, 12 suites / 100 tests
+- Frontend `npm run lint`: pass with existing non-blocking `react-hooks/exhaustive-deps` warnings
+- Frontend `npm run build`: pass
+
+### Result
+
+- Profile dropdown and Settings page are ready for demo.
+- Change Password is functional and does not expose `passwordHash`, `refreshTokenHash`, or token values.
+- Existing login/logout, Web-to-Lead, CSV Import, Lead Conversion Wizard, Dashboard, Global Search, Recycle Bin, Activity Timeline, and mobile API contract were not changed.

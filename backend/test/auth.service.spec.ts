@@ -4,6 +4,9 @@ import { PrismaService } from '../src/infrastructure/database/prisma.service';
 import { PasswordHasherService } from '../src/infrastructure/security/password-hasher.service';
 import { TokenService } from '../src/infrastructure/security/token.service';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { validateSync } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
+import { ChangePasswordDto } from '../src/modules/auth/application/dto/auth.dto';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -204,6 +207,90 @@ describe('AuthService', () => {
         where: { id: userId },
         data: { refreshTokenHash: null },
       });
+    });
+  });
+
+  describe('changePassword', () => {
+    const userId = 'user-1';
+    const dto = {
+      currentPassword: 'OldPassword123',
+      newPassword: 'NewPassword123',
+      confirmPassword: 'NewPassword123',
+    };
+
+    it('should change password and clear refresh token', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: userId,
+        email: 'john@example.com',
+        passwordHash: 'old-hash',
+      });
+      mockPasswordHasherService.compare.mockResolvedValue(true);
+      mockPasswordHasherService.hash.mockResolvedValue('new-hash');
+      mockPrismaService.user.update.mockResolvedValue({
+        id: userId,
+        passwordHash: 'new-hash',
+        refreshTokenHash: null,
+      });
+
+      const result = await service.changePassword(userId, dto);
+
+      expect(result).toEqual({
+        message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.',
+      });
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: {
+          passwordHash: 'new-hash',
+          refreshTokenHash: null,
+        },
+      });
+      expect(JSON.stringify(result)).not.toContain('passwordHash');
+    });
+
+    it('should throw UnauthorizedException if current password is incorrect', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: userId,
+        passwordHash: 'old-hash',
+      });
+      mockPasswordHasherService.compare.mockResolvedValue(false);
+
+      await expect(service.changePassword(userId, dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(mockPrismaService.user.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException if confirm password does not match', async () => {
+      await expect(
+        service.changePassword(userId, {
+          ...dto,
+          confirmPassword: 'DifferentPassword123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException if new password is the same as current password', async () => {
+      await expect(
+        service.changePassword(userId, {
+          currentPassword: 'OldPassword123',
+          newPassword: 'OldPassword123',
+          confirmPassword: 'OldPassword123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('should validate short new password in DTO', () => {
+      const instance = plainToInstance(ChangePasswordDto, {
+        currentPassword: 'OldPassword123',
+        newPassword: 'short1',
+        confirmPassword: 'short1',
+      });
+
+      const errors = validateSync(instance);
+
+      expect(errors.some((error) => error.property === 'newPassword')).toBe(true);
     });
   });
 });

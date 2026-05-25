@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Patch } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from '../application/services/auth.service';
 import {
@@ -6,6 +6,7 @@ import {
   LoginDto,
   RefreshTokenDto,
   AuthResponseDto,
+  ChangePasswordDto,
 } from '../application/dto/auth.dto';
 import { JwtGuard } from '../../../shared/guards/jwt.guard';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
@@ -57,5 +58,17 @@ export class AuthController {
   async logout(@CurrentUser() user: TokenPayload): Promise<{ message: string }> {
     await this.authService.logout(user.sub);
     return { message: 'Logged out successfully' };
+  }
+
+  @Patch('change-password')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change current user password' })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  async changePassword(
+    @CurrentUser() user: TokenPayload,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    return this.authService.changePassword(user.sub, dto);
   }
 }

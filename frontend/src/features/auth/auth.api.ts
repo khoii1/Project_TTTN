@@ -14,6 +14,12 @@ type RegisterPayload = {
   organizationName: string;
 };
 
+type ChangePasswordPayload = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
 export const authApi = {
   login: async (credentials: LoginPayload): Promise<AuthResponse> => {
     const { data } = await httpClient.post("/auth/login", credentials);
@@ -25,5 +31,12 @@ export const authApi = {
   },
   logout: async () => {
     await httpClient.post("/auth/logout");
+  },
+  changePassword: async (payload: ChangePasswordPayload) => {
+    const { data } = await httpClient.patch<{ message: string }>(
+      "/auth/change-password",
+      payload,
+    );
+    return data;
   },
 };

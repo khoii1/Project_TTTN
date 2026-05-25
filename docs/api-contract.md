@@ -72,6 +72,7 @@ Response:
 - `POST /auth/login`
 - `POST /auth/refresh`
 - `POST /auth/logout`
+- `PATCH /auth/change-password`
 
 Logout:
 
@@ -79,6 +80,39 @@ Logout:
 - The backend clears the current user's `refreshTokenHash`.
 - The frontend calls this endpoint first, then clears local `js-cookie` tokens and auth state.
 - If the logout API fails because the token is expired or invalid, the frontend still clears the local session and redirects to `/login`.
+
+Change password:
+
+- `PATCH /auth/change-password` is protected by `Authorization: Bearer <accessToken>`.
+- The endpoint only changes the password of the authenticated user.
+- Request:
+
+```json
+{
+  "currentPassword": "OldPassword123",
+  "newPassword": "NewPassword123",
+  "confirmPassword": "NewPassword123"
+}
+```
+
+Rules:
+
+- `currentPassword`, `newPassword`, and `confirmPassword` are required.
+- `newPassword` must be at least 8 characters and contain at least one letter and one number.
+- `confirmPassword` must match `newPassword`.
+- `newPassword` must be different from `currentPassword`.
+- If `currentPassword` is wrong, the API returns a Vietnamese error message.
+- On success, the backend hashes the new password and clears the user's `refreshTokenHash`, so the frontend should clear local tokens and redirect to `/login`.
+
+Response:
+
+```json
+{
+  "message": "Đổi mật khẩu thành công. Vui lòng đăng nhập lại."
+}
+```
+
+The response never includes `passwordHash`, `refreshTokenHash`, or token values.
 
 ### Public Web-to-Lead
 

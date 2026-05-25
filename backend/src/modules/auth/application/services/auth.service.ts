@@ -1,8 +1,8 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
 import { PasswordHasherService } from '../../../../infrastructure/security/password-hasher.service';
 import { TokenService } from '../../../../infrastructure/security/token.service';
-import { RegisterDto, LoginDto, AuthResponseDto } from '../dto/auth.dto';
+import { RegisterDto, LoginDto, AuthResponseDto, ChangePasswordDto } from '../dto/auth.dto';
 import { randomUUID } from 'crypto';
 
 @Injectable()
@@ -203,5 +203,44 @@ export class AuthService {
       where: { id: userId },
       data: { refreshTokenHash: null },
     });
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ message: string }> {
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException('Xác nhận mật khẩu mới không khớp.');
+    }
+
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException('Mật khẩu mới không được trùng mật khẩu hiện tại.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng.');
+    }
+
+    const isCurrentPasswordValid = await this.passwordHasher.compare(
+      dto.currentPassword,
+      user.passwordHash,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new UnauthorizedException('Mật khẩu hiện tại không đúng.');
+    }
+
+    const passwordHash = await this.passwordHasher.hash(dto.newPassword);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+        refreshTokenHash: null,
+      },
+    });
+
+    return { message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.' };
   }
 }

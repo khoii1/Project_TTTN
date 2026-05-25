@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, MaxLength, IsNotEmpty } from 'class-validator';
+import { IsEmail, IsString, MinLength, MaxLength, IsNotEmpty, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -53,6 +53,28 @@ export class RefreshTokenDto {
   @IsString()
   @IsNotEmpty()
   refreshToken: string;
+}
+
+export class ChangePasswordDto {
+  @ApiProperty({ example: 'OldPassword123' })
+  @IsString()
+  @IsNotEmpty()
+  currentPassword: string;
+
+  @ApiProperty({ example: 'NewPassword123' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  @MaxLength(50)
+  @Matches(/^(?=.*[A-Za-z])(?=.*\d).+$/, {
+    message: 'Mật khẩu mới phải có ít nhất một chữ cái và một chữ số.',
+  })
+  newPassword: string;
+
+  @ApiProperty({ example: 'NewPassword123' })
+  @IsString()
+  @IsNotEmpty()
+  confirmPassword: string;
 }
 
 export class AuthUserDto {

@@ -161,7 +161,7 @@ export const SOURCE_LABELS: Record<string, string> = {
 export const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Quản trị viên",
   MANAGER: "Quản lý",
-  SALES: "Nhân viên bán hàng",
+  SALES: "Nhân viên kinh doanh",
   SUPPORT: "Nhân viên hỗ trợ",
 };
 

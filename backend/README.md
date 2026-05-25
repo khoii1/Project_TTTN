@@ -266,6 +266,42 @@ Swagger mặc định bật ở môi trường không phải production. Với p
 | POST   | `/auth/refresh`  | Rotate tokens                      |
 | POST   | `/auth/logout`   | Xóa refresh token                  |
 
+### Auth (Protected)
+
+| Method | Endpoint                | Mô tả                         |
+| ------ | ----------------------- | ----------------------------- |
+| PATCH  | `/auth/change-password` | Đổi mật khẩu user hiện tại    |
+
+`PATCH /auth/change-password` requires `Authorization: Bearer <accessToken>` and only changes the authenticated user's password.
+
+Request body:
+
+```json
+{
+  "currentPassword": "OldPassword123",
+  "newPassword": "NewPassword123",
+  "confirmPassword": "NewPassword123"
+}
+```
+
+Validation:
+
+- `currentPassword`, `newPassword`, and `confirmPassword` are required.
+- `newPassword` must be at least 8 characters and contain at least one letter and one number.
+- `confirmPassword` must match `newPassword`.
+- `newPassword` cannot be the same as `currentPassword`.
+- If the current password is wrong, the API returns a Vietnamese error message.
+
+On success, the backend updates `passwordHash`, clears `refreshTokenHash`, and returns:
+
+```json
+{
+  "message": "Đổi mật khẩu thành công. Vui lòng đăng nhập lại."
+}
+```
+
+The response never includes `passwordHash`, `refreshTokenHash`, or token values.
+
 ### Users (ADMIN mới có quyền write)
 
 | Method | Endpoint     | Mô tả            | Query Params              |

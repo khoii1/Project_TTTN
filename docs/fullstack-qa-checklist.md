@@ -62,6 +62,25 @@ Use this checklist to validate the end-to-end CRM flow after backend/frontend co
 - [ ] Login as `admin@rival.com` / `Rival@123`
 - [ ] Verify Rival Org cannot see Sample Company data
 
+## Profile, Settings, and Change Password QA
+
+- [ ] Open the profile dropdown in the dashboard header
+- [ ] Verify it shows avatar/icon, full name, email, Vietnamese role label, and current organization
+- [ ] Click `Cài đặt tài khoản` and verify it navigates to `/dashboard/settings`
+- [ ] Click `Đăng xuất` and verify the existing logout flow still clears the session and redirects to `/login`
+- [ ] Open `/dashboard/settings`
+- [ ] Verify the `Thông tin tổ chức` card shows organization name, created date, and updated date
+- [ ] Verify the `Thông tin tài khoản` card shows full name, email, role, and organization
+- [ ] Verify the `Tích hợp Website` card shows `/dang-ky-tu-van`, source `Website`, status `Mới`, and the configured website lead owner note
+- [ ] Click `Mở form đăng ký tư vấn` and verify the public form opens
+- [ ] Click `Sao chép đường dẫn` and verify the full public form URL is copied
+- [ ] Submit Change Password with wrong current password and verify a Vietnamese error
+- [ ] Submit Change Password with mismatched confirmation and verify frontend validation
+- [ ] Change password successfully and verify the user is redirected to `/login`
+- [ ] Verify the old password no longer works
+- [ ] Verify the new password works
+- [ ] If using a seeded demo account, change the password back to the seed password before ending QA
+
 ## Expected Results
 
 - [ ] Auth redirects work for protected routes

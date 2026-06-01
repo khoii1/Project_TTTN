@@ -4,6 +4,7 @@ import '../../core/api/api_client.dart';
 import '../../core/models/api_models.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/common_widgets.dart';
+import '../search/search_screen.dart';
 import 'record_form_screen.dart';
 
 class RecordDetailScreen extends StatefulWidget {
@@ -34,7 +35,12 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
 
   Future<Map<String, dynamic>> _load() => widget.apiClient.detail(widget.definition, widget.initialRecord['id'].toString());
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() {
+    final future = _load();
+    setState(() {
+      _future = future;
+    });
+  }
 
   Future<void> _edit(Map<String, dynamic> record) async {
     final ok = await Navigator.of(context).push<bool>(
@@ -79,6 +85,7 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
             ),
             ...values.map(
               (value) => ListTile(
+                key: ValueKey('picker_$value'),
                 title: Text(labelFor(value)),
                 trailing: current == value ? const Icon(Icons.check, color: Color(0xFF0176D3)) : null,
                 onTap: () => Navigator.pop(context, value),
@@ -162,7 +169,7 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
         content: const Text('Bản ghi sẽ được đưa vào Thùng rác và có thể khôi phục.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Xóa')),
+          FilledButton(key: const ValueKey('confirmDeleteButton'), onPressed: () => Navigator.pop(context, true), child: const Text('Xóa')),
         ],
       ),
     );
@@ -188,11 +195,12 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
           children: [
             Center(child: Text('Hoạt động', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800))),
             const SizedBox(height: 12),
-            _SheetAction(icon: Icons.playlist_add_check, color: const Color(0xFF34A853), label: 'Tạo Task', onTap: () { Navigator.pop(context); _addTask(); }),
-            _SheetAction(icon: Icons.note_add, color: const Color(0xFF0176D3), label: 'Thêm ghi chú', onTap: () { Navigator.pop(context); _addNote(); }),
-            _SheetAction(icon: Icons.edit, color: const Color(0xFF00A99D), label: 'Sửa', onTap: () { Navigator.pop(context); _edit(record); }),
+            _SheetAction(key: const ValueKey('addTaskButton'), icon: Icons.playlist_add_check, color: const Color(0xFF34A853), label: 'Tạo Task', onTap: () { Navigator.pop(context); _addTask(); }),
+            _SheetAction(key: const ValueKey('addNoteButton'), icon: Icons.note_add, color: const Color(0xFF0176D3), label: 'Thêm ghi chú', onTap: () { Navigator.pop(context); _addNote(); }),
+            _SheetAction(key: const ValueKey('recordEditButton'), icon: Icons.edit, color: const Color(0xFF00A99D), label: 'Sửa', onTap: () { Navigator.pop(context); _edit(record); }),
             if (widget.definition.type == EntityType.lead && record['status'] != 'CONVERTED')
               _SheetAction(
+                key: const ValueKey('leadStatusButton'),
                 icon: Icons.verified,
                 color: const Color(0xFF2EAA58),
                 label: 'Đổi trạng thái Lead',
@@ -209,9 +217,10 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
                 },
               ),
             if (widget.definition.type == EntityType.lead && record['status'] != 'CONVERTED')
-              _SheetAction(icon: Icons.call_split, color: const Color(0xFFFF5A36), label: 'Chuyển đổi Lead', onTap: () { Navigator.pop(context); _convertLead(record); }),
+              _SheetAction(key: const ValueKey('leadConvertButton'), icon: Icons.call_split, color: const Color(0xFFFF5A36), label: 'Chuyển đổi Lead', onTap: () { Navigator.pop(context); _convertLead(record); }),
             if (widget.definition.type == EntityType.opportunity)
               _SheetAction(
+                key: const ValueKey('opportunityStageButton'),
                 icon: Icons.workspace_premium,
                 color: const Color(0xFFFF5A36),
                 label: 'Đổi giai đoạn',
@@ -228,9 +237,10 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
                 },
               ),
             if (widget.definition.type == EntityType.task && record['status'] != 'COMPLETED')
-              _SheetAction(icon: Icons.task_alt, color: const Color(0xFF34A853), label: 'Hoàn thành Task', onTap: () { Navigator.pop(context); _quickPatch('/tasks/${record['id']}/complete', {'status': 'COMPLETED'}, 'Đã hoàn thành Task'); }),
+              _SheetAction(key: const ValueKey('taskCompleteButton'), icon: Icons.task_alt, color: const Color(0xFF34A853), label: 'Hoàn thành Task', onTap: () { Navigator.pop(context); _quickPatch('/tasks/${record['id']}/complete', {'status': 'COMPLETED'}, 'Đã hoàn thành Task'); }),
             if (widget.definition.type == EntityType.caseRecord)
               _SheetAction(
+                key: const ValueKey('caseStatusButton'),
                 icon: Icons.lock_outline,
                 color: const Color(0xFF8A98A8),
                 label: 'Đổi trạng thái Case',
@@ -246,7 +256,7 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
                   );
                 },
               ),
-            _SheetAction(icon: Icons.delete_outline, color: const Color(0xFFFF4F8B), label: 'Xóa', onTap: () { Navigator.pop(context); _deleteRecord(record); }),
+            _SheetAction(key: const ValueKey('recordDeleteButton'), icon: Icons.delete_outline, color: const Color(0xFFFF4F8B), label: 'Xóa', onTap: () { Navigator.pop(context); _deleteRecord(record); }),
           ],
         ),
       ),
@@ -268,10 +278,13 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
             return ListView(
               padding: EdgeInsets.zero,
               children: [
-                _DetailTopBar(onBack: () => Navigator.of(context).pop(_changed)),
+                _DetailTopBar(
+                  onBack: () => Navigator.of(context).pop(_changed),
+                  onSearch: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SearchScreen(apiClient: widget.apiClient))),
+                ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                  child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.black)),
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+                  child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.black)),
                 ),
                 const Divider(height: 3, thickness: 3, color: Color(0xFF0176D3)),
                 _QuickActions(onNote: _addNote, onTask: _addTask, onMore: () => _showMoreActions(record)),
@@ -290,21 +303,22 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
 }
 
 class _DetailTopBar extends StatelessWidget {
-  const _DetailTopBar({required this.onBack});
+  const _DetailTopBar({required this.onBack, required this.onSearch});
   final VoidCallback onBack;
+  final VoidCallback onSearch;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 24, 24, 8),
+      padding: const EdgeInsets.fromLTRB(8, 12, 16, 4),
       child: Row(
         children: [
-          IconButton(onPressed: onBack, icon: const Icon(Icons.chevron_left, color: Color(0xFF0176D3), size: 44)),
+          IconButton(key: const ValueKey('recordDetailBackButton'), onPressed: onBack, icon: const Icon(Icons.chevron_left, color: Color(0xFF0176D3), size: 34)),
           const Spacer(),
-          const _HeaderIcon(icon: Icons.ios_share),
-          const _HeaderIcon(icon: Icons.star_border),
-          const _HeaderIcon(icon: Icons.search),
-          const _HeaderIcon(icon: Icons.notifications),
+          _HeaderIcon(key: const ValueKey('recordShareButton'), icon: Icons.ios_share, message: 'Chia sẻ sẽ được bổ sung sau'),
+          _HeaderIcon(key: const ValueKey('recordFavoriteButton'), icon: Icons.star_border, message: 'Yêu thích sẽ được bổ sung sau'),
+          _HeaderIcon(key: const ValueKey('recordSearchButton'), icon: Icons.search, onTap: onSearch),
+          _HeaderIcon(key: const ValueKey('recordNotificationButton'), icon: Icons.notifications, message: 'Thông báo sẽ được bổ sung sau'),
         ],
       ),
     );
@@ -312,13 +326,17 @@ class _DetailTopBar extends StatelessWidget {
 }
 
 class _HeaderIcon extends StatelessWidget {
-  const _HeaderIcon({required this.icon});
+  const _HeaderIcon({super.key, required this.icon, this.onTap, this.message});
   final IconData icon;
+  final VoidCallback? onTap;
+  final String? message;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(left: 22),
-        child: Icon(icon, color: const Color(0xFF0176D3), size: 34),
+  Widget build(BuildContext context) => IconButton(
+        visualDensity: VisualDensity.compact,
+        tooltip: message,
+        onPressed: onTap ?? () => showCrmSnack(context, message ?? 'Chức năng đang được phát triển'),
+        icon: Icon(icon, color: const Color(0xFF0176D3), size: 23),
       );
 }
 
@@ -331,14 +349,14 @@ class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFD0D0D0)))),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _QuickAction(icon: Icons.note_add, color: Color(0xFF0176D3), label: 'Ghi chú', onTap: onNote),
-          _QuickAction(icon: Icons.playlist_add_check, color: Color(0xFF34A853), label: 'Task', onTap: onTask),
-          _QuickAction(icon: Icons.more_horiz, color: Color(0xFF8A98A8), label: 'Thêm', onTap: onMore),
+          _QuickAction(key: ValueKey('quickAddNoteButton'), icon: Icons.note_add, color: Color(0xFF0176D3), label: 'Ghi chú', onTap: onNote),
+          _QuickAction(key: ValueKey('quickAddTaskButton'), icon: Icons.playlist_add_check, color: Color(0xFF34A853), label: 'Task', onTap: onTask),
+          _QuickAction(key: ValueKey('recordDetailMoreButton'), icon: Icons.more_horiz, color: Color(0xFF8A98A8), label: 'Thêm', onTap: onMore),
         ],
       ),
     );
@@ -346,7 +364,7 @@ class _QuickActions extends StatelessWidget {
 }
 
 class _QuickAction extends StatelessWidget {
-  const _QuickAction({required this.icon, required this.color, required this.label, required this.onTap});
+  const _QuickAction({super.key, required this.icon, required this.color, required this.label, required this.onTap});
   final IconData icon;
   final Color color;
   final String label;
@@ -358,9 +376,9 @@ class _QuickAction extends StatelessWidget {
         borderRadius: BorderRadius.circular(36),
         child: Column(
           children: [
-            CircleAvatar(radius: 30, backgroundColor: color, child: Icon(icon, color: Colors.white, size: 28)),
-            const SizedBox(height: 8),
-            Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF444444))),
+            CircleAvatar(radius: 24, backgroundColor: color, child: Icon(icon, color: Colors.white, size: 23)),
+            const SizedBox(height: 6),
+            Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF444444))),
           ],
         ),
       );
@@ -375,22 +393,22 @@ class _IdentityBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         color: const Color(0xFFF2F2F2),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(18),
         child: Row(
           children: [
             Container(
-              width: 72,
-              height: 72,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(color: _entityColor(definition.type), borderRadius: BorderRadius.circular(6)),
-              child: Icon(iconFromName(definition.icon), color: Colors.white, size: 42),
+              child: Icon(iconFromName(definition.icon), color: Colors.white, size: 32),
             ),
             const SizedBox(width: 20),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(definition.title, style: const TextStyle(fontSize: 18, color: Color(0xFF555555))),
-                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black)),
+                  Text(definition.title, style: const TextStyle(fontSize: 14, color: Color(0xFF555555))),
+                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black)),
                 ],
               ),
             ),
@@ -552,7 +570,7 @@ class _ActivityPanel extends StatelessWidget {
             children: [
               Center(child: Container(width: 72, height: 7, decoration: BoxDecoration(color: Colors.grey[500], borderRadius: BorderRadius.circular(99)))),
               const SizedBox(height: 22),
-              const Text('Hoạt động gần đây', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF444444))),
+              const Text('Hoạt động gần đây', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF444444))),
               const SizedBox(height: 12),
               if (snapshot.connectionState == ConnectionState.waiting) const LinearProgressIndicator(),
               if (snapshot.hasData && notes.isEmpty && tasks.isEmpty) const Text('Chưa có note/task liên quan', style: TextStyle(fontSize: 15, color: Colors.grey)),
@@ -639,7 +657,7 @@ class _LeadConvertSheetState extends State<_LeadConvertSheet> {
                 const SizedBox(height: 12),
                 if (snapshot.connectionState == ConnectionState.waiting) const LinearProgressIndicator(),
                 _ModePicker(
-                  title: 'Account',
+                  title: 'Công ty',
                   mode: accountMode,
                   modes: const ['CREATE_NEW', 'USE_EXISTING'],
                   items: accounts,
@@ -651,7 +669,7 @@ class _LeadConvertSheetState extends State<_LeadConvertSheet> {
                   onIdChanged: (value) => setState(() => accountId = value),
                 ),
                 _ModePicker(
-                  title: 'Contact',
+                  title: 'Liên hệ',
                   mode: contactMode,
                   modes: const ['CREATE_NEW', 'USE_EXISTING'],
                   items: contacts,
@@ -663,7 +681,7 @@ class _LeadConvertSheetState extends State<_LeadConvertSheet> {
                   onIdChanged: (value) => setState(() => contactId = value),
                 ),
                 _ModePicker(
-                  title: 'Opportunity',
+                  title: 'Cơ hội',
                   mode: opportunityMode,
                   modes: const ['CREATE_NEW', 'USE_EXISTING', 'DO_NOT_CREATE'],
                   items: opportunities,
@@ -675,7 +693,7 @@ class _LeadConvertSheetState extends State<_LeadConvertSheet> {
                   onIdChanged: (value) => setState(() => opportunityId = value),
                 ),
                 if (opportunityMode == 'CREATE_NEW')
-                  TextField(controller: opportunityName, decoration: const InputDecoration(labelText: 'Tên Opportunity')),
+                  TextField(controller: opportunityName, decoration: const InputDecoration(labelText: 'Tên cơ hội')),
                 const SizedBox(height: 18),
                 FilledButton.icon(
                   onPressed: _canSubmit
@@ -741,7 +759,7 @@ class _ModePicker extends StatelessWidget {
           DropdownButtonFormField<String>(
             initialValue: mode,
             isExpanded: true,
-            decoration: InputDecoration(labelText: '$title mode'),
+            decoration: InputDecoration(labelText: 'Cách xử lý $title'),
             items: modes.map((value) => DropdownMenuItem(value: value, child: Text(_modeLabel(value)))).toList(),
             onChanged: (value) {
               if (value != null) onModeChanged(value);
@@ -776,7 +794,7 @@ class _ModePicker extends StatelessWidget {
 }
 
 class _SheetAction extends StatelessWidget {
-  const _SheetAction({required this.icon, required this.color, required this.label, required this.onTap});
+  const _SheetAction({super.key, required this.icon, required this.color, required this.label, required this.onTap});
   final IconData icon;
   final Color color;
   final String label;
@@ -790,9 +808,9 @@ class _SheetAction extends StatelessWidget {
           decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE1E1E1)))),
           child: Row(
             children: [
-              CircleAvatar(radius: 26, backgroundColor: color, child: Icon(icon, color: Colors.white)),
-              const SizedBox(width: 22),
-              Expanded(child: Text(label, style: const TextStyle(fontSize: 20, color: Color(0xFF444444)))),
+              CircleAvatar(radius: 22, backgroundColor: color, child: Icon(icon, color: Colors.white, size: 20)),
+              const SizedBox(width: 14),
+              Expanded(child: Text(label, style: const TextStyle(fontSize: 16, color: Color(0xFF444444), fontWeight: FontWeight.w600))),
             ],
           ),
         ),

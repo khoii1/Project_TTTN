@@ -58,32 +58,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
           final data = snapshot.data!;
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             children: [
-              Text('Tổng quan', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
+              Text('Tổng quan', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 10),
               _SummaryGrid(summary: data.summary),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _GroupCard(title: 'Lead theo trạng thái', items: data.leadsByStatus, labelKey: 'status'),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _GroupCard(title: 'Cơ hội theo giai đoạn', items: data.opportunitiesByStage, labelKey: 'stage', amountKey: 'amount'),
-              const SizedBox(height: 12),
-              _GroupCard(title: 'Case theo ưu tiên', items: data.casesByPriority, labelKey: 'priority'),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+              _GroupCard(title: 'Hỗ trợ theo ưu tiên', items: data.casesByPriority, labelKey: 'priority'),
+              const SizedBox(height: 10),
               CrmCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Task sắp tới', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    Text('Công việc sắp tới', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 8),
                     if (data.upcomingTasks.isEmpty)
-                      const Text('Chưa có task sắp tới')
+                      const Text('Chưa có công việc sắp tới')
                     else
                       ...data.upcomingTasks.map((item) {
                         final task = Map<String, dynamic>.from(item as Map);
                         return ListTile(
+                          dense: true,
                           contentPadding: EdgeInsets.zero,
-                          title: Text(task['subject']?.toString() ?? 'Task'),
+                          title: Text(task['subject']?.toString() ?? 'Công việc', maxLines: 1, overflow: TextOverflow.ellipsis),
                           subtitle: Text('Hạn: ${compactDate(task['dueDate'])}'),
                           trailing: Text(labelFor(task['priority']?.toString())),
                         );
@@ -116,14 +117,14 @@ class _SummaryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      ('Tổng Lead', summary['totalLeads']?.toString() ?? '0', Icons.person_search),
-      ('Accounts', summary['totalAccounts']?.toString() ?? '0', Icons.business),
-      ('Contacts', summary['totalContacts']?.toString() ?? '0', Icons.contacts),
-      ('Opportunities', summary['totalOpportunities']?.toString() ?? '0', Icons.trending_up),
-      ('Open Pipeline', formatCurrency(summary['openOpportunitiesValue']), Icons.payments_outlined),
-      ('Closed Won', formatCurrency(summary['closedWonValue']), Icons.emoji_events_outlined),
-      ('Open Tasks', summary['openTasks']?.toString() ?? '0', Icons.task_alt),
-      ('Open Cases', summary['openCases']?.toString() ?? '0', Icons.support_agent),
+      ('Lead', summary['totalLeads']?.toString() ?? '0', Icons.person_search),
+      ('Công ty', summary['totalAccounts']?.toString() ?? '0', Icons.business),
+      ('Liên hệ', summary['totalContacts']?.toString() ?? '0', Icons.contacts),
+      ('Cơ hội', summary['totalOpportunities']?.toString() ?? '0', Icons.trending_up),
+      ('Pipeline mở', formatCurrency(summary['openOpportunitiesValue']), Icons.payments_outlined),
+      ('Đã thắng', formatCurrency(summary['closedWonValue']), Icons.emoji_events_outlined),
+      ('Việc mở', summary['openTasks']?.toString() ?? '0', Icons.task_alt),
+      ('Hỗ trợ mở', summary['openCases']?.toString() ?? '0', Icons.support_agent),
     ];
 
     return GridView.builder(
@@ -131,21 +132,22 @@ class _SummaryGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.35,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 1.55,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
         return CrmCard(
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(item.$3, color: Theme.of(context).colorScheme.primary),
+              Icon(item.$3, size: 22, color: Theme.of(context).colorScheme.primary),
               const Spacer(),
-              Text(item.$2, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-              Text(item.$1, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(item.$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+              Text(item.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5)),
             ],
           ),
         );
@@ -176,14 +178,14 @@ class _GroupCard extends StatelessWidget {
             ...items.map((raw) {
               final item = Map<String, dynamic>.from(raw as Map);
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(vertical: 5),
                 child: Row(
                   children: [
-                    Expanded(child: Text(labelFor(item[labelKey]?.toString()))),
+                    Expanded(child: Text(labelFor(item[labelKey]?.toString()), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     Text('${item['count'] ?? 0}'),
                     if (amountKey != null) ...[
-                      const SizedBox(width: 12),
-                      Text(formatCurrency(item[amountKey])),
+                      const SizedBox(width: 8),
+                      Flexible(child: Text(formatCurrency(item[amountKey]), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ],
                   ],
                 ),

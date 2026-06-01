@@ -40,7 +40,10 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
   }
 
   void _reload() {
-    setState(() => _future = _load());
+    final future = _load();
+    setState(() {
+      _future = future;
+    });
   }
 
   Future<void> _restore(_TrashItem item) async {
@@ -69,7 +72,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
           return RefreshIndicator(
             onRefresh: () async => _reload(),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 32),
               children: [
                 Wrap(
                   spacing: 8,
@@ -85,9 +88,9 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 if (items.isEmpty)
-                  const SizedBox(height: 420, child: EmptyView(message: 'Không có bản ghi trong Thùng rác'))
+                  const SizedBox(height: 360, child: EmptyView(message: 'Không có bản ghi trong Thùng rác'))
                 else
                   ...items.map(
                     (item) => Padding(
@@ -95,11 +98,13 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                       child: CrmCard(
                         padding: EdgeInsets.zero,
                         child: ListTile(
+                          key: ValueKey('recycleBinItem_${item.definition.type.name}_${item.title}'),
+                          dense: true,
                           leading: Icon(iconFromName(item.definition.icon), color: const Color(0xFF0176D3)),
                           title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                           subtitle: Text('${item.definition.title} • Xóa lúc ${formatDate(item.record['deletedAt'])}\nNgười xóa: ${_deletedBy(item.record)}'),
                           isThreeLine: true,
-                          trailing: TextButton(onPressed: () => _restore(item), child: const Text('Khôi phục')),
+                          trailing: TextButton(key: ValueKey('restoreButton_${item.definition.type.name}_${item.title}'), onPressed: () => _restore(item), child: const Text('Khôi phục')),
                         ),
                       ),
                     ),

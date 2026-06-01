@@ -55,18 +55,19 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       body: pages[_index],
       bottomNavigationBar: NavigationBar(
+        key: const ValueKey('bottomNavigation'),
         backgroundColor: Colors.white,
         indicatorColor: const Color(0xFFEAF3FF),
         selectedIndex: _index,
         onDestinationSelected: (value) => setState(() => _index = value),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.star, color: Colors.grey), selectedIcon: Icon(Icons.star, color: Color(0xFF0176D3)), label: 'Leads'),
-          NavigationDestination(icon: Icon(Icons.contact_page, color: Colors.grey), selectedIcon: Icon(Icons.contact_page, color: Color(0xFF0176D3)), label: 'Contacts'),
-          NavigationDestination(icon: Icon(Icons.business, color: Colors.grey), selectedIcon: Icon(Icons.business, color: Color(0xFF0176D3)), label: 'Accounts'),
+          NavigationDestination(icon: Icon(Icons.star, color: Colors.grey), selectedIcon: Icon(Icons.star, color: Color(0xFF0176D3)), label: 'Lead'),
+          NavigationDestination(icon: Icon(Icons.contact_page, color: Colors.grey), selectedIcon: Icon(Icons.contact_page, color: Color(0xFF0176D3)), label: 'Liên hệ'),
+          NavigationDestination(icon: Icon(Icons.business, color: Colors.grey), selectedIcon: Icon(Icons.business, color: Color(0xFF0176D3)), label: 'Công ty'),
           NavigationDestination(
             icon: Icon(Icons.workspace_premium, color: Colors.grey),
             selectedIcon: Icon(Icons.workspace_premium, color: Color(0xFF0176D3)),
-            label: 'Opportunities',
+            label: 'Cơ hội',
           ),
           NavigationDestination(icon: Icon(Icons.menu, color: Colors.grey), selectedIcon: Icon(Icons.menu, color: Color(0xFF0176D3)), label: 'Menu'),
         ],

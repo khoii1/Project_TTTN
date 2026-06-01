@@ -43,55 +43,56 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 460),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 56,
-                    height: 56,
+                    width: 52,
+                    height: 52,
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.hub_outlined, color: Colors.white, size: 30),
+                    child: const Icon(Icons.hub_outlined, color: Colors.white, size: 28),
                   ),
-                  const SizedBox(height: 24),
-                  Text('CRM Mobile', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 20),
+                  Text('CRM Mobile', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
                   Text(
                     'Đăng nhập để quản lý Lead, cơ hội bán hàng và hỗ trợ khách hàng.',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.blueGrey[700]),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.blueGrey[700]),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 22),
                   CrmCard(
                     child: Form(
                       key: _formKey,
                       child: Column(
                         children: [
                           TextFormField(
+                            key: const ValueKey('loginEmailField'),
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
                             decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined)),
                             validator: (value) => value == null || value.trim().isEmpty ? 'Vui lòng nhập email' : null,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           TextFormField(
+                            key: const ValueKey('loginPasswordField'),
                             controller: _passwordController,
                             obscureText: true,
                             decoration: const InputDecoration(labelText: 'Mật khẩu', prefixIcon: Icon(Icons.lock_outline)),
                             validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập mật khẩu' : null,
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 18),
                           SizedBox(
                             width: double.infinity,
                             child: FilledButton.icon(
+                              key: const ValueKey('loginSubmitButton'),
                               onPressed: auth.isLoading ? null : _submit,
-                              icon: auth.isLoading
-                                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                                  : const Icon(Icons.login),
+                              icon: auth.isLoading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.login),
                               label: const Text('Đăng nhập'),
                             ),
                           ),
@@ -99,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Text('Dùng tài khoản demo được cấp trong tài liệu dự án.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.blueGrey)),
                 ],
               ),

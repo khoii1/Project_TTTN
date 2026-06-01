@@ -53,8 +53,8 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
   List<_FieldSpec> get _fields {
     final fields = switch (widget.definition.type) {
       EntityType.lead => const [
-          _FieldSpec('firstName', 'Tên'),
-          _FieldSpec('lastName', 'Họ', required: true),
+          _FieldSpec('firstName', 'Họ'),
+          _FieldSpec('lastName', 'Tên', required: true),
           _FieldSpec('company', 'Công ty', required: true),
           _FieldSpec('title', 'Chức danh'),
           _FieldSpec('email', 'Email'),
@@ -63,10 +63,10 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
           _FieldSpec('status', 'Trạng thái', initialValue: 'NEW'),
           _FieldSpec('source', 'Nguồn', initialValue: 'MANUAL'),
           _FieldSpec('sourceDetail', 'Chi tiết nguồn', maxLines: 2),
-          _FieldSpec('description', 'Mô tả', maxLines: 3),
+          _FieldSpec('description', 'Mô tả / Nhu cầu tư vấn', maxLines: 3),
         ],
       EntityType.account => const [
-          _FieldSpec('name', 'Tên Account', required: true),
+          _FieldSpec('name', 'Tên công ty', required: true),
           _FieldSpec('type', 'Loại'),
           _FieldSpec('website', 'Website'),
           _FieldSpec('phone', 'Số điện thoại'),
@@ -75,9 +75,9 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
           _FieldSpec('description', 'Mô tả', maxLines: 3),
         ],
       EntityType.contact => const [
-          _FieldSpec('firstName', 'Tên'),
-          _FieldSpec('lastName', 'Họ', required: true),
-          _FieldSpec('accountId', 'Account liên quan', required: true),
+          _FieldSpec('firstName', 'Họ'),
+          _FieldSpec('lastName', 'Tên', required: true),
+          _FieldSpec('accountId', 'Công ty liên quan', required: true),
           _FieldSpec('title', 'Chức danh'),
           _FieldSpec('email', 'Email'),
           _FieldSpec('phone', 'Số điện thoại'),
@@ -87,8 +87,8 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
         ],
       EntityType.opportunity => const [
           _FieldSpec('name', 'Tên cơ hội', required: true),
-          _FieldSpec('accountId', 'Account liên quan', required: true),
-          _FieldSpec('contactId', 'Contact liên quan'),
+          _FieldSpec('accountId', 'Công ty liên quan', required: true),
+          _FieldSpec('contactId', 'Liên hệ liên quan'),
           _FieldSpec('amount', 'Giá trị'),
           _FieldSpec('stage', 'Giai đoạn', initialValue: 'QUALIFY'),
           _FieldSpec('closeDate', 'Ngày chốt dự kiến YYYY-MM-DD'),
@@ -108,8 +108,8 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
         ],
       EntityType.caseRecord => const [
           _FieldSpec('subject', 'Tiêu đề', required: true),
-          _FieldSpec('accountId', 'Account liên quan'),
-          _FieldSpec('contactId', 'Contact liên quan'),
+          _FieldSpec('accountId', 'Công ty liên quan'),
+          _FieldSpec('contactId', 'Liên hệ liên quan'),
           _FieldSpec('status', 'Trạng thái', initialValue: 'NEW'),
           _FieldSpec('priority', 'Ưu tiên', initialValue: 'MEDIUM'),
           _FieldSpec('source', 'Nguồn', initialValue: 'MANUAL'),
@@ -130,14 +130,18 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
     try {
       final body = <String, dynamic>{};
       for (final field in _fields) {
-        final createManagedField = widget.initial == null &&
-            ((field.name == 'status' && (widget.definition.type == EntityType.lead || widget.definition.type == EntityType.task || widget.definition.type == EntityType.caseRecord)) ||
-                (field.name == 'stage' && widget.definition.type == EntityType.opportunity));
-        if (createManagedField) {
+        final managedField =
+            (field.name == 'status' && (widget.definition.type == EntityType.lead || widget.definition.type == EntityType.task || widget.definition.type == EntityType.caseRecord)) ||
+            (field.name == 'stage' && widget.definition.type == EntityType.opportunity);
+        if (managedField) continue;
+
+        final value = _controllers[field.name]!.text.trim();
+        if (value.isEmpty) continue;
+        final normalized = _normalize(field.name, value);
+        if (widget.initial != null && normalized.toString() == (widget.initial![field.name]?.toString() ?? '')) {
           continue;
         }
-        final value = _controllers[field.name]!.text.trim();
-        if (value.isNotEmpty) body[field.name] = _normalize(field.name, value);
+        body[field.name] = normalized;
       }
       if (widget.definition.type == EntityType.task && body['assignedToId'] == null) {
         final currentUserId = context.read<AuthController>().user?.id;
@@ -173,12 +177,14 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final title = widget.initial == null ? 'Tạo ${widget.definition.title}' : 'Sửa ${widget.definition.title}';
     return Scaffold(
-      appBar: AppBar(title: Text(widget.initial == null ? 'Tạo ${widget.definition.title}' : 'Sửa ${widget.definition.title}')),
+      appBar: AppBar(title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis)),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          key: const ValueKey('recordFormList'),
+          padding: const EdgeInsets.all(14),
           children: [
             CrmCard(
               child: Column(
@@ -187,18 +193,17 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
+                      key: ValueKey('${widget.definition.type.name}SaveButton'),
                       onPressed: _saving ? null : _save,
-                      icon: _saving
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.save_outlined),
+                      icon: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_outlined),
                       label: const Text('Lưu'),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            const Text('Các quan hệ được chọn bằng tên bản ghi; ứng dụng không yêu cầu nhập UUID thủ công.'),
+            const SizedBox(height: 10),
+            const Text('Các quan hệ được chọn bằng tên bản ghi; ứng dụng không yêu cầu nhập UUID thủ công.', style: TextStyle(fontSize: 12.5, color: Color(0xFF667085))),
           ],
         ),
       ),
@@ -209,12 +214,13 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
     final options = _enumOptions(field.name, widget.definition.type);
     if (options.isNotEmpty) {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.only(bottom: 12),
         child: DropdownButtonFormField<String>(
+          key: ValueKey('recordField_${field.name}'),
           initialValue: _controllers[field.name]!.text.isEmpty ? field.initialValue : _controllers[field.name]!.text,
           isExpanded: true,
           decoration: InputDecoration(labelText: field.label),
-          items: options.map((value) => DropdownMenuItem(value: value, child: Text(labelFor(value)))).toList(),
+          items: options.map((value) => DropdownMenuItem(value: value, child: Text(labelFor(value), overflow: TextOverflow.ellipsis))).toList(),
           onChanged: (value) {
             _controllers[field.name]!.text = value ?? '';
             if (field.name == 'relatedType') {
@@ -229,29 +235,22 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
 
     if (field.name == 'relatedId') {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: _GenericRelationPicker(
-          apiClient: widget.apiClient,
-          controller: _controllers[field.name]!,
-          relatedTypeController: _controllers['relatedType']!,
-        ),
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _GenericRelationPicker(apiClient: widget.apiClient, controller: _controllers[field.name]!, relatedTypeController: _controllers['relatedType']!),
       );
     }
 
     if (field.name == 'accountId' || field.name == 'contactId') {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: _RelationPicker(
-          apiClient: widget.apiClient,
-          field: field,
-          controller: _controllers[field.name]!,
-        ),
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _RelationPicker(apiClient: widget.apiClient, field: field, controller: _controllers[field.name]!),
       );
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
+        key: ValueKey('recordField_${field.name}'),
         controller: _controllers[field.name],
         maxLines: field.maxLines,
         decoration: InputDecoration(labelText: field.label),
@@ -262,11 +261,7 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
 }
 
 class _RelationPicker extends StatelessWidget {
-  const _RelationPicker({
-    required this.apiClient,
-    required this.field,
-    required this.controller,
-  });
+  const _RelationPicker({required this.apiClient, required this.field, required this.controller});
 
   final ApiClient apiClient;
   final _FieldSpec field;
@@ -285,6 +280,7 @@ class _RelationPicker extends StatelessWidget {
         final values = items.map((item) => item['id']?.toString() ?? '').where((id) => id.isNotEmpty).toSet();
         final current = values.contains(controller.text) ? controller.text : null;
         return DropdownButtonFormField<String>(
+          key: ValueKey('recordField_${field.name}'),
           initialValue: current,
           isExpanded: true,
           decoration: InputDecoration(labelText: field.label),
@@ -301,11 +297,7 @@ class _RelationPicker extends StatelessWidget {
 }
 
 class _GenericRelationPicker extends StatefulWidget {
-  const _GenericRelationPicker({
-    required this.apiClient,
-    required this.controller,
-    required this.relatedTypeController,
-  });
+  const _GenericRelationPicker({required this.apiClient, required this.controller, required this.relatedTypeController});
 
   final ApiClient apiClient;
   final TextEditingController controller;
@@ -340,6 +332,7 @@ class _GenericRelationPickerState extends State<_GenericRelationPicker> {
         final values = items.map((item) => item['id']?.toString() ?? '').where((id) => id.isNotEmpty).toSet();
         final current = values.contains(widget.controller.text) ? widget.controller.text : null;
         return DropdownButtonFormField<String>(
+          key: const ValueKey('recordField_relatedId'),
           initialValue: current,
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'Bản ghi liên quan'),

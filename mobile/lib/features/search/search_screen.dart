@@ -65,11 +65,13 @@ class _SearchScreenState extends State<SearchScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
             child: TextField(
+              key: const ValueKey('globalSearchField'),
               controller: _controller,
               onChanged: _search,
-              decoration: const InputDecoration(hintText: 'Tìm Lead, Account, Contact, Opportunity, Task, Case', prefixIcon: Icon(Icons.manage_search)),
+              autofocus: true,
+              decoration: const InputDecoration(hintText: 'Tìm Lead, công ty, liên hệ, cơ hội...', prefixIcon: Icon(Icons.manage_search)),
             ),
           ),
           Expanded(
@@ -83,7 +85,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 final total = data.values.fold<int>(0, (sum, result) => sum + result.items.length);
                 if (total == 0) return const EmptyView(message: 'Không tìm thấy kết quả phù hợp');
                 return ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 24),
                   children: [
                     for (final entry in data.entries)
                       if (entry.value.items.isNotEmpty) ...[
@@ -96,6 +98,8 @@ class _SearchScreenState extends State<SearchScreen> {
                             child: CrmCard(
                               padding: EdgeInsets.zero,
                               child: ListTile(
+                                key: ValueKey('globalSearchResult_${entry.key.type.name}_$title'),
+                                dense: true,
                                 onTap: () => _open(entry.key, record),
                                 leading: Icon(iconFromName(entry.key.icon), color: Theme.of(context).colorScheme.primary),
                                 title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -105,7 +109,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             ),
                           );
                         }),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                       ],
                   ],
                 );

@@ -96,8 +96,13 @@ export default function LeadDetailPage({
   const handleConvert = async (payload: ConvertLeadPayload) => {
     try {
       setConverting(true);
-      await leadsApi.convert(id, payload);
-      message.success("Chuyển đổi khách hàng tiềm năng thành công");
+      const result = await leadsApi.convert(id, payload);
+      const createdTaskCount = result.taskTemplateResult?.createdCount || 0;
+      message.success(
+        createdTaskCount > 0
+          ? `Chuyển đổi khách hàng tiềm năng thành công và đã tạo ${createdTaskCount} công việc theo mẫu.`
+          : result.taskTemplateResult?.message || "Chuyển đổi khách hàng tiềm năng thành công",
+      );
       setIsConvertWizardOpen(false);
       fetchLead();
     } catch (error: unknown) {

@@ -98,7 +98,7 @@ Built comprehensive CRUD interfaces (List, Create, Detail, Edit) for all core mo
 - **Tasks**: General task management with priority levels and "Mark Complete" functionality. Related to other CRM entities.
 - **Cases**: Customer support ticket tracking with dynamic status and priority.
 - **Users**: Admin-restricted user management dashboard (RBAC enforced).
-- **Settings**: View organization/account details, Web-to-Lead integration information, and change the current user's password.
+- **Settings**: View organization/account details, Web-to-Lead integration information, Lead assignment rules, Task Templates after conversion, and change the current user's password.
 
 ### 5. Notes & Activity Timeline
 
@@ -135,6 +135,7 @@ Shared contract docs:
 - Recycle Bin is available for Leads, Accounts, Contacts, Opportunities, Tasks, and Cases.
 - CSV Import is available on the Leads, Accounts, Contacts, Opportunities, Tasks, and Cases list pages with reusable modal UI, sample CSV download, per-row result summary, and list reload after successful or partially successful imports.
 - Web-to-Lead is available at `/dang-ky-tu-van` as a public consultation form that creates a new Lead with `source = Website`.
+- Task Templates after Lead conversion are available at `/dashboard/settings/task-templates`; the Convert Wizard can create follow-up Tasks from an active/default template.
 - Profile dropdown shows the signed-in user's name, email, role, current organization, a Settings shortcut, and Logout.
 - `/dashboard/settings` is organized into cards for Organization, Account, Website integration, and Change Password.
 - Actor Tracking is available for important actions such as completing tasks, converting leads, changing opportunity stage, closing cases, deleting, and restoring records.
@@ -232,6 +233,7 @@ The profile dropdown in the dashboard header shows:
 - `Thông tin tài khoản`: user full name, email, role, and organization.
 - `Tích hợp Website`: public Web-to-Lead route `/dang-ky-tu-van`, default source `Website`, default status `Mới`, plus buttons to open the form and copy the full form URL.
 - `Đổi mật khẩu`: current password, new password, and confirmation password form.
+- `Mẫu công việc`: shortcut to manage follow-up Task templates used by Lead Conversion Wizard.
 
 Change password rules:
 
@@ -240,6 +242,29 @@ Change password rules:
 - The new password must be at least 8 characters and contain at least one letter and one number.
 - The confirmation password must match.
 - On success, the app shows a Vietnamese success message, clears the local session, and redirects to `/login`.
+
+## Task Templates After Lead Conversion
+
+Admin users can manage follow-up task templates at:
+
+- `/dashboard/settings/task-templates`
+
+Template structure:
+
+- Template name and description
+- Active/default flags
+- Groups such as `Ngày đầu` or `Tuần đầu`
+- Items with title, description, priority, due-after-days, sort order, and active flag
+
+Usage flow:
+
+1. Admin creates or enables a Task Template and optionally sets it as default.
+2. A user opens the Lead Conversion Wizard.
+3. The wizard shows `Công việc sau chuyển đổi`.
+4. If `Tạo công việc từ mẫu` is enabled, the frontend sends `createTasksFromTemplate` and optional `taskTemplateId` to `POST /leads/:id/convert`.
+5. Backend creates follow-up Tasks related to the converted Opportunity.
+
+The old conversion flow still works when no template is selected or the checkbox is off. This feature is web-only in this phase; mobile continues using the existing conversion contract without sending task template fields.
 
 ## Test Credentials
 

@@ -53,7 +53,21 @@ export interface ConvertLeadPayload {
   opportunityMode?: LeadConvertOpportunityMode;
   opportunityId?: string;
   opportunityName?: string;
+  createTasksFromTemplate?: boolean;
+  taskTemplateId?: string;
 }
+
+export interface LeadTaskTemplateConversionResult {
+  requested: boolean;
+  templateId?: string;
+  templateName?: string;
+  createdCount: number;
+  message?: string;
+}
+
+export type ConvertLeadResponse = Lead & {
+  taskTemplateResult?: LeadTaskTemplateConversionResult;
+};
 
 export interface LeadConversionAccountSuggestion {
   id: string;

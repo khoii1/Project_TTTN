@@ -84,12 +84,14 @@ Dữ liệu công việc:
 
 - Đổi trạng thái Lead sang `Đủ điều kiện`.
 - Mở Lead Conversion Wizard.
+- Bật `Tạo công việc từ mẫu` và chọn mẫu chăm sóc sau chuyển đổi nếu hệ thống đã có mẫu đang hoạt động.
 - Chọn tạo mới:
   - Khách hàng/Công ty
   - Người liên hệ
   - Cơ hội bán hàng
 - Tên cơ hội: `Triển khai CRM cho Công ty TNHH Nội Thất An Phát`
 - Giải thích data propagation: dữ liệu từ Lead được chuyển sang Account, Contact, Opportunity.
+- Nếu bật mẫu công việc, hệ thống tự tạo các Task chăm sóc khách hàng và gắn vào Opportunity vừa chuyển đổi.
 
 ### F. Kiểm tra bản ghi sau chuyển đổi
 
@@ -160,6 +162,7 @@ Dữ liệu case gợi ý:
 - Audit logging
 - Actor tracking
 - Lead Conversion Wizard
+- Task Templates sau chuyển đổi Lead
 - Duplicate prevention
 - Related Lookup
 - ActivityTimeline
@@ -193,6 +196,7 @@ Dữ liệu case gợi ý:
 - [ ] Tạo Lead
 - [ ] Thêm Note/Task
 - [ ] Convert Lead
+- [ ] Task Templates after Lead Conversion
 - [ ] Kiểm tra Account/Contact/Opportunity
 - [ ] Update Opportunity Stage
 - [ ] Complete Task
@@ -234,3 +238,14 @@ Khi demo trên môi trường deploy/staging:
 - Verify Lead detail shows `Khu vuc phu trach` with province, ward, and address.
 - If no rule matches, owner fallback remains the existing behavior: current user for manual/import flows, `PUBLIC_LEAD_OWNER_ID` for Web-to-Lead.
 - Login as the assigned Sales user and verify they can see their assigned Lead; Admin/Manager can still see all organization Leads.
+
+## 11. Demo Task Templates After Lead Conversion
+
+- Mở Profile > `Cài đặt tài khoản` > card `Mẫu công việc`.
+- Tạo hoặc kiểm tra mẫu đang hoạt động, ví dụ `Mẫu chăm sóc sau chuyển đổi`, gồm các nhóm `Ngày đầu` và `Tuần đầu`.
+- Đặt mẫu này làm mặc định.
+- Mở một Lead đủ điều kiện, bấm `Chuyển đổi khách hàng tiềm năng`.
+- Trong wizard, kiểm tra phần `Công việc sau chuyển đổi` đang bật và mẫu mặc định được chọn.
+- Convert Lead thành Account + Contact + Opportunity.
+- Mở Opportunity vừa tạo và kiểm tra các Task chăm sóc được tạo tự động, gắn với Opportunity và giao cho owner của Lead.
+- Nhấn mạnh nếu không chọn mẫu hoặc không tạo Opportunity thì luồng convert cũ vẫn chạy bình thường.

@@ -984,3 +984,35 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 ### Result
 
 - Lead assignment by area is ready for deploy demo.
+
+## Task Templates After Lead Conversion QA
+
+- Date: 2026-06-03
+- Scope: Backend Task Template schema/API, Lead Conversion Wizard task generation option, frontend settings page for Task Templates, API contract/docs
+
+### Checks
+
+| Area | Check | Result |
+|---|---|---|
+| Prisma | Added migration `20260603000200_task_templates` for `task_templates`, `task_template_groups`, and `task_template_items` | Pass build/generate |
+| Backend API | Added protected `/task-templates` CRUD, active list, set-default, and deactivate endpoints | Pass build/test |
+| Backend conversion | `POST /leads/:id/convert` accepts `createTasksFromTemplate` and optional `taskTemplateId` without changing old payloads | Pass backend tests |
+| Generated Tasks | Template Tasks are created only when an Opportunity exists, assigned to original Lead owner, related to Opportunity, `status = NOT_STARTED`, and skip inactive items | Pass unit test |
+| Frontend settings | Added `/dashboard/settings/task-templates` and Settings card entry | Pass lint/build |
+| Convert Wizard UI | Added `Công việc sau chuyển đổi` section with active template dropdown and default template preselection | Pass lint/build |
+| Backward compatibility | Empty conversion body and old mobile/web flows remain supported | Pass existing conversion tests |
+
+### Build And Test
+
+| Command | Result |
+|---|---|
+| Backend `npm run prisma:generate` | Pass |
+| Backend `npm run build` | Pass |
+| Backend `npm test -- --runInBand` | Pass, 12 suites / 101 tests |
+| Backend `npm run test:e2e -- --runInBand` | Pass, 12 suites / 101 tests |
+| Frontend `npm run lint` | Pass with 17 existing non-blocking hook warnings |
+| Frontend `npm run build` | Pass |
+
+### Result
+
+- Task Templates after Lead Conversion are ready for local/browser QA and deploy after applying the new Prisma migration on the target database.

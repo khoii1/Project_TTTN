@@ -10,7 +10,7 @@ import {
 } from '../dto/lead.dto';
 import { calculatePagination, calculateMeta } from '../../../../common/pagination/pagination.utils';
 import { PaginatedResponse } from '../../../../common/types/response.types';
-import { LeadStatus } from '@prisma/client';
+import { LeadStatus, TaskStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { AuditLogService, AuditAction } from '../../../../infrastructure/audit/audit-log.service';
 import { ImportCsvResult } from '../../../../common/import-csv/import-csv.types';
@@ -28,6 +28,7 @@ import {
   pickAllowedFields,
 } from '../../../../common/import-csv/import-csv.utils';
 import { LeadAssignmentService } from '../../../lead-assignment/application/services/lead-assignment.service';
+import { TaskTemplateService } from '../../../task-templates/application/services/task-template.service';
 
 @Injectable()
 export class LeadService {
@@ -39,6 +40,8 @@ export class LeadService {
       resolveOwner: async ({ fallbackOwnerId }: { fallbackOwnerId: string }) => fallbackOwnerId,
       getLeadVisibilityWhere: () => ({}),
     } as unknown as LeadAssignmentService,
+    @Optional()
+    private taskTemplateService?: TaskTemplateService,
   ) {}
 
   async create(
@@ -436,6 +439,44 @@ export class LeadService {
     // Run everything inside a transaction
     const convertedSource = lead.source || 'CONVERTED_LEAD';
     const convertedOwnerId = lead.ownerId;
+    let selectedTaskTemplate: any = null;
+    let taskTemplateResult:
+      | {
+          requested: boolean;
+          templateId?: string;
+          templateName?: string;
+          createdCount: number;
+          message?: string;
+        }
+      | undefined;
+
+    if (dto.createTasksFromTemplate) {
+      if (!this.taskTemplateService) {
+        taskTemplateResult = {
+          requested: true,
+          createdCount: 0,
+          message: 'Dịch vụ mẫu công việc chưa sẵn sàng. Lead vẫn được chuyển đổi thành công.',
+        };
+      } else {
+        selectedTaskTemplate = await this.taskTemplateService.findTemplateForConversion(
+          organizationId,
+          dto.taskTemplateId,
+        );
+        taskTemplateResult = selectedTaskTemplate
+          ? {
+              requested: true,
+              templateId: selectedTaskTemplate.id,
+              templateName: selectedTaskTemplate.name,
+              createdCount: 0,
+            }
+          : {
+              requested: true,
+              createdCount: 0,
+              message: 'Không có mẫu công việc mặc định đang áp dụng. Lead vẫn được chuyển đổi thành công.',
+            };
+      }
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       const accountMode = dto.accountMode || 'CREATE_NEW';
       const contactMode = dto.contactMode || 'CREATE_NEW';
@@ -549,6 +590,57 @@ export class LeadService {
         },
       });
 
+      let createdTaskCount = 0;
+      if (selectedTaskTemplate && opportunity) {
+        const now = new Date();
+        const taskData = selectedTaskTemplate.groups.flatMap((group: any) =>
+          group.items
+            .filter((item: any) => item.isActive)
+            .map((item: any) => {
+              const dueDate = new Date(now);
+              dueDate.setDate(dueDate.getDate() + item.dueAfterDays);
+
+              return {
+                id: randomUUID(),
+                organizationId,
+                ownerId: convertedOwnerId,
+                assignedToId: convertedOwnerId,
+                subject: `[${group.name}] ${item.title}`,
+                description: item.description,
+                dueDate,
+                status: TaskStatus.NOT_STARTED,
+                priority: item.priority,
+                relatedType: 'OPPORTUNITY',
+                relatedId: opportunity.id,
+              };
+            }),
+        );
+
+        if (taskData.length > 0) {
+          await tx.task.createMany({ data: taskData });
+          createdTaskCount = taskData.length;
+        }
+      }
+
+      if (selectedTaskTemplate && !opportunity) {
+        taskTemplateResult = {
+          requested: true,
+          templateId: selectedTaskTemplate.id,
+          templateName: selectedTaskTemplate.name,
+          createdCount: 0,
+          message: 'Không tạo công việc từ mẫu vì chuyển đổi không tạo hoặc không chọn Opportunity.',
+        };
+      } else if (taskTemplateResult && selectedTaskTemplate) {
+        taskTemplateResult = {
+          ...taskTemplateResult,
+          createdCount: createdTaskCount,
+          message:
+            createdTaskCount > 0
+              ? `Đã tạo ${createdTaskCount} công việc theo mẫu.`
+              : 'Mẫu công việc không có công việc đang áp dụng.',
+        };
+      }
+
       return updatedLead;
     });
 
@@ -566,10 +658,14 @@ export class LeadService {
         convertedOpportunityId: result.convertedOpportunityId,
         convertedAt: result.convertedAt,
         convertedById: result.convertedById,
+        taskTemplateResult,
       },
     });
 
-    return this.mapToResponseDto(result);
+    return {
+      ...this.mapToResponseDto(result),
+      taskTemplateResult,
+    };
   }
 
   async getConversionSuggestions(

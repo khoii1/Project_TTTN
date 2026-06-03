@@ -202,6 +202,12 @@ Lead assignment deploy check:
 - Run `npm run prisma:migrate:prod` on backend deploy so `lead_assignment_rules` and Lead area fields exist.
 - Open `/dashboard/settings/lead-assignment`, create a province/ward rule, and verify a matching Lead is assigned to that user.
 
+Task Template deploy check:
+
+- Run `npm run prisma:migrate:prod` on backend deploy so `task_templates`, `task_template_groups`, and `task_template_items` exist.
+- Open `/dashboard/settings/task-templates` as Admin and create or verify an active/default template.
+- Convert a Lead with `Tạo công việc từ mẫu` enabled and verify Tasks are created on the converted Opportunity.
+
 Web-to-Lead env setup on Render:
 
 1. Login to the deployed backend with the CRM admin account for the organization that should receive website Leads.

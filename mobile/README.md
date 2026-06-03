@@ -82,6 +82,10 @@ Current CSV import support is web-only for these CRM modules:
 
 Use the web CRM list pages to download sample CSV files, upload CSV files, and review per-row import results. Mobile can continue using the existing CRM API flows, but it does not currently expose an Import CSV screen.
 
+## Task Template Status
+
+Task Templates after Lead conversion are currently web-only. Mobile keeps the existing Lead conversion flow and does not send `createTasksFromTemplate` or `taskTemplateId`; this preserves the old mobile API contract and should not affect mobile demo flows.
+
 ## Getting Started
 
 Install dependencies and check the project:

@@ -210,6 +210,22 @@ Use this checklist to validate the end-to-end CRM flow after backend/frontend co
 - [ ] Create Account A, Account B, and Contact B under Account B; convert a Lead with Account A and Contact B, then verify backend blocks with `Selected contact does not belong to the selected account.`
 - [ ] Select an existing Opportunity that does not belong to the selected Account and verify backend blocks with `Selected opportunity does not belong to the selected account.`
 
+## Task Template After Lead Conversion QA
+
+- [ ] Admin opens `/dashboard/settings/task-templates`
+- [ ] Admin creates a template with at least one group and multiple active items
+- [ ] Admin sets the template as default and verifies only one default template remains
+- [ ] Admin deactivates a template and verifies it no longer appears in the active template dropdown
+- [ ] Manager/Sales/Support can view templates but cannot create, edit, deactivate, or set default
+- [ ] Open Lead Conversion Wizard and verify the default active template is selected automatically
+- [ ] Convert a Lead with `Tạo công việc từ mẫu` enabled and verify Tasks are created
+- [ ] Open the converted Opportunity and verify generated Tasks are related to the Opportunity
+- [ ] Verify generated Tasks are assigned to the original Lead owner and use `NOT_STARTED`
+- [ ] Verify inactive template items are not created as Tasks
+- [ ] Convert a Lead with no template selected and verify the old conversion flow still works
+- [ ] Convert with `opportunityMode = DO_NOT_CREATE` and verify conversion succeeds but no template Tasks are created
+- [ ] Verify Dashboard, Global Search, Recycle Bin, Activity Timeline, Import CSV, and mobile old conversion flow are not affected
+
 ## Reference Display QA
 
 - [ ] Open Lead detail and verify `Details`, `Related`, and `Activity` tabs are present

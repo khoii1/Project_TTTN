@@ -23,6 +23,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { PublicModule } from './modules/public/public.module';
 import { LeadAssignmentModule } from './modules/lead-assignment/lead-assignment.module';
+import { TaskTemplatesModule } from './modules/task-templates/task-templates.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { LeadAssignmentModule } from './modules/lead-assignment/lead-assignment.
     ContactsModule,
     OpportunitiesModule,
     TasksModule,
+    TaskTemplatesModule,
     NotesModule,
     CasesModule,
     DashboardModule,

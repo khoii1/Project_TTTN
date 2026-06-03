@@ -293,7 +293,9 @@ Lead conversion:
   "contactId": "existing-contact-id",
   "opportunityMode": "CREATE_NEW",
   "opportunityId": "existing-opportunity-id",
-  "opportunityName": "New Opportunity - Tech Corp"
+  "opportunityName": "New Opportunity - Tech Corp",
+  "createTasksFromTemplate": true,
+  "taskTemplateId": "task-template-id"
 }
 ```
 
@@ -315,6 +317,25 @@ Rules:
 - Converted Lead response includes `convertedAccountId`, `convertedContactId`, `convertedOpportunityId` when an Opportunity exists, plus backend-managed action tracking fields `convertedAt` and `convertedById`.
 - Source propagation: new Account, Contact, and Opportunity use `Lead.source`, or `CONVERTED_LEAD` when Lead has no source; `sourceDetail` is copied from Lead.
 - The frontend does not send `convertedAt` or `convertedById`; the backend sets them from the authenticated user and conversion timestamp.
+- When `createTasksFromTemplate = true`, the backend uses `taskTemplateId` if provided; otherwise it uses the active default Task Template in the current organization.
+- If no default template exists and no explicit template is provided, Lead conversion still succeeds and no Tasks are created.
+- If an explicit template is missing, inactive, or outside the current organization, conversion is rejected before the transaction.
+- Tasks created from a template are assigned to the converted Lead owner, relate to the converted/new selected Opportunity, use `status = NOT_STARTED`, and calculate `dueDate` from `dueAfterDays`.
+- If conversion does not create or use an Opportunity, template Tasks are not created and conversion still succeeds with a clear `taskTemplateResult.message`.
+
+Optional task template result in conversion response:
+
+```json
+{
+  "taskTemplateResult": {
+    "requested": true,
+    "templateId": "task-template-id",
+    "templateName": "Mẫu chăm sóc sau chuyển đổi",
+    "createdCount": 3,
+    "message": "Đã tạo 3 công việc theo mẫu."
+  }
+}
+```
 
 Conversion suggestions:
 
@@ -385,6 +406,78 @@ Notes:
 - `PATCH /tasks/:id/complete`
 - `PATCH /tasks/:id/restore`
 - `DELETE /tasks/:id`
+
+### Task Templates
+
+Task templates define follow-up Tasks that can be created automatically after Lead conversion. They are scoped by the authenticated user's `organizationId`.
+
+- `GET /task-templates`
+- `GET /task-templates/active`
+- `GET /task-templates/:id`
+- `POST /task-templates`
+- `PATCH /task-templates/:id`
+- `PATCH /task-templates/:id/set-default`
+- `DELETE /task-templates/:id`
+
+Authorization:
+
+- All endpoints require `Authorization: Bearer <accessToken>`.
+- `GET` endpoints are available to `ADMIN`, `MANAGER`, `SALES`, and `SUPPORT`.
+- Create/update/deactivate/set-default endpoints are `ADMIN` only.
+
+Request body for create/update:
+
+```json
+{
+  "name": "Mẫu chăm sóc sau chuyển đổi",
+  "description": "Checklist công việc tư vấn sau khi Lead được chuyển đổi.",
+  "isActive": true,
+  "isDefault": true,
+  "groups": [
+    {
+      "name": "Ngày đầu",
+      "description": "Các việc cần làm ngay sau khi chuyển đổi.",
+      "sortOrder": 1,
+      "items": [
+        {
+          "title": "Gọi xác nhận nhu cầu",
+          "description": "Liên hệ khách để xác nhận nhu cầu và lịch demo.",
+          "priority": "HIGH",
+          "dueAfterDays": 1,
+          "sortOrder": 1,
+          "isActive": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+Rules:
+
+- `priority` uses existing `TaskPriority`: `LOW`, `NORMAL`, `HIGH`.
+- `dueAfterDays` is counted from the conversion date and must be between 0 and 365.
+- Setting a template as default clears the previous default template in the same organization.
+- `DELETE /task-templates/:id` disables the template with `isActive = false` and clears `isDefault`.
+- Inactive template items are ignored when creating Tasks from a template.
+
+Response shape:
+
+```json
+{
+  "id": "template-id",
+  "organizationId": "organization-id",
+  "name": "Mẫu chăm sóc sau chuyển đổi",
+  "description": "Checklist công việc tư vấn sau khi Lead được chuyển đổi.",
+  "isActive": true,
+  "isDefault": true,
+  "groups": [],
+  "groupCount": 1,
+  "itemCount": 3,
+  "createdAt": "2026-06-03T10:00:00.000Z",
+  "updatedAt": "2026-06-03T10:00:00.000Z"
+}
+```
 
 Notes:
 - `GET /<resource>` returns active records where `deletedAt = null`.

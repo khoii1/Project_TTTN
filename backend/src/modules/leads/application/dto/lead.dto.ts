@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsEnum,
   IsIn,
+  IsBoolean,
   MinLength,
   MaxLength,
 } from 'class-validator';
@@ -225,6 +226,33 @@ export class ConvertLeadDto {
   @IsString()
   @IsOptional()
   accountType?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsBoolean()
+  @IsOptional()
+  createTasksFromTemplate?: boolean;
+
+  @ApiPropertyOptional({ example: '55555555-5555-5555-5555-555555555555' })
+  @IsString()
+  @IsOptional()
+  taskTemplateId?: string;
+}
+
+export class LeadTaskTemplateConversionResultDto {
+  @ApiProperty({ example: true })
+  requested: boolean;
+
+  @ApiProperty({ example: '55555555-5555-5555-5555-555555555555', required: false })
+  templateId?: string;
+
+  @ApiProperty({ example: 'Quy trình chăm sóc Lead từ Website', required: false })
+  templateName?: string;
+
+  @ApiProperty({ example: 8 })
+  createdCount: number;
+
+  @ApiProperty({ example: 'Không có mẫu mặc định đang áp dụng.', required: false })
+  message?: string;
 }
 
 export class LeadResponseDto {
@@ -270,6 +298,9 @@ export class LeadResponseDto {
   convertedAt?: Date;
   @ApiPropertyOptional({ example: '44444444-4444-4444-4444-444444444444' })
   convertedById?: string;
+
+  @ApiPropertyOptional({ type: LeadTaskTemplateConversionResultDto })
+  taskTemplateResult?: LeadTaskTemplateConversionResultDto;
   @ApiProperty({ example: '44444444-4444-4444-4444-444444444444' })
   ownerId: string;
   @ApiProperty({ example: '55555555-5555-5555-5555-555555555555' })

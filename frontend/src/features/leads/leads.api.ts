@@ -2,6 +2,7 @@ import { httpClient } from "@/lib/api/http-client";
 import { toPaginatedArray } from "@/lib/api/pagination";
 import {
   ConvertLeadPayload,
+  ConvertLeadResponse,
   Lead,
   LeadConversionSuggestions,
 } from "./leads.types";
@@ -32,7 +33,10 @@ export const leadsApi = {
     return data;
   },
   convert: async (id: string, payload?: ConvertLeadPayload) => {
-    const { data } = await httpClient.post(`/leads/${id}/convert`, payload);
+    const { data } = await httpClient.post<ConvertLeadResponse>(
+      `/leads/${id}/convert`,
+      payload,
+    );
     return data;
   },
   getConversionSuggestions: async (id: string) => {

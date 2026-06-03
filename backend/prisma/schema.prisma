@@ -31,6 +31,7 @@ model Organization {
   cases    Case[]
   auditLogs AuditLog[]
   leadAssignmentRules LeadAssignmentRule[]
+  taskTemplates TaskTemplate[]
 
   @@map("organizations")
 }
@@ -362,6 +363,60 @@ enum TaskPriority {
   LOW
   NORMAL
   HIGH
+}
+
+model TaskTemplate {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  description    String?
+  isActive       Boolean  @default(true) @map("is_active")
+  isDefault      Boolean  @default(false) @map("is_default")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  groups         TaskTemplateGroup[]
+
+  @@index([organizationId])
+  @@index([isActive])
+  @@index([isDefault])
+  @@map("task_templates")
+}
+
+model TaskTemplateGroup {
+  id          String   @id @default(uuid())
+  templateId  String   @map("template_id")
+  name        String
+  description String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  template    TaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  items       TaskTemplateItem[]
+
+  @@index([templateId])
+  @@map("task_template_groups")
+}
+
+model TaskTemplateItem {
+  id           String       @id @default(uuid())
+  groupId      String       @map("group_id")
+  title        String
+  description  String?
+  priority     TaskPriority @default(NORMAL)
+  dueAfterDays Int          @default(1) @map("due_after_days")
+  sortOrder    Int          @default(0) @map("sort_order")
+  isActive     Boolean      @default(true) @map("is_active")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  group        TaskTemplateGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@index([isActive])
+  @@map("task_template_items")
 }
 
 // ===== Note Model =====

@@ -8,6 +8,7 @@ import {
   KeyOutlined,
   LinkOutlined,
   PartitionOutlined,
+  ScheduleOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import {
@@ -193,6 +194,24 @@ export default function SettingsPage() {
               Quy tắc phân công Lead
             </Button>
           </div>
+        </Card>
+
+        <Card
+          title={
+            <Space>
+              <ScheduleOutlined />
+              <span>Mẫu công việc</span>
+            </Space>
+          }
+          className="shadow-sm"
+        >
+          <Typography.Paragraph className="text-gray-600">
+            Quản lý các mẫu công việc được tự động tạo sau khi chuyển đổi khách
+            hàng tiềm năng.
+          </Typography.Paragraph>
+          <Button onClick={() => router.push("/dashboard/settings/task-templates")}>
+            Quản lý mẫu công việc
+          </Button>
         </Card>
 
         <Card

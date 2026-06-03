@@ -12,7 +12,7 @@ Tài liệu liên quan:
 ## MVP Status
 
 - Vietnamese UI is available in the frontend.
-- Dashboard Analytics, Global Search, Recycle Bin, actor tracking, Lead Conversion Wizard, and VNĐ currency display are implemented.
+- Dashboard Analytics, Global Search, Recycle Bin, actor tracking, Lead Conversion Wizard, Task Templates after conversion, and VNĐ currency display are implemented.
 - Demo/staging deployment can use Supabase Free PostgreSQL; see [Deployment guide](../docs/deployment-guide.md).
 
 ---
@@ -206,6 +206,7 @@ src/
     ├── contacts/      # CRUD
     ├── opportunities/ # CRUD + stage change
     ├── tasks/         # CRUD + complete/status change
+    ├── task-templates/ # Follow-up task templates for Lead conversion
     ├── notes/         # CRUD
     └── cases/         # CRUD + status change
 ```
@@ -226,7 +227,7 @@ modules/<feature>/
 
 ## Database Schema
 
-**11 models** trong `prisma/schema.prisma`:
+**14 models** trong `prisma/schema.prisma`:
 
 | Model        | Mô tả                                                          |
 | ------------ | -------------------------------------------------------------- |
@@ -237,6 +238,9 @@ modules/<feature>/
 | Contact      | Liên hệ cá nhân, thuộc về 1 Account                            |
 | Opportunity  | 5 stages: QUALIFY → PROPOSE → NEGOTIATE → WON/LOST             |
 | Task         | Công việc giao cho team, có dueDate + priority                 |
+| TaskTemplate | Mẫu công việc sau khi chuyển đổi Lead                           |
+| TaskTemplateGroup | Nhóm công việc trong một mẫu                              |
+| TaskTemplateItem | Từng việc cần tạo trong một nhóm mẫu                       |
 | Note         | Ghi chú gắn vào bất kỳ entity nào                              |
 | Case         | Ticket hỗ trợ với status + priority                            |
 | AuditLog     | Nhật ký hành động: create, update, delete, conversion...       |
@@ -365,6 +369,18 @@ The response never includes `passwordHash`, `refreshTokenHash`, or token values.
 | PATCH  | `/tasks/:id`          | —                                     |
 | PATCH  | `/tasks/:id/complete` | —                                     |
 | DELETE | `/tasks/:id`          | —                                     |
+
+### Task Templates
+
+| Method | Endpoint                          | Mô tả                                      |
+| ------ | --------------------------------- | ------------------------------------------ |
+| GET    | `/task-templates`                 | Danh sách tất cả mẫu trong tổ chức         |
+| GET    | `/task-templates/active`          | Danh sách mẫu đang bật cho Convert Wizard  |
+| GET    | `/task-templates/:id`             | Chi tiết mẫu                               |
+| POST   | `/task-templates`                 | Tạo mẫu mới, ADMIN only                    |
+| PATCH  | `/task-templates/:id`             | Cập nhật mẫu, ADMIN only                   |
+| PATCH  | `/task-templates/:id/set-default` | Đặt mẫu mặc định, ADMIN only               |
+| DELETE | `/task-templates/:id`             | Tắt mẫu, ADMIN only                        |
 
 ### Notes
 
@@ -504,14 +520,24 @@ Hệ thống audit log ghi lại mọi hành động quan trọng vào bảng `a
 4. **Tạo Opportunity** ở stage `QUALIFY`
 5. **Cập nhật Lead** → status = `CONVERTED`, lưu IDs các entity đã tạo
 6. **Ghi audit log** với action `LEAD_CONVERSION`
-7. Nếu bất kỳ bước nào fail → **toàn bộ transaction rollback**
+7. Nếu request bật `createTasksFromTemplate`, tạo các Task chăm sóc từ mẫu đang chọn hoặc mẫu mặc định và gắn với Opportunity
+8. Nếu bất kỳ bước nào fail → **toàn bộ transaction rollback**
+
+Task Template sau chuyển đổi:
+
+- Cấu hình bằng các endpoint `/task-templates`.
+- Mẫu gồm nhiều nhóm, mỗi nhóm có nhiều công việc.
+- `dueAfterDays` tính hạn xử lý từ ngày chuyển đổi Lead.
+- Task sinh ra có `status = NOT_STARTED`, được giao cho owner của Lead, và liên kết với Opportunity sau chuyển đổi.
+- Nếu không có mẫu mặc định hoặc người dùng không bật tạo Task từ mẫu, luồng convert cũ không thay đổi.
+- Nếu conversion không tạo hoặc không chọn Opportunity, Lead vẫn convert thành công nhưng không tạo Task từ mẫu.
 
 ---
 
 ## Testing
 
 ```bash
-npm test           # Chạy toàn bộ tests (47 tests)
+npm test           # Chạy toàn bộ tests
 npm run test:watch # Watch mode
 npm run test:cov   # Coverage report
 ```
@@ -521,10 +547,10 @@ npm run test:cov   # Coverage report
 | File                                  | Tests  | Mô tả                                                              |
 | ------------------------------------- | ------ | ------------------------------------------------------------------ |
 | `test/auth.service.spec.ts`           | 6      | Register, login, logout, duplicate email                           |
-| `test/lead-conversion.spec.ts`        | 5      | Conversion thành công, already converted, not found                |
+| `test/lead-conversion.spec.ts`        | 10+    | Conversion thành công, already converted, not found, template tasks |
 | `test/lead-conversion-e2e.spec.ts`    | 6      | Conversion E2E: cross-org, double convert, audit log, account data |
 | `test/organization-isolation.spec.ts` | 30     | Multi-tenant isolation cho 6 entity services                       |
-| **Tổng**                              | **47** | **4 suites, tất cả pass**                                          |
+| **Tổng**                              | **101** | **12 suites, tất cả pass trong lần QA gần nhất**                  |
 
 ### Organization Isolation Tests (30 tests)
 

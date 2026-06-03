@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Card, Descriptions, Divider, Empty, Form, Input, List, Modal, Radio, Space, Spin, Typography, App } from "antd";
+import { Alert, Button, Card, Checkbox, Descriptions, Divider, Empty, Form, Input, List, Modal, Radio, Select, Space, Spin, Tag, Typography, App } from "antd";
 import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
 import { RelatedRecordLookup } from "@/components/crm/RelatedRecordLookup";
 import { leadsApi } from "@/features/leads/leads.api";
+import { taskTemplatesApi } from "@/features/task-templates/task-templates.api";
+import { TaskTemplate } from "@/features/task-templates/task-templates.types";
 import {
   ConvertLeadPayload,
   Lead,
@@ -37,6 +39,8 @@ type LeadConvertFormValues = {
   opportunityMode: LeadConvertOpportunityMode;
   opportunityId?: string;
   opportunityName?: string;
+  createTasksFromTemplate?: boolean;
+  taskTemplateId?: string;
 };
 
 const sourceValue = (lead: Lead) => lead.source || "CONVERTED_LEAD";
@@ -56,6 +60,8 @@ export function LeadConvertWizard({
     opportunities: [],
   });
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
   const accountMode = Form.useWatch("accountMode", form);
   const contactMode = Form.useWatch("contactMode", form);
   const opportunityMode = Form.useWatch("opportunityMode", form);
@@ -63,12 +69,15 @@ export function LeadConvertWizard({
   const contactId = Form.useWatch("contactId", form);
   const opportunityId = Form.useWatch("opportunityId", form);
   const opportunityName = Form.useWatch("opportunityName", form);
+  const createTasksFromTemplate = Form.useWatch("createTasksFromTemplate", form);
+  const taskTemplateId = Form.useWatch("taskTemplateId", form);
 
   const initialValues: LeadConvertFormValues = {
     accountMode: "CREATE_NEW",
     contactMode: "CREATE_NEW",
     opportunityMode: "CREATE_NEW",
     opportunityName: `Cơ hội mới - ${lead.company}`,
+    createTasksFromTemplate: false,
   };
 
   useEffect(() => {
@@ -101,10 +110,38 @@ export function LeadConvertWizard({
         }
       });
 
+    Promise.resolve().then(() => {
+      if (!cancelled) {
+        setTemplatesLoading(true);
+      }
+    });
+    taskTemplatesApi
+      .getActive()
+      .then((items) => {
+        if (cancelled) return;
+        setTemplates(items);
+        const defaultTemplate = items.find((item) => item.isDefault);
+        form.setFieldsValue({
+          createTasksFromTemplate: Boolean(defaultTemplate),
+          taskTemplateId: defaultTemplate?.id,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTemplates([]);
+          message.warning("Không thể tải mẫu công việc");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setTemplatesLoading(false);
+        }
+      });
+
     return () => {
       cancelled = true;
     };
-  }, [lead.id, open]);
+  }, [form, lead.id, open]);
 
   const suggestedContact = useMemo(
     () => suggestions.contacts.find((contact) => contact.id === contactId),
@@ -141,6 +178,11 @@ export function LeadConvertWizard({
     suggestions.contacts.length > 0 ||
     suggestions.opportunities.length > 0;
 
+  const selectedTemplate = useMemo(
+    () => templates.find((template) => template.id === taskTemplateId),
+    [taskTemplateId, templates],
+  );
+
   const handleFinish = async (values: LeadConvertFormValues) => {
     if (relationWarning) {
       message.error(relationWarning);
@@ -164,6 +206,10 @@ export function LeadConvertWizard({
     }
     if (values.opportunityMode === "CREATE_NEW") {
       payload.opportunityName = values.opportunityName;
+    }
+    payload.createTasksFromTemplate = Boolean(values.createTasksFromTemplate);
+    if (values.createTasksFromTemplate && values.taskTemplateId) {
+      payload.taskTemplateId = values.taskTemplateId;
     }
 
     await onConvert(payload);
@@ -441,6 +487,53 @@ export function LeadConvertWizard({
 
         <Divider />
 
+        <Card size="small" title="Công việc sau chuyển đổi" className="mb-4">
+          {templatesLoading ? (
+            <Spin />
+          ) : templates.length === 0 ? (
+            <Alert
+              type="info"
+              showIcon
+              message="Chưa có mẫu công việc đang áp dụng. Lead vẫn có thể chuyển đổi mà không tạo công việc."
+            />
+          ) : (
+            <div className="space-y-3">
+              <Form.Item name="createTasksFromTemplate" valuePropName="checked" className="!mb-0">
+                <Checkbox>Tạo công việc từ mẫu</Checkbox>
+              </Form.Item>
+              <Form.Item
+                name="taskTemplateId"
+                label="Mẫu công việc"
+                rules={[
+                  {
+                    required: Boolean(createTasksFromTemplate),
+                    message: "Vui lòng chọn mẫu công việc.",
+                  },
+                ]}
+              >
+                <Select
+                  disabled={!createTasksFromTemplate}
+                  allowClear
+                  placeholder="Chọn mẫu công việc"
+                  options={templates.map((template) => ({
+                    value: template.id,
+                    label: `${template.name}${template.isDefault ? " (Mặc định)" : ""}`,
+                  }))}
+                />
+              </Form.Item>
+              {createTasksFromTemplate && selectedTemplate && (
+                <Space wrap>
+                  <Tag color="blue">{selectedTemplate.groupCount} nhóm việc</Tag>
+                  <Tag color="green">{selectedTemplate.itemCount} công việc</Tag>
+                  {selectedTemplate.isDefault && <Tag color="gold">Mặc định</Tag>}
+                </Space>
+              )}
+            </div>
+          )}
+        </Card>
+
+        <Divider />
+
         <Typography.Title level={5}>Xem trước</Typography.Title>
         <Descriptions column={1} size="small" bordered>
           <Descriptions.Item label={ENTITY_LABELS.lead}>
@@ -488,6 +581,11 @@ export function LeadConvertWizard({
           </Descriptions.Item>
           <Descriptions.Item label={FIELD_LABELS.sourceDetail}>
             {lead.sourceDetail || "-"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Công việc sau chuyển đổi">
+            {createTasksFromTemplate && selectedTemplate
+              ? `Tạo ${selectedTemplate.itemCount} công việc từ mẫu "${selectedTemplate.name}"`
+              : "Không tạo công việc từ mẫu"}
           </Descriptions.Item>
         </Descriptions>
 

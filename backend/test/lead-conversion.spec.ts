@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LeadService } from '../src/modules/leads/application/services/lead.service';
 import { PrismaService } from '../src/infrastructure/database/prisma.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { LeadStatus } from '@prisma/client';
+import { LeadStatus, TaskPriority, TaskStatus } from '@prisma/client';
 import { AuditLogService } from '../src/infrastructure/audit/audit-log.service';
 
 describe('Lead Conversion (Use Case)', () => {
@@ -310,6 +310,139 @@ describe('Lead Conversion (Use Case)', () => {
 
       expect(result.convertedById).toBe(ownerId);
       expect(result.convertedAt).toBeInstanceOf(Date);
+    });
+
+    it('should create follow-up tasks from selected task template after conversion', async () => {
+      const mockLead = {
+        id: leadId,
+        organizationId,
+        ownerId,
+        firstName: 'John',
+        lastName: 'Doe',
+        company: 'Tech Corp',
+        email: 'john@techcorp.com',
+        phone: '+1-555-0100',
+        title: 'CTO',
+        status: LeadStatus.NEW,
+      };
+
+      const selectedTemplate = {
+        id: 'template-1',
+        organizationId,
+        name: 'Mẫu chăm sóc sau chuyển đổi',
+        isActive: true,
+        groups: [
+          {
+            id: 'group-1',
+            name: 'Ngày đầu',
+            sortOrder: 1,
+            items: [
+              {
+                id: 'item-1',
+                title: 'Gọi xác nhận nhu cầu',
+                description: 'Gọi lại khách sau khi chuyển đổi.',
+                priority: TaskPriority.HIGH,
+                dueAfterDays: 1,
+                sortOrder: 1,
+                isActive: true,
+              },
+              {
+                id: 'item-2',
+                title: 'Công việc đã tắt',
+                description: null,
+                priority: TaskPriority.NORMAL,
+                dueAfterDays: 2,
+                sortOrder: 2,
+                isActive: false,
+              },
+            ],
+          },
+          {
+            id: 'group-2',
+            name: 'Tuần đầu',
+            sortOrder: 2,
+            items: [
+              {
+                id: 'item-3',
+                title: 'Gửi tài liệu triển khai',
+                description: 'Gửi proposal và tài liệu onboarding.',
+                priority: TaskPriority.NORMAL,
+                dueAfterDays: 3,
+                sortOrder: 1,
+                isActive: true,
+              },
+            ],
+          },
+        ],
+      };
+
+      const convertedLead = {
+        ...mockLead,
+        status: LeadStatus.CONVERTED,
+        convertedAccountId: 'account-1',
+        convertedContactId: 'contact-1',
+        convertedOpportunityId: 'opportunity-1',
+      };
+
+      const mockTaskTemplateService = {
+        findTemplateForConversion: jest.fn().mockResolvedValue(selectedTemplate),
+      };
+      (service as any).taskTemplateService = mockTaskTemplateService;
+
+      mockPrismaService.lead.findFirst.mockResolvedValue(mockLead);
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        const createMany = jest.fn().mockResolvedValue({ count: 2 });
+        const txMock = {
+          account: { create: jest.fn().mockResolvedValue({ id: 'account-1' }) },
+          contact: { create: jest.fn().mockResolvedValue({ id: 'contact-1' }) },
+          opportunity: { create: jest.fn().mockResolvedValue({ id: 'opportunity-1' }) },
+          task: { createMany },
+          lead: { update: jest.fn().mockResolvedValue(convertedLead) },
+        };
+
+        const transactionResult = await callback(txMock);
+
+        expect(createMany).toHaveBeenCalledWith({
+          data: expect.arrayContaining([
+            expect.objectContaining({
+              organizationId,
+              ownerId,
+              assignedToId: ownerId,
+              subject: '[Ngày đầu] Gọi xác nhận nhu cầu',
+              status: TaskStatus.NOT_STARTED,
+              priority: TaskPriority.HIGH,
+              relatedType: 'OPPORTUNITY',
+              relatedId: 'opportunity-1',
+            }),
+            expect.objectContaining({
+              subject: '[Tuần đầu] Gửi tài liệu triển khai',
+              relatedId: 'opportunity-1',
+            }),
+          ]),
+        });
+        expect(createMany.mock.calls[0][0].data).toHaveLength(2);
+
+        return transactionResult;
+      });
+
+      const result = await service.convert(leadId, organizationId, ownerId, {
+        createTasksFromTemplate: true,
+        taskTemplateId: 'template-1',
+      });
+
+      expect(mockTaskTemplateService.findTemplateForConversion).toHaveBeenCalledWith(
+        organizationId,
+        'template-1',
+      );
+      expect(result.taskTemplateResult).toEqual(
+        expect.objectContaining({
+          requested: true,
+          templateId: 'template-1',
+          templateName: 'Mẫu chăm sóc sau chuyển đổi',
+          createdCount: 2,
+        }),
+      );
     });
 
     it('should reject an existing contact from a different account', async () => {

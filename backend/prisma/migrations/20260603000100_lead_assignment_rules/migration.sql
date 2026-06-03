@@ -1,4 +1,4 @@
-﻿-- Add ward-based Lead assignment fields and rules
+-- Add ward-based Lead assignment fields and rules
 ALTER TABLE "leads"
   ADD COLUMN IF NOT EXISTS "province_name" TEXT,
   ADD COLUMN IF NOT EXISTS "ward_name" TEXT,

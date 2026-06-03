@@ -35,4 +35,10 @@ export const taskTemplatesApi = {
     const { data } = await httpClient.delete<TaskTemplate>(`/task-templates/${id}`);
     return data;
   },
+  deleteInactive: async (id: string) => {
+    const { data } = await httpClient.delete<{ message: string }>(
+      `/task-templates/${id}/hard`,
+    );
+    return data;
+  },
 };

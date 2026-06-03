@@ -381,6 +381,7 @@ The response never includes `passwordHash`, `refreshTokenHash`, or token values.
 | PATCH  | `/task-templates/:id`             | Cập nhật mẫu, ADMIN only                   |
 | PATCH  | `/task-templates/:id/set-default` | Đặt mẫu mặc định, ADMIN only               |
 | DELETE | `/task-templates/:id`             | Tắt mẫu, ADMIN only                        |
+| DELETE | `/task-templates/:id/hard`        | Xóa vĩnh viễn mẫu đã tắt, ADMIN only       |
 
 ### Notes
 

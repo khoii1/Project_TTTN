@@ -170,6 +170,16 @@ export default function TaskTemplatesPage() {
     }
   };
 
+  const handleDelete = async (template: TaskTemplate) => {
+    try {
+      await taskTemplatesApi.deleteInactive(template.id);
+      message.success("Đã xóa mẫu công việc");
+      await fetchTemplates();
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, "Không thể xóa mẫu công việc"));
+    }
+  };
+
   const columns: TableColumnsType<TaskTemplate> = [
       {
         title: "Tên mẫu",
@@ -229,6 +239,20 @@ export default function TaskTemplatesPage() {
                 >
                   <Button size="small" danger>
                     Tắt
+                  </Button>
+                </Popconfirm>
+              )}
+              {!record.isActive && (
+                <Popconfirm
+                  title="Xóa mẫu công việc này?"
+                  description="Mẫu đã xóa sẽ biến mất khỏi danh sách và không thể khôi phục."
+                  okText="Xóa"
+                  cancelText="Hủy"
+                  okButtonProps={{ danger: true }}
+                  onConfirm={() => handleDelete(record)}
+                >
+                  <Button size="small" danger icon={<DeleteOutlined />}>
+                    Xóa
                   </Button>
                 </Popconfirm>
               )}

@@ -122,6 +122,23 @@ export class TaskTemplateService {
     return this.mapToResponse(template);
   }
 
+  async deleteInactive(id: string, organizationId: string): Promise<{ message: string }> {
+    const template = await this.findTemplateOrThrow(id, organizationId);
+    if (template.isActive) {
+      throw new BadRequestException('Vui lòng tắt mẫu công việc trước khi xóa.');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.taskTemplateItem.deleteMany({
+        where: { group: { templateId: id } },
+      });
+      await tx.taskTemplateGroup.deleteMany({ where: { templateId: id } });
+      await tx.taskTemplate.delete({ where: { id } });
+    });
+
+    return { message: 'Đã xóa mẫu công việc.' };
+  }
+
   async setDefault(id: string, organizationId: string): Promise<TaskTemplateResponseDto> {
     const existing = await this.findTemplateOrThrow(id, organizationId);
     if (!existing.isActive) {

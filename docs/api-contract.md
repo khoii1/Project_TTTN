@@ -418,6 +418,7 @@ Task templates define follow-up Tasks that can be created automatically after Le
 - `PATCH /task-templates/:id`
 - `PATCH /task-templates/:id/set-default`
 - `DELETE /task-templates/:id`
+- `DELETE /task-templates/:id/hard`
 
 Authorization:
 
@@ -459,6 +460,7 @@ Rules:
 - `dueAfterDays` is counted from the conversion date and must be between 0 and 365.
 - Setting a template as default clears the previous default template in the same organization.
 - `DELETE /task-templates/:id` disables the template with `isActive = false` and clears `isDefault`.
+- `DELETE /task-templates/:id/hard` permanently deletes an inactive template and its groups/items. Active templates must be deactivated first.
 - Inactive template items are ignored when creating Tasks from a template.
 
 Response shape:

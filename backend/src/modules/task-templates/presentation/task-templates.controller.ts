@@ -75,6 +75,16 @@ export class TaskTemplatesController {
     return this.taskTemplateService.setDefault(id, user.organizationId);
   }
 
+  @Delete(':id/hard')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Permanently delete an inactive task template' })
+  deleteInactive(
+    @Param('id') id: string,
+    @CurrentUser() user: TokenPayload,
+  ): Promise<{ message: string }> {
+    return this.taskTemplateService.deleteInactive(id, user.organizationId);
+  }
+
   @Delete(':id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Deactivate task template' })

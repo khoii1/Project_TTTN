@@ -89,6 +89,19 @@ export default function NewLeadPage() {
 
           <SourceFields />
 
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Form.Item name="provinceName" label="Tỉnh/Thành phố">
+              <Input placeholder="TP. Hồ Chí Minh" maxLength={120} />
+            </Form.Item>
+            <Form.Item name="wardName" label="Phường/Xã">
+              <Input placeholder="Phường Bến Nghé" maxLength={120} />
+            </Form.Item>
+          </div>
+
+          <Form.Item name="addressDetail" label="Địa chỉ chi tiết">
+            <Input placeholder="Số nhà, tên đường, tòa nhà..." maxLength={240} />
+          </Form.Item>
+
           <Form.Item name="description" label="Mô tả / Nhu cầu tư vấn">
             <TextArea
               rows={5}

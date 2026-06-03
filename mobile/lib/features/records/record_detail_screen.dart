@@ -444,6 +444,9 @@ class _FieldTable extends StatelessWidget {
     add('Ưu tiên', record['priority'], enumLabel: true);
     add('Nguồn', record['source'], enumLabel: true);
     add('Chi tiết nguồn', record['sourceDetail']);
+    add('Tỉnh/Thành phố', record['provinceName']);
+    add('Phường/Xã', record['wardName']);
+    add('Địa chỉ chi tiết', record['addressDetail']);
     add('Hạn hoàn thành', record['dueDate'], date: true);
     add('Người hoàn thành', _actorLabel(record['completedBy']));
     add('Hoàn thành lúc', record['completedAt'], date: true);
@@ -451,7 +454,7 @@ class _FieldTable extends StatelessWidget {
     add('Đóng lúc', record['closedAt'], date: true);
     add('Mô tả', record['description']);
     add('Ngày tạo', record['createdAt'], date: true);
-    return items.take(10).toList();
+    return items.take(13).toList();
   }
 
   String? _actorLabel(dynamic value) {

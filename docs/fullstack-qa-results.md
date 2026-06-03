@@ -866,3 +866,30 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 - Profile dropdown and Settings page are ready for demo.
 - Change Password is functional and does not expose `passwordHash`, `refreshTokenHash`, or token values.
 - Existing login/logout, Web-to-Lead, CSV Import, Lead Conversion Wizard, Dashboard, Global Search, Recycle Bin, Activity Timeline, and mobile API contract were not changed.
+
+## Lead Assignment By Area QA
+
+- Date: 2026-06-03
+- Scope: Backend Lead owner assignment rules, Web-to-Lead/manual/CSV area fields, frontend settings rule page, Lead detail area display, mobile area display/form fields
+
+### Checks
+
+| Area | Check | Result |
+|---|---|---|
+| Backend build | `npm run build` | Pass |
+| Backend tests | `npm test -- --runInBand` | Pass, 12 suites / 100 tests |
+| Frontend lint | `npm run lint` | Pass with existing non-blocking hook warnings |
+| Frontend build | `npm run build` | Pass |
+| Mobile analyze | `flutter analyze` | Output: `No issues found`; process returned a Windows abnormal exit code after reporting success |
+| Mobile test | `flutter test` | Pass |
+| Mobile release build | `flutter build apk --release --dart-define=API_BASE_URL=https://project-tttn.onrender.com` | Pass |
+| Lead assignment API | Added protected CRUD for `/lead-assignment-rules`; assignee is scoped to current organization | Pass build/test |
+| Manual Lead | Lead create/update accepts `provinceName`, `wardName`, `addressDetail` and resolves owner by active rule | Pass build/test |
+| Web-to-Lead | Public form/API accepts area fields and resolves owner by active rule with env owner fallback | Pass build/test |
+| CSV Import | Lead CSV template/API accepts area fields and resolves owner by active rule | Pass build/test |
+| Visibility | `SALES`/`SUPPORT` Lead list/detail/update/status/delete/restore/conversion are scoped to assigned owner; `ADMIN`/`MANAGER` see org Leads | Pass build/test |
+| Lead Conversion | New Account/Contact/Opportunity inherit original `Lead.ownerId`; actor remains `convertedById` | Pass backend tests |
+
+### Result
+
+- Lead assignment by province/ward is ready for browser demo after applying the new Prisma migration on the target database.

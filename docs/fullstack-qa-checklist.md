@@ -274,3 +274,17 @@ Use this checklist to validate the end-to-end CRM flow after backend/frontend co
 - [ ] Record any failed step with the module name
 - [ ] Capture whether the issue is backend, frontend, or API contract related
 - [ ] Re-run the failed step after the fix
+
+## Lead Assignment By Area QA
+
+- [ ] Admin opens `/dashboard/settings/lead-assignment`
+- [ ] Admin creates a rule with `provinceName`, `wardName`, and an assignee in the same organization
+- [ ] Creating another active rule for the same province/ward is blocked
+- [ ] Manual Lead create with matching province/ward assigns owner to rule assignee
+- [ ] Web-to-Lead submit with matching province/ward assigns owner to rule assignee
+- [ ] Lead CSV import with `provinceName`, `wardName`, `addressDetail` assigns owner by rule
+- [ ] Lead detail shows `Khu vực phụ trách` with province, ward, and address
+- [ ] Sales/Support user only sees Leads assigned to them
+- [ ] Admin/Manager still sees all Leads in the organization
+- [ ] Lead Conversion creates Account/Contact/Opportunity with the original Lead owner
+- [ ] Rival Org cannot see or use Sample Org Lead assignment rules

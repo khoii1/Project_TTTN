@@ -197,6 +197,11 @@ Trên Vercel, `NEXT_PUBLIC_API_BASE_URL` phải trỏ đến backend staging/dem
 - [ ] Kiểm tra Lead mới trong CRM có `source = Website`, `status = NEW`, và owner đúng env
 - [ ] Convert Lead từ website bằng Lead Conversion Wizard
 
+Lead assignment deploy check:
+
+- Run `npm run prisma:migrate:prod` on backend deploy so `lead_assignment_rules` and Lead area fields exist.
+- Open `/dashboard/settings/lead-assignment`, create a province/ward rule, and verify a matching Lead is assigned to that user.
+
 Web-to-Lead env setup on Render:
 
 1. Login to the deployed backend with the CRM admin account for the organization that should receive website Leads.

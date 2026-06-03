@@ -7,6 +7,7 @@ import {
   GlobalOutlined,
   KeyOutlined,
   LinkOutlined,
+  PartitionOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import {
@@ -175,7 +176,7 @@ export default function SettingsPage() {
               {getStatusLabel("NEW")}
             </Descriptions.Item>
             <Descriptions.Item label="Người phụ trách Lead từ website">
-              Theo cấu hình hệ thống
+              Theo quy tắc khu vực hoặc cấu hình hệ thống
             </Descriptions.Item>
           </Descriptions>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -184,6 +185,12 @@ export default function SettingsPage() {
             </Button>
             <Button icon={<CopyOutlined />} onClick={handleCopyLeadFormUrl}>
               Sao chép đường dẫn
+            </Button>
+            <Button
+              icon={<PartitionOutlined />}
+              onClick={() => router.push("/dashboard/settings/lead-assignment")}
+            >
+              Quy tắc phân công Lead
             </Button>
           </div>
         </Card>

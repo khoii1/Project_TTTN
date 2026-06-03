@@ -63,6 +63,10 @@ The integration test logs in, validates required fields, creates/edits Lead, Acc
 - Header actions that are not implemented yet show a Vietnamese snackbar instead of doing nothing.
 - Import CSV remains web-only; mobile can read CRM records created by Web-to-Lead or CSV import through the existing APIs.
 
+## Lead Area Fields
+
+Mobile Lead create/edit and detail support `provinceName`, `wardName`, and `addressDetail`. Lead assignment rule management remains web-only under `/dashboard/settings/lead-assignment`; mobile reads the assigned Lead data through the existing APIs.
+
 ## Import CSV Status
 
 Import CSV was not changed in the mobile app during this phase.

@@ -152,6 +152,7 @@ Lead mapping:
 - `fullName` is split into `firstName` and `lastName`.
 - `company`, `title`, `email`, `phone`, `website`, and `industry` map directly to Lead fields.
 - `message`, `companySize`, and `preferredContactTime` are combined into `description`.
+- `provinceName`, `wardName`, and `addressDetail` map directly to Lead fields when provided.
 - `source` is always `Website`.
 - `sourceDetail` is always `Form đăng ký tư vấn trên website`.
 - `status` is always `NEW`.
@@ -249,6 +250,33 @@ Amount fields are numeric values in API payloads and responses. The backend does
 - `POST /leads/:id/convert`
 - `PATCH /leads/:id/restore`
 - `DELETE /leads/:id`
+
+Lead assignment by area:
+
+- Protected endpoints:
+  - `GET /lead-assignment-rules`
+  - `GET /lead-assignment-rules/:id`
+  - `POST /lead-assignment-rules`
+  - `PATCH /lead-assignment-rules/:id`
+  - `DELETE /lead-assignment-rules/:id`
+- `GET` is available to `ADMIN` and `MANAGER`; create/update/deactivate is `ADMIN` only.
+- Rule body:
+
+```json
+{
+  "provinceName": "TP. Hồ Chí Minh",
+  "wardName": "Phường Bến Nghé",
+  "assigneeId": "user-id",
+  "isActive": true
+}
+```
+
+- `assigneeId` must be a user in the current organization.
+- Active rules are unique by `organizationId + provinceName + wardName`.
+- Manual Lead create/update, Web-to-Lead, and Lead CSV import resolve `ownerId` from an active matching rule when both `provinceName` and `wardName` are present.
+- If no active rule matches, owner fallback remains unchanged: authenticated user for manual/import flows, `PUBLIC_LEAD_OWNER_ID` for Web-to-Lead.
+- `SALES` and `SUPPORT` users only see Leads where `ownerId` is their own user ID. `ADMIN` and `MANAGER` see all Leads in the organization.
+- Lead conversion creates new Account, Contact, and Opportunity with the original `Lead.ownerId`; `convertedById` still tracks the authenticated user who performed conversion.
 
 Lead conversion:
 
@@ -463,7 +491,7 @@ Rules:
 
 CSV templates:
 
-- Lead: `firstName,lastName,company,title,website,email,phone,source,sourceDetail,industry,description,status`
+- Lead: `firstName,lastName,company,title,website,email,phone,source,sourceDetail,industry,description,provinceName,wardName,addressDetail,status`
 - Account: `name,website,type,phone,source,sourceDetail,description,billingCountry,billingStreet,billingCity,billingState,billingPostalCode,shippingCountry,shippingStreet,shippingCity,shippingState,shippingPostalCode`
 - Contact: `firstName,lastName,title,email,phone,source,sourceDetail,description,accountName,mailingCountry,mailingStreet,mailingCity,mailingState,mailingPostalCode`
 - Opportunity: `name,amount,stage,closeDate,nextStep,source,sourceDetail,description,accountName,contactEmail`

@@ -206,7 +206,16 @@ export default function LeadDetailPage({
               <Form.Item name="website" label="Website">
                 <Input />
               </Form.Item>
+              <Form.Item name="provinceName" label="Tỉnh/Thành phố">
+                <Input maxLength={120} />
+              </Form.Item>
+              <Form.Item name="wardName" label="Phường/Xã">
+                <Input maxLength={120} />
+              </Form.Item>
             </div>
+            <Form.Item name="addressDetail" label="Địa chỉ chi tiết">
+              <Input maxLength={240} />
+            </Form.Item>
             <SourceFields />
             <Form.Item name="description" label="Mô tả / Nhu cầu tư vấn">
               <TextArea
@@ -264,6 +273,17 @@ export default function LeadDetailPage({
                     </Descriptions.Item>
                     <Descriptions.Item label="Chi tiết nguồn">
                       {emptyValue(lead.sourceDetail)}
+                    </Descriptions.Item>
+                  </SectionCard>
+                  <SectionCard title="Khu vực phụ trách">
+                    <Descriptions.Item label="Tỉnh/Thành phố">
+                      {emptyValue(lead.provinceName)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Phường/Xã">
+                      {emptyValue(lead.wardName)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Địa chỉ chi tiết" span={2}>
+                      {emptyValue(lead.addressDetail)}
                     </Descriptions.Item>
                   </SectionCard>
                   <SectionCard title={descriptionSectionTitle}>

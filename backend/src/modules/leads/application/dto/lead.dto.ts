@@ -70,6 +70,24 @@ export class CreateLeadDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @ApiPropertyOptional({ example: 'Thành phố Hồ Chí Minh' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(120)
+  provinceName?: string;
+
+  @ApiPropertyOptional({ example: 'Phường Bến Nghé' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(120)
+  wardName?: string;
+
+  @ApiPropertyOptional({ example: '12 Lê Lợi' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  addressDetail?: string;
 }
 
 export class UpdateLeadDto {
@@ -131,6 +149,24 @@ export class UpdateLeadDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @ApiPropertyOptional({ example: 'Thành phố Hồ Chí Minh' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(120)
+  provinceName?: string;
+
+  @ApiPropertyOptional({ example: 'Phường Bến Nghé' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(120)
+  wardName?: string;
+
+  @ApiPropertyOptional({ example: '12 Lê Lợi' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  addressDetail?: string;
 }
 
 export class ChangeLeadStatusDto {
@@ -218,6 +254,12 @@ export class LeadResponseDto {
   industry?: string;
   @ApiPropertyOptional({ example: 'Interested in CRM demo' })
   description?: string;
+  @ApiPropertyOptional({ example: 'Thành phố Hồ Chí Minh' })
+  provinceName?: string;
+  @ApiPropertyOptional({ example: 'Phường Bến Nghé' })
+  wardName?: string;
+  @ApiPropertyOptional({ example: '12 Lê Lợi' })
+  addressDetail?: string;
   @ApiPropertyOptional({ example: '11111111-1111-1111-1111-111111111111' })
   convertedAccountId?: string;
   @ApiPropertyOptional({ example: '22222222-2222-2222-2222-222222222222' })

@@ -212,6 +212,9 @@ function LeadsList() {
                 "sourceDetail",
                 "industry",
                 "description",
+                "provinceName",
+                "wardName",
+                "addressDetail",
                 "status",
               ]}
               templateFileName="lead-import-template.csv"

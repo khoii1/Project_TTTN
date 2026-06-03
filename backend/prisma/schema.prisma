@@ -30,6 +30,7 @@ model Organization {
   notes    Note[]
   cases    Case[]
   auditLogs AuditLog[]
+  leadAssignmentRules LeadAssignmentRule[]
 
   @@map("organizations")
 }
@@ -73,6 +74,7 @@ model User {
   deletedCases      Case[] @relation("CaseDeleter")
   restoredCases     Case[] @relation("CaseRestorer")
   convertedLeads    Lead[] @relation("LeadConverter")
+  leadAssignmentRules LeadAssignmentRule[] @relation("LeadAssignmentAssignee")
   auditLogs         AuditLog[]
 
   @@index([organizationId])
@@ -105,6 +107,9 @@ model Lead {
   sourceDetail           String?  @map("source_detail")
   industry               String?
   description            String?
+  provinceName           String?  @map("province_name")
+  wardName               String?  @map("ward_name")
+  addressDetail          String?  @map("address_detail")
   convertedAccountId     String?  @map("converted_account_id")
   convertedContactId     String?  @map("converted_contact_id")
   convertedOpportunityId String?  @map("converted_opportunity_id")
@@ -127,10 +132,30 @@ model Lead {
   @@index([organizationId])
   @@index([ownerId])
   @@index([status])
+  @@index([provinceName, wardName])
   @@index([convertedById])
   @@index([deletedById])
   @@index([restoredById])
   @@map("leads")
+}
+
+model LeadAssignmentRule {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  provinceName   String   @map("province_name")
+  wardName       String   @map("ward_name")
+  assigneeId     String   @map("assignee_id")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignee       User @relation("LeadAssignmentAssignee", fields: [assigneeId], references: [id])
+
+  @@index([organizationId])
+  @@index([assigneeId])
+  @@index([provinceName, wardName])
+  @@map("lead_assignment_rules")
 }
 
 enum LeadStatus {

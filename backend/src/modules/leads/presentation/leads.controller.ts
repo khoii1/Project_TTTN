@@ -87,6 +87,7 @@ export class LeadsController {
       status,
       source,
       deleted === 'true',
+      user,
     );
   }
 
@@ -97,7 +98,7 @@ export class LeadsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<LeadResponseDto> {
-    return this.leadService.findById(id, user.organizationId);
+    return this.leadService.findById(id, user.organizationId, user);
   }
 
   @Get(':id/conversion-suggestions')
@@ -111,7 +112,7 @@ export class LeadsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<LeadConversionSuggestionsDto> {
-    return this.leadService.getConversionSuggestions(id, user.organizationId);
+    return this.leadService.getConversionSuggestions(id, user.organizationId, user);
   }
 
   @Patch(':id')
@@ -122,7 +123,7 @@ export class LeadsController {
     @Body() dto: UpdateLeadDto,
     @CurrentUser() user: TokenPayload
   ): Promise<LeadResponseDto> {
-    return this.leadService.update(id, user.organizationId, dto);
+    return this.leadService.update(id, user.organizationId, dto, user);
   }
 
   @Patch(':id/status')
@@ -133,7 +134,7 @@ export class LeadsController {
     @Body() dto: ChangeLeadStatusDto,
     @CurrentUser() user: TokenPayload
   ): Promise<LeadResponseDto> {
-    return this.leadService.changeStatus(id, user.organizationId, dto);
+    return this.leadService.changeStatus(id, user.organizationId, dto, user);
   }
 
   @Post(':id/convert')
@@ -144,7 +145,7 @@ export class LeadsController {
     @Body() dto: ConvertLeadDto = {},
     @CurrentUser() user: TokenPayload
   ): Promise<LeadResponseDto> {
-    return this.leadService.convert(id, user.organizationId, user.sub, dto);
+    return this.leadService.convert(id, user.organizationId, user.sub, dto, user);
   }
 
   @Patch(':id/restore')
@@ -154,7 +155,7 @@ export class LeadsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<LeadResponseDto> {
-    return this.leadService.restore(id, user.organizationId, user.sub);
+    return this.leadService.restore(id, user.organizationId, user.sub, user);
   }
 
   @Delete(':id')
@@ -164,7 +165,7 @@ export class LeadsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<{ message: string }> {
-    await this.leadService.delete(id, user.organizationId, user.sub);
+    await this.leadService.delete(id, user.organizationId, user.sub, user);
     return { message: 'Lead deleted successfully' };
   }
 }

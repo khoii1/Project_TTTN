@@ -22,6 +22,7 @@ import { CasesModule } from './modules/cases/cases.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { PublicModule } from './modules/public/public.module';
+import { LeadAssignmentModule } from './modules/lead-assignment/lead-assignment.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { PublicModule } from './modules/public/public.module';
     CasesModule,
     DashboardModule,
     HealthModule,
+    LeadAssignmentModule,
     PublicModule,
   ],
   providers: [

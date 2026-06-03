@@ -23,6 +23,9 @@ export interface Lead {
   sourceDetail?: string;
   industry?: string;
   description?: string;
+  provinceName?: string;
+  wardName?: string;
+  addressDetail?: string;
   convertedAccountId?: string;
   convertedContactId?: string;
   convertedOpportunityId?: string;

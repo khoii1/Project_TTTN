@@ -32,6 +32,9 @@ type LeadCaptureFormValues = {
   title?: string;
   website?: string;
   industry?: string;
+  provinceName?: string;
+  wardName?: string;
+  addressDetail?: string;
   companySize?: string;
   preferredContactTime?: string;
   message: string;
@@ -241,6 +244,23 @@ export default function LeadCapturePage() {
                 </Form.Item>
               </Col>
             </Row>
+
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item name="provinceName" label="Tỉnh/Thành phố">
+                  <Input placeholder="TP. Hồ Chí Minh" maxLength={120} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="wardName" label="Phường/Xã">
+                  <Input placeholder="Phường Bến Nghé" maxLength={120} />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Form.Item name="addressDetail" label="Địa chỉ chi tiết">
+              <Input placeholder="Số nhà, tên đường, tòa nhà..." maxLength={240} />
+            </Form.Item>
 
             <Form.Item name="preferredContactTime" label="Thời gian muốn được liên hệ">
               <Select

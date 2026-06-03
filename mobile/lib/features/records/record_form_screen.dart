@@ -63,6 +63,9 @@ class _RecordFormScreenState extends State<RecordFormScreen> {
           _FieldSpec('status', 'Trạng thái', initialValue: 'NEW'),
           _FieldSpec('source', 'Nguồn', initialValue: 'MANUAL'),
           _FieldSpec('sourceDetail', 'Chi tiết nguồn', maxLines: 2),
+          _FieldSpec('provinceName', 'Tỉnh/Thành phố'),
+          _FieldSpec('wardName', 'Phường/Xã'),
+          _FieldSpec('addressDetail', 'Địa chỉ chi tiết', maxLines: 2),
           _FieldSpec('description', 'Mô tả / Nhu cầu tư vấn', maxLines: 3),
         ],
       EntityType.account => const [

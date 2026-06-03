@@ -42,6 +42,21 @@ export class LeadCaptureDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(120)
+  provinceName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  wardName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  addressDetail?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(80)
   companySize?: string;
 

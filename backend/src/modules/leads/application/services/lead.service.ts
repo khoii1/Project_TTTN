@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+﻿import { Injectable, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
 import {
   CreateLeadDto,
@@ -27,12 +27,18 @@ import {
   parseCsvBuffer,
   pickAllowedFields,
 } from '../../../../common/import-csv/import-csv.utils';
+import { LeadAssignmentService } from '../../../lead-assignment/application/services/lead-assignment.service';
 
 @Injectable()
 export class LeadService {
   constructor(
     private prisma: PrismaService,
     private auditLog: AuditLogService,
+    @Optional()
+    private leadAssignmentService: LeadAssignmentService = {
+      resolveOwner: async ({ fallbackOwnerId }: { fallbackOwnerId: string }) => fallbackOwnerId,
+      getLeadVisibilityWhere: () => ({}),
+    } as unknown as LeadAssignmentService,
   ) {}
 
   async create(
@@ -40,11 +46,18 @@ export class LeadService {
     ownerId: string,
     dto: CreateLeadDto
   ): Promise<LeadResponseDto> {
+    const resolvedOwnerId = await this.leadAssignmentService.resolveOwner({
+      organizationId,
+      provinceName: dto.provinceName,
+      wardName: dto.wardName,
+      fallbackOwnerId: ownerId,
+    });
+
     const lead = await this.prisma.lead.create({
       data: {
         id: randomUUID(),
         organizationId,
-        ownerId,
+        ownerId: resolvedOwnerId,
         firstName: dto.firstName,
         lastName: dto.lastName,
         company: dto.company,
@@ -56,6 +69,9 @@ export class LeadService {
         sourceDetail: dto.sourceDetail,
         industry: dto.industry,
         description: dto.description,
+        provinceName: dto.provinceName,
+        wardName: dto.wardName,
+        addressDetail: dto.addressDetail,
         status: LeadStatus.NEW,
       },
     });
@@ -91,6 +107,9 @@ export class LeadService {
       'sourceDetail',
       'industry',
       'description',
+      'provinceName',
+      'wardName',
+      'addressDetail',
       'status',
     ];
 
@@ -159,11 +178,18 @@ export class LeadService {
       }
 
       try {
+        const resolvedOwnerId = await this.leadAssignmentService.resolveOwner({
+          organizationId,
+          provinceName: compactString(data.provinceName),
+          wardName: compactString(data.wardName),
+          fallbackOwnerId: ownerId,
+        });
+
         const lead = await this.prisma.lead.create({
           data: {
             id: randomUUID(),
             organizationId,
-            ownerId,
+            ownerId: resolvedOwnerId,
             firstName: compactString(data.firstName),
             lastName,
             company,
@@ -175,6 +201,9 @@ export class LeadService {
             sourceDetail: compactString(data.sourceDetail),
             industry: compactString(data.industry),
             description: compactString(data.description),
+            provinceName: compactString(data.provinceName),
+            wardName: compactString(data.wardName),
+            addressDetail: compactString(data.addressDetail),
             status,
           },
         });
@@ -197,12 +226,17 @@ export class LeadService {
     return result;
   }
 
-  async findById(leadId: string, organizationId: string): Promise<LeadResponseDto> {
+  async findById(
+    leadId: string,
+    organizationId: string,
+    user?: { sub: string; role: string },
+  ): Promise<LeadResponseDto> {
     const lead = await this.prisma.lead.findFirst({
       where: {
         id: leadId,
         organizationId,
         deletedAt: null,
+        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
       },
     });
 
@@ -220,13 +254,15 @@ export class LeadService {
     search?: string,
     status?: string,
     source?: string,
-    deleted: boolean = false
+    deleted: boolean = false,
+    user?: { sub: string; role: string },
   ): Promise<PaginatedResponse<LeadResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
     const where: any = {
       organizationId,
       deletedAt: deleted ? { not: null } : null,
+      ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
     };
 
     if (search) {
@@ -265,13 +301,15 @@ export class LeadService {
   async update(
     leadId: string,
     organizationId: string,
-    dto: UpdateLeadDto
+    dto: UpdateLeadDto,
+    user?: { sub: string; role: string },
   ): Promise<LeadResponseDto> {
     const lead = await this.prisma.lead.findFirst({
       where: {
         id: leadId,
         organizationId,
         deletedAt: null,
+        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
       },
     });
 
@@ -279,9 +317,19 @@ export class LeadService {
       throw new NotFoundException('Lead not found');
     }
 
+    const nextProvinceName = dto.provinceName !== undefined ? dto.provinceName : lead.provinceName;
+    const nextWardName = dto.wardName !== undefined ? dto.wardName : lead.wardName;
+    const updatedOwnerId = await this.leadAssignmentService.resolveOwner({
+      organizationId,
+      provinceName: nextProvinceName,
+      wardName: nextWardName,
+      fallbackOwnerId: lead.ownerId,
+    });
+
     const updatedLead = await this.prisma.lead.update({
       where: { id: leadId },
       data: {
+        ownerId: updatedOwnerId,
         firstName: dto.firstName !== undefined ? dto.firstName : lead.firstName,
         lastName: dto.lastName !== undefined ? dto.lastName : lead.lastName,
         company: dto.company !== undefined ? dto.company : lead.company,
@@ -293,6 +341,9 @@ export class LeadService {
         sourceDetail: dto.sourceDetail !== undefined ? dto.sourceDetail : lead.sourceDetail,
         industry: dto.industry !== undefined ? dto.industry : lead.industry,
         description: dto.description !== undefined ? dto.description : lead.description,
+        provinceName: dto.provinceName !== undefined ? dto.provinceName : lead.provinceName,
+        wardName: dto.wardName !== undefined ? dto.wardName : lead.wardName,
+        addressDetail: dto.addressDetail !== undefined ? dto.addressDetail : lead.addressDetail,
       },
     });
 
@@ -312,13 +363,15 @@ export class LeadService {
   async changeStatus(
     leadId: string,
     organizationId: string,
-    dto: ChangeLeadStatusDto
+    dto: ChangeLeadStatusDto,
+    user?: { sub: string; role: string },
   ): Promise<LeadResponseDto> {
     const lead = await this.prisma.lead.findFirst({
       where: {
         id: leadId,
         organizationId,
         deletedAt: null,
+        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
       },
     });
 
@@ -348,13 +401,15 @@ export class LeadService {
     leadId: string,
     organizationId: string,
     ownerId: string,
-    dto: ConvertLeadDto = {}
+    dto: ConvertLeadDto = {},
+    user?: { sub: string; role: string },
   ): Promise<LeadResponseDto> {
     const lead = await this.prisma.lead.findFirst({
       where: {
         id: leadId,
         organizationId,
         deletedAt: null,
+        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
       },
     });
 
@@ -380,6 +435,7 @@ export class LeadService {
 
     // Run everything inside a transaction
     const convertedSource = lead.source || 'CONVERTED_LEAD';
+    const convertedOwnerId = lead.ownerId;
     const result = await this.prisma.$transaction(async (tx) => {
       const accountMode = dto.accountMode || 'CREATE_NEW';
       const contactMode = dto.contactMode || 'CREATE_NEW';
@@ -398,7 +454,7 @@ export class LeadService {
               data: {
                 id: randomUUID(),
                 organizationId,
-                ownerId,
+                ownerId: convertedOwnerId,
                 name: lead.company,
                 type: dto.accountType,
                 website: lead.website,
@@ -425,7 +481,7 @@ export class LeadService {
               data: {
                 id: randomUUID(),
                 organizationId,
-                ownerId,
+                ownerId: convertedOwnerId,
                 accountId: account.id,
                 firstName: lead.firstName,
                 lastName: lead.lastName,
@@ -460,7 +516,7 @@ export class LeadService {
                 data: {
                   id: randomUUID(),
                   organizationId,
-                  ownerId,
+                  ownerId: convertedOwnerId,
                   accountId: account.id,
                   contactId: contact.id,
                   name: dto.opportunityName || `New Opportunity - ${lead.company}`,
@@ -518,13 +574,15 @@ export class LeadService {
 
   async getConversionSuggestions(
     leadId: string,
-    organizationId: string
+    organizationId: string,
+    user?: { sub: string; role: string },
   ): Promise<LeadConversionSuggestionsDto> {
     const lead = await this.prisma.lead.findFirst({
       where: {
         id: leadId,
         organizationId,
         deletedAt: null,
+        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
       },
     });
 
@@ -602,12 +660,18 @@ export class LeadService {
     };
   }
 
-  async delete(leadId: string, organizationId: string, deletedById: string): Promise<void> {
+  async delete(
+    leadId: string,
+    organizationId: string,
+    deletedById: string,
+    user?: { sub: string; role: string },
+  ): Promise<void> {
     const lead = await this.prisma.lead.findFirst({
       where: {
         id: leadId,
         organizationId,
         deletedAt: null,
+        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
       },
     });
 
@@ -636,12 +700,14 @@ export class LeadService {
   async restore(
     leadId: string,
     organizationId: string,
-    restoredById: string
+    restoredById: string,
+    user?: { sub: string; role: string },
   ): Promise<LeadResponseDto> {
     const lead = await this.prisma.lead.findFirst({
       where: {
         id: leadId,
         organizationId,
+        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
       },
     });
 
@@ -694,6 +760,9 @@ export class LeadService {
       sourceDetail: lead.sourceDetail,
       industry: lead.industry,
       description: lead.description,
+      provinceName: lead.provinceName,
+      wardName: lead.wardName,
+      addressDetail: lead.addressDetail,
       convertedAccountId: lead.convertedAccountId,
       convertedContactId: lead.convertedContactId,
       convertedOpportunityId: lead.convertedOpportunityId,
@@ -710,3 +779,5 @@ export class LeadService {
     };
   }
 }
+
+

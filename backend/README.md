@@ -749,6 +749,29 @@ Success response:
 
 ---
 
+## Lead Assignment By Area
+
+Lead assignment rules let Admin configure a province/ward pair to a specific assignee:
+
+- `GET /lead-assignment-rules` - list rules, `ADMIN`/`MANAGER`
+- `GET /lead-assignment-rules/:id` - rule detail, `ADMIN`/`MANAGER`
+- `POST /lead-assignment-rules` - create rule, `ADMIN`
+- `PATCH /lead-assignment-rules/:id` - update rule, `ADMIN`
+- `DELETE /lead-assignment-rules/:id` - deactivate rule, `ADMIN`
+
+Rule body:
+
+```json
+{
+  "provinceName": "TP. Hồ Chí Minh",
+  "wardName": "Phường Bến Nghé",
+  "assigneeId": "user-id",
+  "isActive": true
+}
+```
+
+Manual Lead create/update, Web-to-Lead, and Lead CSV import can send `provinceName`, `wardName`, and `addressDetail`. When an active rule matches the same organization/province/ward, backend sets `ownerId` to that rule's assignee. If no rule matches, owner fallback remains unchanged. `SALES` and `SUPPORT` users only see Leads assigned to themselves; `ADMIN` and `MANAGER` see all organization Leads.
+
 ## License
 
 MIT

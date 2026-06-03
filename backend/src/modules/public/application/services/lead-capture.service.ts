@@ -6,6 +6,7 @@ import {
 import { LeadStatus } from '@prisma/client';
 import { AuditAction, AuditLogService } from '../../../../infrastructure/audit/audit-log.service';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
+import { LeadAssignmentService } from '../../../lead-assignment/application/services/lead-assignment.service';
 import { LeadCaptureDto } from '../dto/lead-capture.dto';
 
 const SUCCESS_MESSAGE =
@@ -23,6 +24,9 @@ export class LeadCaptureService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogService: AuditLogService,
+    private readonly leadAssignmentService: LeadAssignmentService = {
+      resolveOwner: async ({ fallbackOwnerId }) => fallbackOwnerId,
+    } as LeadAssignmentService,
   ) {}
 
   async capture(dto: LeadCaptureDto): Promise<LeadCaptureResponse> {
@@ -42,6 +46,12 @@ export class LeadCaptureService {
     }
 
     await this.assertPublicLeadTarget(organizationId, ownerId);
+    const resolvedOwnerId = await this.leadAssignmentService.resolveOwner({
+      organizationId,
+      provinceName: dto.provinceName,
+      wardName: dto.wardName,
+      fallbackOwnerId: ownerId,
+    });
 
     const { firstName, lastName } = this.splitFullName(dto.fullName);
     const description = this.buildDescription(dto);
@@ -49,7 +59,7 @@ export class LeadCaptureService {
     const lead = await this.prisma.lead.create({
       data: {
         organizationId,
-        ownerId,
+        ownerId: resolvedOwnerId,
         firstName,
         lastName,
         company: dto.company.trim(),
@@ -59,6 +69,9 @@ export class LeadCaptureService {
         website: dto.website?.trim() || undefined,
         industry: dto.industry?.trim() || undefined,
         description,
+        provinceName: dto.provinceName?.trim() || undefined,
+        wardName: dto.wardName?.trim() || undefined,
+        addressDetail: dto.addressDetail?.trim() || undefined,
         source: WEBSITE_SOURCE,
         sourceDetail: WEBSITE_SOURCE_DETAIL,
         status: LeadStatus.NEW,
@@ -67,7 +80,7 @@ export class LeadCaptureService {
 
     await this.auditLogService.log({
       organizationId,
-      userId: ownerId,
+      userId: resolvedOwnerId,
       action: AuditAction.CREATE,
       entityType: 'Lead',
       entityId: lead.id,

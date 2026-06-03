@@ -291,6 +291,16 @@ Backend APIs return paginated data in the following format:
 
 Frontend helpers (`pagination.ts`) automatically handle both paginated and raw array responses.
 
+## Lead Assignment By Area
+
+The web CRM supports area-based Lead assignment under `/dashboard/settings/lead-assignment`.
+
+- Admin can create/update/deactivate rules by `Tỉnh/Thành phố` + `Phường/Xã`.
+- Manual Lead create/edit, public Web-to-Lead, and Lead CSV template include `provinceName`, `wardName`, and `addressDetail`.
+- Lead detail shows these fields in `Khu vực phụ trách`.
+- Sales/Support users only see Leads assigned to themselves; Admin/Manager still see all organization Leads.
+- Rule management is web-only. Mobile can read and edit the area fields but does not manage rules.
+
 ## Current Limitations & Future TODOs
 
 1. **Token Storage Security**: The MVP still stores access and refresh tokens with `js-cookie`. For production, move refresh tokens to secure `HttpOnly` cookies set by the backend.

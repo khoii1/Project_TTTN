@@ -13,6 +13,10 @@ const OTHER_ORG = 'org-2';
 
 const csv = (text: string) => Buffer.from(text, 'utf8');
 const auditLog = { log: jest.fn().mockResolvedValue(undefined) };
+const leadAssignmentService = {
+  resolveOwner: jest.fn(async ({ fallbackOwnerId }) => fallbackOwnerId),
+  getLeadVisibilityWhere: jest.fn(() => ({})),
+};
 
 describe('CSV import', () => {
   beforeEach(() => {
@@ -38,7 +42,7 @@ describe('CSV import', () => {
         }),
       },
     };
-    const service = new LeadService(prisma, auditLog as any);
+    const service = new LeadService(prisma, auditLog as any, leadAssignmentService as any);
 
     const result = await service.importCsv(
       ORG,

@@ -23,14 +23,14 @@ export class DashboardController {
   @ApiOperation({ summary: 'Get CRM dashboard summary metrics' })
   @ApiResponse({ status: 200, type: DashboardSummaryDto })
   getSummary(@CurrentUser() user: TokenPayload): Promise<DashboardSummaryDto> {
-    return this.dashboardService.getSummary(user.organizationId);
+    return this.dashboardService.getSummary(user.organizationId, user);
   }
 
   @Get('leads-by-status')
   @ApiOperation({ summary: 'Get lead counts grouped by status' })
   @ApiResponse({ status: 200, type: [LeadsByStatusDto] })
   getLeadsByStatus(@CurrentUser() user: TokenPayload): Promise<LeadsByStatusDto[]> {
-    return this.dashboardService.getLeadsByStatus(user.organizationId);
+    return this.dashboardService.getLeadsByStatus(user.organizationId, user);
   }
 
   @Get('opportunities-by-stage')

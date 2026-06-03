@@ -224,3 +224,13 @@ Khi demo trên môi trường deploy/staging:
 - Frontend deploy phải set `NEXT_PUBLIC_API_BASE_URL` trỏ đến backend deploy.
 - Backend deploy phải có `PUBLIC_LEAD_ORGANIZATION_ID` và `PUBLIC_LEAD_OWNER_ID`.
 - Kiểm tra nhanh `POST /public/lead-capture` trước buổi demo; nếu endpoint trả `404`, bản backend deploy chưa có code Web-to-Lead mới.
+
+## 10. Demo Lead Assignment By Area
+
+- Open Profile > `Cai dat tai khoan` > `Quy tac phan cong Lead`.
+- Create a rule such as `TP. Ho Chi Minh` + `Phuong Ben Nghe` -> a Sales user.
+- Submit a manual Lead or Web-to-Lead form with the same province/ward.
+- Open Lead detail and verify `Nguoi phu trach` is the rule assignee.
+- Verify Lead detail shows `Khu vuc phu trach` with province, ward, and address.
+- If no rule matches, owner fallback remains the existing behavior: current user for manual/import flows, `PUBLIC_LEAD_OWNER_ID` for Web-to-Lead.
+- Login as the assigned Sales user and verify they can see their assigned Lead; Admin/Manager can still see all organization Leads.

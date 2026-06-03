@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CasePriority, CaseStatus, LeadStatus, OpportunityStage, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
+import { LeadAssignmentService } from '../../../lead-assignment/application/services/lead-assignment.service';
 import {
   CasesByPriorityDto,
   DashboardSummaryDto,
@@ -20,9 +21,17 @@ const openCaseStatuses: CaseStatus[] = [CaseStatus.NEW, CaseStatus.WORKING];
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private leadAssignmentService: LeadAssignmentService = {
+      getLeadVisibilityWhere: () => ({}),
+    } as unknown as LeadAssignmentService,
+  ) {}
 
-  async getSummary(organizationId: string): Promise<DashboardSummaryDto> {
+  async getSummary(
+    organizationId: string,
+    user?: { sub: string; role: string },
+  ): Promise<DashboardSummaryDto> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -37,7 +46,13 @@ export class DashboardService {
       overdueTasks,
       openCases,
     ] = await Promise.all([
-      this.prisma.lead.count({ where: { organizationId, deletedAt: null } }),
+      this.prisma.lead.count({
+        where: {
+          organizationId,
+          deletedAt: null,
+          ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
+        },
+      }),
       this.prisma.account.count({ where: { organizationId, deletedAt: null } }),
       this.prisma.contact.count({ where: { organizationId, deletedAt: null } }),
       this.prisma.opportunity.count({ where: { organizationId, deletedAt: null } }),
@@ -94,10 +109,17 @@ export class DashboardService {
     };
   }
 
-  async getLeadsByStatus(organizationId: string): Promise<LeadsByStatusDto[]> {
+  async getLeadsByStatus(
+    organizationId: string,
+    user?: { sub: string; role: string },
+  ): Promise<LeadsByStatusDto[]> {
     const groups = await this.prisma.lead.groupBy({
       by: ['status'],
-      where: { organizationId, deletedAt: null },
+      where: {
+        organizationId,
+        deletedAt: null,
+        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
+      },
       _count: { _all: true },
     });
 

@@ -764,7 +764,7 @@ Rule body:
 ```json
 {
   "provinceName": "TP. Hồ Chí Minh",
-  "wardName": "Phường Bến Nghé",
+  "wardName": "Phường Sài Gòn",
   "assigneeId": "user-id",
   "isActive": true
 }

@@ -20,6 +20,8 @@ import {
 } from "antd";
 import axios from "axios";
 import { useState } from "react";
+import { HcmWardSelect } from "@/components/crm/HcmWardSelect";
+import { HCM_PROVINCE_NAME } from "@/lib/constants/hcm-wards";
 
 const { Paragraph, Text, Title } = Typography;
 const { TextArea } = Input;
@@ -100,11 +102,15 @@ export default function LeadCapturePage() {
 
     try {
       setSubmitting(true);
+      const payload = {
+        ...values,
+        provinceName: HCM_PROVINCE_NAME,
+      };
       const apiBaseUrl =
         process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
       const { data } = await axios.post<LeadCaptureResponse>(
         `${apiBaseUrl}/public/lead-capture`,
-        values,
+        payload,
       );
 
       message.success(data.message || successMessage);
@@ -166,6 +172,7 @@ export default function LeadCapturePage() {
             form={form}
             layout="vertical"
             requiredMark="optional"
+            initialValues={{ provinceName: HCM_PROVINCE_NAME }}
             onFinish={handleSubmit}
           >
             <Form.Item name="companyFaxHidden" className="hidden" style={{ display: "none" }}>
@@ -248,12 +255,12 @@ export default function LeadCapturePage() {
             <Row gutter={16}>
               <Col xs={24} md={12}>
                 <Form.Item name="provinceName" label="Tỉnh/Thành phố">
-                  <Input placeholder="TP. Hồ Chí Minh" maxLength={120} />
+                  <Input disabled />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
                 <Form.Item name="wardName" label="Phường/Xã">
-                  <Input placeholder="Phường Bến Nghé" maxLength={120} />
+                  <HcmWardSelect placeholder="Gõ để tìm phường/xã" />
                 </Form.Item>
               </Col>
             </Row>

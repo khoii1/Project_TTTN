@@ -17,6 +17,7 @@ import {
 } from "antd";
 import type { TableColumnsType } from "antd";
 import { PageHeader } from "@/components/common/PageHeader";
+import { HcmWardSelect } from "@/components/crm/HcmWardSelect";
 import { User, UserRole } from "@/features/auth/auth.types";
 import { useAuthStore } from "@/features/auth/auth.store";
 import { leadAssignmentApi } from "@/features/lead-assignment/lead-assignment.api";
@@ -26,6 +27,7 @@ import {
 } from "@/features/lead-assignment/lead-assignment.types";
 import { usersApi } from "@/features/users/users.api";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { HCM_PROVINCE_NAME } from "@/lib/constants/hcm-wards";
 import { getDataArray } from "@/lib/api/pagination";
 import { getRoleLabel } from "@/lib/constants/vi-labels";
 
@@ -77,14 +79,14 @@ export default function LeadAssignmentSettingsPage() {
   const openCreateModal = () => {
     setEditingRule(null);
     form.resetFields();
-    form.setFieldsValue({ isActive: true });
+    form.setFieldsValue({ isActive: true, provinceName: HCM_PROVINCE_NAME });
     setModalOpen(true);
   };
 
   const openEditModal = (rule: LeadAssignmentRule) => {
     setEditingRule(rule);
     form.setFieldsValue({
-      provinceName: rule.provinceName,
+      provinceName: HCM_PROVINCE_NAME,
       wardName: rule.wardName,
       assigneeId: rule.assigneeId,
       isActive: rule.isActive,
@@ -96,10 +98,16 @@ export default function LeadAssignmentSettingsPage() {
     try {
       setSaving(true);
       if (editingRule) {
-        await leadAssignmentApi.update(editingRule.id, values);
+        await leadAssignmentApi.update(editingRule.id, {
+          ...values,
+          provinceName: HCM_PROVINCE_NAME,
+        });
         message.success("Đã cập nhật quy tắc phân công Lead");
       } else {
-        await leadAssignmentApi.create(values);
+        await leadAssignmentApi.create({
+          ...values,
+          provinceName: HCM_PROVINCE_NAME,
+        });
         message.success("Đã tạo quy tắc phân công Lead");
       }
       setModalOpen(false);
@@ -228,14 +236,14 @@ export default function LeadAssignmentSettingsPage() {
             label="Tỉnh/Thành phố"
             rules={[{ required: true, message: "Vui lòng nhập tỉnh/thành phố." }]}
           >
-            <Input placeholder="TP. Hồ Chí Minh" maxLength={120} />
+            <Input disabled />
           </Form.Item>
           <Form.Item
             name="wardName"
             label="Phường/Xã"
             rules={[{ required: true, message: "Vui lòng nhập phường/xã." }]}
           >
-            <Input placeholder="Phường Bến Nghé" maxLength={120} />
+            <HcmWardSelect placeholder="Gõ để tìm phường/xã" allowClear={false} />
           </Form.Item>
           <Form.Item
             name="assigneeId"
@@ -257,3 +265,4 @@ export default function LeadAssignmentSettingsPage() {
     </div>
   );
 }
+

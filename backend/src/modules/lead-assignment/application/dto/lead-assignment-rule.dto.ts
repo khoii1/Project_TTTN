@@ -7,7 +7,7 @@ export class CreateLeadAssignmentRuleDto {
   @MaxLength(120)
   provinceName: string;
 
-  @ApiProperty({ example: 'Phường Bến Nghé' })
+  @ApiProperty({ example: 'Phường Sài Gòn' })
   @IsString()
   @MaxLength(120)
   wardName: string;
@@ -29,7 +29,7 @@ export class UpdateLeadAssignmentRuleDto {
   @MaxLength(120)
   provinceName?: string;
 
-  @ApiPropertyOptional({ example: 'Phường Bến Nghé' })
+  @ApiPropertyOptional({ example: 'Phường Sài Gòn' })
   @IsOptional()
   @IsString()
   @MaxLength(120)

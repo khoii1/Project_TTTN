@@ -13,6 +13,7 @@ import {
   SectionCard,
 } from "@/components/crm/RecordSections";
 import { SourceFields } from "@/components/crm/SourceFields";
+import { HcmWardSelect } from "@/components/crm/HcmWardSelect";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
 import { leadsApi } from "@/features/leads/leads.api";
 import {
@@ -21,6 +22,7 @@ import {
   LeadStatus,
 } from "@/features/leads/leads.types";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { HCM_PROVINCE_NAME } from "@/lib/constants/hcm-wards";
 import { getSourceLabel } from "@/lib/constants/source-options";
 import {
   EMPTY_STATE_LABELS,
@@ -66,7 +68,10 @@ export default function LeadDetailPage({
   const handleUpdate = async (values: Partial<Lead>) => {
     try {
       setSaving(true);
-      await leadsApi.update(id, values);
+      await leadsApi.update(id, {
+        ...values,
+        provinceName: values.provinceName || HCM_PROVINCE_NAME,
+      });
       message.success("Đã cập nhật khách hàng tiềm năng");
       setIsEditing(false);
       fetchLead();
@@ -179,7 +184,14 @@ export default function LeadDetailPage({
 
       {isEditing ? (
         <Card title="Chỉnh sửa khách hàng tiềm năng" className="shadow-sm">
-          <Form layout="vertical" initialValues={lead} onFinish={handleUpdate}>
+          <Form
+            layout="vertical"
+            initialValues={{
+              ...lead,
+              provinceName: lead.provinceName || HCM_PROVINCE_NAME,
+            }}
+            onFinish={handleUpdate}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Form.Item name="firstName" label="Họ">
                 <Input />
@@ -207,10 +219,10 @@ export default function LeadDetailPage({
                 <Input />
               </Form.Item>
               <Form.Item name="provinceName" label="Tỉnh/Thành phố">
-                <Input maxLength={120} />
+                <Input disabled />
               </Form.Item>
               <Form.Item name="wardName" label="Phường/Xã">
-                <Input maxLength={120} />
+                <HcmWardSelect placeholder="Gõ để tìm phường/xã" />
               </Form.Item>
             </div>
             <Form.Item name="addressDetail" label="Địa chỉ chi tiết">

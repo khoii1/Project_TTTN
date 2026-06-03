@@ -228,7 +228,7 @@ Khi demo trên môi trường deploy/staging:
 ## 10. Demo Lead Assignment By Area
 
 - Open Profile > `Cai dat tai khoan` > `Quy tac phan cong Lead`.
-- Create a rule such as `TP. Ho Chi Minh` + `Phuong Ben Nghe` -> a Sales user.
+- Create a rule such as `Thanh pho Ho Chi Minh` + `Phuong Sai Gon` -> a Sales user.
 - Submit a manual Lead or Web-to-Lead form with the same province/ward.
 - Open Lead detail and verify `Nguoi phu trach` is the rule assignee.
 - Verify Lead detail shows `Khu vuc phu trach` with province, ward, and address.

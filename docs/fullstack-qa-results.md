@@ -914,7 +914,7 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 
 | Province | Ward | Assignee |
 |---|---|---|
-| Thành phố Hồ Chí Minh | Phường Bến Nghé | `sales@example.com` |
+| Thành phố Hồ Chí Minh | Phường Sài Gòn | `sales@example.com` |
 | Thành phố Hồ Chí Minh | Phường An Khánh | `support@example.com` |
 
 ### Deploy Checks
@@ -926,11 +926,11 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 | Rule API CRUD | Pass: Admin list/create/patch/delete worked |
 | Rule RBAC | Pass: Sales create returned 403 |
 | Cross-org assignee protection | Pass: Admin could not create a rule for Rival Org user |
-| Web-to-Lead Bến Nghé | Pass: Lead owner set to `sales@example.com`, source `Website`, status `NEW`, area fields and consultation need present |
+| Web-to-Lead Sài Gòn | Pass: Lead owner set to `sales@example.com`, source `Website`, status `NEW`, area fields and consultation need present |
 | Web-to-Lead An Khánh | Pass: Lead owner set to `support@example.com` |
 | Web-to-Lead fallback | Pass: unmatched ward still created Lead and owner fell back to `PUBLIC_LEAD_OWNER_ID` / admin |
 | Admin/Manager visibility | Pass: both assigned Leads were visible |
-| Sales visibility | Pass: Sales saw only Bến Nghé Lead; direct access to Support Lead returned 404 |
+| Sales visibility | Pass: Sales saw only Sài Gòn Lead; direct access to Support Lead returned 404 |
 | Support visibility | Pass: Support saw only An Khánh Lead; direct access to Sales Lead returned 404 |
 | Rival Org isolation | Pass: Rival admin could not find Sample Org assignment QA Lead |
 | Dashboard | Pass: all roles loaded dashboard; Lead totals scoped for Sales/Support |
@@ -939,6 +939,15 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 | Recycle Bin | Pass: delete/restore worked; Sales did not see Support-owned deleted Lead, Support did |
 | Lead CSV import assignment | Pass: matching ward assigned Sales; unmatched ward fell back to admin; row result reported success |
 | Mobile smoke | Pass: `flutter test integration_test/mobile_deploy_smoke_test.dart -d emulator-5554 --dart-define=API_BASE_URL=https://project-tttn.onrender.com` passed |
+
+### HCMC Ward Dropdown QA
+
+| Check | Result |
+|---|---|
+| Dropdown data source | Pass: shared frontend list contains 102 new TP.HCM wards/communes and no `Phường Bến Nghé` option |
+| Search without accents | Pass: `sai gon` matches `Phường Sài Gòn`; `ben nghe` returns no dropdown option |
+| Rule update | Pass: deploy rule `Thành phố Hồ Chí Minh / Phường Sài Gòn` points to `sales@example.com` |
+| Web-to-Lead | Pass: Lead `WARD_SAIGON_QA_1780469833307` created with `wardName = Phường Sài Gòn`, `source = Website`, `status = NEW`, and owner `sales@example.com` |
 
 ### Build And Test
 

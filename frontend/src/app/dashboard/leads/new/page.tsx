@@ -8,6 +8,8 @@ import { Lead, LeadStatus } from "@/features/leads/leads.types";
 import { PageHeader } from "@/components/common/PageHeader";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { SourceFields } from "@/components/crm/SourceFields";
+import { HcmWardSelect } from "@/components/crm/HcmWardSelect";
+import { HCM_PROVINCE_NAME } from "@/lib/constants/hcm-wards";
 import { getStatusLabel } from "@/lib/constants/vi-labels";
 
 const { TextArea } = Input;
@@ -20,7 +22,10 @@ export default function NewLeadPage() {
   const onFinish = async (values: Partial<Lead>) => {
     try {
       setLoading(true);
-      const { status, ...createPayload } = values;
+      const { status, ...createPayload } = {
+        ...values,
+        provinceName: HCM_PROVINCE_NAME,
+      };
       const createdLead = await leadsApi.create(createPayload);
 
       if (status && status !== LeadStatus.NEW) {
@@ -45,7 +50,7 @@ export default function NewLeadPage() {
         <Form
           layout="vertical"
           onFinish={onFinish}
-          initialValues={{ status: LeadStatus.NEW }}
+          initialValues={{ status: LeadStatus.NEW, provinceName: HCM_PROVINCE_NAME }}
         >
           <div className="grid grid-cols-2 gap-4">
             <Form.Item
@@ -91,10 +96,10 @@ export default function NewLeadPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Form.Item name="provinceName" label="Tỉnh/Thành phố">
-              <Input placeholder="TP. Hồ Chí Minh" maxLength={120} />
+              <Input disabled />
             </Form.Item>
             <Form.Item name="wardName" label="Phường/Xã">
-              <Input placeholder="Phường Bến Nghé" maxLength={120} />
+              <HcmWardSelect placeholder="Gõ để tìm phường/xã" />
             </Form.Item>
           </div>
 

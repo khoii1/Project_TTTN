@@ -77,7 +77,7 @@ export class CreateLeadDto {
   @MaxLength(120)
   provinceName?: string;
 
-  @ApiPropertyOptional({ example: 'Phường Bến Nghé' })
+  @ApiPropertyOptional({ example: 'Phường Sài Gòn' })
   @IsString()
   @IsOptional()
   @MaxLength(120)
@@ -156,7 +156,7 @@ export class UpdateLeadDto {
   @MaxLength(120)
   provinceName?: string;
 
-  @ApiPropertyOptional({ example: 'Phường Bến Nghé' })
+  @ApiPropertyOptional({ example: 'Phường Sài Gòn' })
   @IsString()
   @IsOptional()
   @MaxLength(120)
@@ -256,7 +256,7 @@ export class LeadResponseDto {
   description?: string;
   @ApiPropertyOptional({ example: 'Thành phố Hồ Chí Minh' })
   provinceName?: string;
-  @ApiPropertyOptional({ example: 'Phường Bến Nghé' })
+  @ApiPropertyOptional({ example: 'Phường Sài Gòn' })
   wardName?: string;
   @ApiPropertyOptional({ example: '12 Lê Lợi' })
   addressDetail?: string;

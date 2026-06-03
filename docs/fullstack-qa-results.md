@@ -959,6 +959,7 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 | Multi-ward create form | Pass locally: Admin can select one assignee and multiple HCMC wards; frontend creates one rule per new ward using existing API |
 | Duplicate/conflict handling | Pass locally: already assigned wards for the same user are skipped; wards assigned to another active user show a Vietnamese error before submit |
 | Deactivate from card | Pass locally: each active ward tag has a confirm action that calls the existing deactivate endpoint and reloads rules |
+| Reactivate inactive rule | Pass locally: adding a ward that already has an inactive rule for the same assignee reactivates that rule instead of creating a duplicate active rule; inactive duplicates are hidden when an active rule for the same ward exists |
 | Backend/database | No change: each rule remains `provinceName + wardName + assigneeId + isActive` |
 | Deploy browser QA | Pass on Vercel: after Admin login, grouped assignee cards, search input, Sales card, `Phường Sài Gòn`, `sai gon` search, and `support` search were visible/working |
 | Web-to-Lead assignment smoke | Pass on deploy: `Phường Sài Gòn` created Lead owner `sales@example.com` |

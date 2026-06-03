@@ -60,6 +60,12 @@ const getAssigneeEmail = (rule: LeadAssignmentRule, user?: User) =>
 const sortRulesByWard = (items: LeadAssignmentRule[]) =>
   [...items].sort((a, b) => a.wardName.localeCompare(b.wardName, "vi"));
 
+const getAreaKey = (rule: Pick<LeadAssignmentRule, "provinceName" | "wardName">) =>
+  `${rule.provinceName.trim().toLowerCase()}::${rule.wardName.trim().toLowerCase()}`;
+
+const isSameArea = (rule: LeadAssignmentRule, wardName: string) =>
+  rule.provinceName === HCM_PROVINCE_NAME && rule.wardName === wardName;
+
 export default function LeadAssignmentSettingsPage() {
   const { message } = App.useApp();
   const { user } = useAuthStore();
@@ -150,11 +156,17 @@ export default function LeadAssignmentSettingsPage() {
     const normalizedSearch = normalizeVietnameseSearch(searchText);
 
     return Array.from(groups.values())
-      .map((group) => ({
-        ...group,
-        activeRules: sortRulesByWard(group.activeRules),
-        inactiveRules: sortRulesByWard(group.inactiveRules),
-      }))
+      .map((group) => {
+        const activeAreaKeys = new Set(group.activeRules.map(getAreaKey));
+
+        return {
+          ...group,
+          activeRules: sortRulesByWard(group.activeRules),
+          inactiveRules: sortRulesByWard(
+            group.inactiveRules.filter((rule) => !activeAreaKeys.has(getAreaKey(rule))),
+          ),
+        };
+      })
       .filter((group) => {
         if (!normalizedSearch) return true;
 
@@ -218,6 +230,22 @@ export default function LeadAssignmentSettingsPage() {
     const newWardNames = wardNames.filter(
       (wardName) => !duplicateWardNames.includes(wardName),
     );
+    const reactivatableRules = newWardNames
+      .map((wardName) =>
+        rules.find(
+          (rule) =>
+            !rule.isActive &&
+            isSameArea(rule, wardName) &&
+            rule.assigneeId === values.assigneeId,
+        ),
+      )
+      .filter(Boolean) as LeadAssignmentRule[];
+    const reactivatedWardNames = new Set(
+      reactivatableRules.map((rule) => rule.wardName),
+    );
+    const createWardNames = newWardNames.filter(
+      (wardName) => !reactivatedWardNames.has(wardName),
+    );
 
     if (newWardNames.length === 0) {
       message.warning("Các phường/xã đã chọn đều đang được phân công cho người này.");
@@ -227,21 +255,41 @@ export default function LeadAssignmentSettingsPage() {
     try {
       setSaving(true);
       await Promise.all(
-        newWardNames.map((wardName) =>
-          leadAssignmentApi.create({
-            provinceName: HCM_PROVINCE_NAME,
-            wardName,
-            assigneeId: values.assigneeId,
-            isActive: true,
-          }),
-        ),
+        [
+          ...reactivatableRules.map((rule) =>
+            leadAssignmentApi.update(rule.id, {
+              provinceName: HCM_PROVINCE_NAME,
+              wardName: rule.wardName,
+              assigneeId: values.assigneeId,
+              isActive: true,
+            }),
+          ),
+          ...createWardNames.map((wardName) =>
+            leadAssignmentApi.create({
+              provinceName: HCM_PROVINCE_NAME,
+              wardName,
+              assigneeId: values.assigneeId,
+              isActive: true,
+            }),
+          ),
+        ],
       );
 
       const skippedMessage =
         duplicateWardNames.length > 0
           ? ` Bỏ qua ${duplicateWardNames.length} phường/xã đã tồn tại.`
           : "";
-      message.success(`Đã thêm ${newWardNames.length} phường/xã phụ trách.${skippedMessage}`);
+      const createdMessage =
+        createWardNames.length > 0 ? `Đã thêm ${createWardNames.length} phường/xã.` : "";
+      const reactivatedMessage =
+        reactivatableRules.length > 0
+          ? `Đã mở lại ${reactivatableRules.length} quy tắc đã tắt.`
+          : "";
+      message.success(
+        [createdMessage, reactivatedMessage, skippedMessage.trim()]
+          .filter(Boolean)
+          .join(" "),
+      );
       setModalOpen(false);
       await fetchData();
     } catch (error: unknown) {
@@ -258,6 +306,35 @@ export default function LeadAssignmentSettingsPage() {
       await fetchData();
     } catch (error: unknown) {
       message.error(getApiErrorMessage(error, "Không thể tắt quy tắc phân công Lead"));
+    }
+  };
+
+  const handleReactivate = async (rule: LeadAssignmentRule) => {
+    const conflictingActiveRule = rules.find(
+      (item) =>
+        item.isActive &&
+        isSameArea(item, rule.wardName) &&
+        item.assigneeId !== rule.assigneeId,
+    );
+
+    if (conflictingActiveRule) {
+      message.error(
+        `${rule.wardName} đang được phân công cho ${conflictingActiveRule.assigneeEmail || "người khác"}.`,
+      );
+      return;
+    }
+
+    try {
+      await leadAssignmentApi.update(rule.id, {
+        provinceName: HCM_PROVINCE_NAME,
+        wardName: rule.wardName,
+        assigneeId: rule.assigneeId,
+        isActive: true,
+      });
+      message.success(`Đã mở lại quy tắc cho ${rule.wardName}`);
+      await fetchData();
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, "Không thể mở lại quy tắc phân công Lead"));
     }
   };
 
@@ -426,7 +503,23 @@ export default function LeadAssignmentSettingsPage() {
                     <div className="flex flex-wrap gap-2">
                       {group.inactiveRules.map((rule) => (
                         <Tag key={rule.id} className="m-0 py-1">
-                          {rule.wardName}
+                          <span>{rule.wardName}</span>
+                          {canManage && (
+                            <Popconfirm
+                              title={`Mở lại quy tắc cho ${rule.wardName}?`}
+                              okText="Mở lại"
+                              cancelText="Hủy"
+                              onConfirm={() => handleReactivate(rule)}
+                            >
+                              <button
+                                type="button"
+                                className="ml-2 cursor-pointer border-0 bg-transparent p-0 text-gray-700"
+                                aria-label={`Mở lại quy tắc ${rule.wardName}`}
+                              >
+                                Mở lại
+                              </button>
+                            </Popconfirm>
+                          )}
                         </Tag>
                       ))}
                     </div>

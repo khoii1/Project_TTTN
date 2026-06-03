@@ -1016,3 +1016,20 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 ### Result
 
 - Task Templates after Lead Conversion are ready for local/browser QA and deploy after applying the new Prisma migration on the target database.
+
+### Deploy Smoke
+
+- Commit pushed: `8a712ba`
+- Backend: `https://project-tttn.onrender.com`
+- Frontend: `https://project-tttn.vercel.app`
+- Production migration: `npm run prisma:migrate:prod` applied `20260603000200_task_templates` successfully.
+
+| Check | Result |
+|---|---|
+| Backend `/health` | Pass, returned `status = ok` |
+| Backend `/task-templates` route | Pass after Render redeploy finished; unauthenticated request returned `401`, authenticated Admin request succeeded |
+| Create template on deploy | Pass: created QA template with 1 active item |
+| Convert Lead with template on deploy | Pass: created Account/Contact/Opportunity and `taskTemplateResult.createdCount = 1` |
+| Generated Task on deploy | Pass: Task was related to converted Opportunity and found by related Task list query |
+| Cleanup | Pass: QA template was deactivated through `DELETE /task-templates/:id` |
+| Frontend protected route | Pass smoke: `/dashboard/settings/task-templates` redirects logged-out users to `/login`, matching protected dashboard behavior |

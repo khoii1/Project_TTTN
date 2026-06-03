@@ -5,7 +5,7 @@ import {
   HCM_WARD_OPTIONS,
 } from "@/lib/constants/hcm-wards";
 
-type HcmWardSelectProps = Omit<SelectProps<string>, "options" | "showSearch">;
+type HcmWardSelectProps = Omit<SelectProps, "options" | "showSearch">;
 
 export const HcmWardSelect = (props: HcmWardSelectProps) => (
   <Select

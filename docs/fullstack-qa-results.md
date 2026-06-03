@@ -949,6 +949,22 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 | Rule update | Pass: deploy rule `Thành phố Hồ Chí Minh / Phường Sài Gòn` points to `sales@example.com` |
 | Web-to-Lead | Pass: Lead `WARD_SAIGON_QA_1780469833307` created with `wardName = Phường Sài Gòn`, `source = Website`, `status = NEW`, and owner `sales@example.com` |
 
+### Lead Assignment Grouped UI QA
+
+| Check | Result |
+|---|---|
+| Grouped display | Pass locally: `/dashboard/settings/lead-assignment` now groups active rules by assignee card instead of a repeated row table |
+| Default active filter | Pass locally: inactive rules are hidden by default and shown only when `Hiển thị quy tắc đã tắt` is enabled |
+| Search | Pass locally: search input filters by assignee name, assignee email, role label, and ward name using accent-insensitive matching |
+| Multi-ward create form | Pass locally: Admin can select one assignee and multiple HCMC wards; frontend creates one rule per new ward using existing API |
+| Duplicate/conflict handling | Pass locally: already assigned wards for the same user are skipped; wards assigned to another active user show a Vietnamese error before submit |
+| Deactivate from card | Pass locally: each active ward tag has a confirm action that calls the existing deactivate endpoint and reloads rules |
+| Backend/database | No change: each rule remains `provinceName + wardName + assigneeId + isActive` |
+| Web-to-Lead assignment smoke | Pass on deploy: `Phường Sài Gòn` created Lead owner `sales@example.com` |
+| Lead create/edit assignment smoke | Pass on deploy: create with `Phường Sài Gòn` assigned Sales; edit to `Phường An Khánh` assigned Support |
+| Lead CSV assignment smoke | Pass on deploy: `GROUPED_UI_CSV_1780473086800` imported successfully and assigned Sales |
+| Role visibility smoke | Pass on deploy: Sales received 200 for Sales-owned Lead and 404 for Support-owned Lead; Support received the inverse |
+
 ### Build And Test
 
 | Command | Result |

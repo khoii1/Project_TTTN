@@ -1,5 +1,65 @@
 # Mobile QA Results
 
+## Android CRM Mobile Deploy Smoke QA - 2026-06-01
+
+### Environment
+
+- Android emulator: `emulator-5554`, Android 15 API 35.
+- API base URL: `https://project-tttn.onrender.com`.
+- Test method: Flutter integration smoke test with the deployed backend.
+- Test account: `admin@example.com / Admin@123`.
+
+### Backend Deploy Health
+
+- `GET https://project-tttn.onrender.com/health`: pass.
+- Response returned `status: ok`, `service: crm-backend`.
+- Render service was reachable on the first retry in this QA run; no wake-up timeout remained.
+
+### Mobile Smoke Results With Deploy API
+
+| Area | Result | Notes |
+|---|---|---|
+| App launch with deploy API | Pass | Smoke test built and installed debug APK with `API_BASE_URL=https://project-tttn.onrender.com`. |
+| Login | Pass | Logged in as `admin@example.com` through Flutter widget input. |
+| Dashboard | Pass | Opened Dashboard from Menu and verified CRM content rendered. |
+| Lead list | Pass | Lead tab loaded and create action was available. |
+| Create Lead | Pass | Created a simple Lead using stamp `MOBILE_DEPLOY_SMOKE_<timestamp>`. |
+| Global Search | Pass | Search found the newly created Lead by stamp. |
+| Lead detail | Pass | Opened the created Lead detail from Global Search. |
+
+### Commands Run
+
+- `GET https://project-tttn.onrender.com/health`: pass.
+- `flutter test integration_test/mobile_deploy_smoke_test.dart -d emulator-5554 --dart-define=API_BASE_URL=https://project-tttn.onrender.com`: pass.
+
+### Conclusion
+
+- Mobile deploy smoke test passed.
+- No deploy API timeout remained during this final QA.
+- Mobile is ready for demo against `https://project-tttn.onrender.com`.
+
+## Android CRM Mobile Lead Assignment Smoke QA - 2026-06-03
+
+### Environment
+
+- Device: Android emulator `emulator-5554`, Android 15 API 35.
+- API base URL: `https://project-tttn.onrender.com`.
+- Scope: verify mobile still works after Lead area fields and assignment rules.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `flutter analyze` | Pass |
+| `flutter test` | Pass |
+| `flutter build apk --release --dart-define=API_BASE_URL=https://project-tttn.onrender.com` | Pass after `flutter clean && flutter pub get` regenerated Android plugin files |
+| `flutter test integration_test/mobile_deploy_smoke_test.dart -d emulator-5554 --dart-define=API_BASE_URL=https://project-tttn.onrender.com` | Pass |
+
+### Result
+
+- Mobile can run against the deployed backend after the Lead area field changes.
+- Import CSV and assignment rule management remain web-only.
+
 ## Android CRM Mobile Integration QA - 2026-06-01
 
 ### Environment

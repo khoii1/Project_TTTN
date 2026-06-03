@@ -893,3 +893,67 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 ### Result
 
 - Lead assignment by province/ward is ready for browser demo after applying the new Prisma migration on the target database.
+
+## Lead Assignment Deploy QA
+
+- Date: 2026-06-03
+- Backend: `https://project-tttn.onrender.com`
+- Frontend: `https://project-tttn.vercel.app`
+- Pushed commits: `4e27cb6`, migration BOM fix `81cae33`
+- Production migration: `npm run prisma:migrate:prod` succeeded after marking the initial BOM-failed attempt as rolled back.
+
+### Production Schema
+
+| Check | Result |
+|---|---|
+| `GET /health` | Pass, returned `status = ok` |
+| `lead_assignment_rules` table | Present |
+| Lead columns `province_name`, `ward_name`, `address_detail` | Present |
+
+### Demo Rules
+
+| Province | Ward | Assignee |
+|---|---|---|
+| Thành phố Hồ Chí Minh | Phường Bến Nghé | `sales@example.com` |
+| Thành phố Hồ Chí Minh | Phường An Khánh | `support@example.com` |
+
+### Deploy Checks
+
+| Area | Result |
+|---|---|
+| Frontend `/dang-ky-tu-van` | Pass, public route returned 200 |
+| Frontend `/dashboard/settings/lead-assignment` | Pass, deployed route returned 200 |
+| Rule API CRUD | Pass: Admin list/create/patch/delete worked |
+| Rule RBAC | Pass: Sales create returned 403 |
+| Cross-org assignee protection | Pass: Admin could not create a rule for Rival Org user |
+| Web-to-Lead Bến Nghé | Pass: Lead owner set to `sales@example.com`, source `Website`, status `NEW`, area fields and consultation need present |
+| Web-to-Lead An Khánh | Pass: Lead owner set to `support@example.com` |
+| Web-to-Lead fallback | Pass: unmatched ward still created Lead and owner fell back to `PUBLIC_LEAD_OWNER_ID` / admin |
+| Admin/Manager visibility | Pass: both assigned Leads were visible |
+| Sales visibility | Pass: Sales saw only Bến Nghé Lead; direct access to Support Lead returned 404 |
+| Support visibility | Pass: Support saw only An Khánh Lead; direct access to Sales Lead returned 404 |
+| Rival Org isolation | Pass: Rival admin could not find Sample Org assignment QA Lead |
+| Dashboard | Pass: all roles loaded dashboard; Lead totals scoped for Sales/Support |
+| Global Search behavior | Pass via lead search endpoints used by frontend search; Sales/Support only found owned Leads |
+| Lead Conversion | Pass: Admin converted Sales-owned Lead; new Account/Contact/Opportunity retained Sales owner and `convertedById` tracked Admin |
+| Recycle Bin | Pass: delete/restore worked; Sales did not see Support-owned deleted Lead, Support did |
+| Lead CSV import assignment | Pass: matching ward assigned Sales; unmatched ward fell back to admin; row result reported success |
+| Mobile smoke | Pass: `flutter test integration_test/mobile_deploy_smoke_test.dart -d emulator-5554 --dart-define=API_BASE_URL=https://project-tttn.onrender.com` passed |
+
+### Build And Test
+
+| Command | Result |
+|---|---|
+| Backend `npm run prisma:generate` | Pass |
+| Backend `npm run build` | Pass |
+| Backend `npm test -- --runInBand` | Pass, 12 suites / 100 tests |
+| Backend `npm run test:e2e -- --runInBand` | Pass, 12 suites / 100 tests |
+| Frontend `npm run lint` | Pass with existing hook warnings |
+| Frontend `npm run build` | Pass |
+| Mobile `flutter analyze` | Pass |
+| Mobile `flutter test` | Pass |
+| Mobile release build | Pass after `flutter clean && flutter pub get`; stale generated plugin state caused the first release build attempt to fail before clean |
+
+### Result
+
+- Lead assignment by area is ready for deploy demo.

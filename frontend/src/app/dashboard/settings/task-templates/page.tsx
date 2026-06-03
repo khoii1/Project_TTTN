@@ -329,6 +329,7 @@ export default function TaskTemplatesPage() {
                   accordion={false}
                   items={groupFields.map((groupField, groupIndex) => ({
                     key: groupField.key,
+                    forceRender: true,
                     label: `Nhóm ${groupIndex + 1}`,
                     children: (
                       <div className="space-y-3">

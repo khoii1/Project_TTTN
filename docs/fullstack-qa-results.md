@@ -960,6 +960,7 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 | Duplicate/conflict handling | Pass locally: already assigned wards for the same user are skipped; wards assigned to another active user show a Vietnamese error before submit |
 | Deactivate from card | Pass locally: each active ward tag has a confirm action that calls the existing deactivate endpoint and reloads rules |
 | Backend/database | No change: each rule remains `provinceName + wardName + assigneeId + isActive` |
+| Deploy browser QA | Pass on Vercel: after Admin login, grouped assignee cards, search input, Sales card, `Phường Sài Gòn`, `sai gon` search, and `support` search were visible/working |
 | Web-to-Lead assignment smoke | Pass on deploy: `Phường Sài Gòn` created Lead owner `sales@example.com` |
 | Lead create/edit assignment smoke | Pass on deploy: create with `Phường Sài Gòn` assigned Sales; edit to `Phường An Khánh` assigned Support |
 | Lead CSV assignment smoke | Pass on deploy: `GROUPED_UI_CSV_1780473086800` imported successfully and assigned Sales |

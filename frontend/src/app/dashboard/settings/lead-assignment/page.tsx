@@ -16,6 +16,7 @@ import {
   Tag,
   Typography,
 } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import { PageHeader } from "@/components/common/PageHeader";
 import { HcmWardSelect } from "@/components/crm/HcmWardSelect";
 import { User, UserRole, UserRoleType } from "@/features/auth/auth.types";
@@ -502,8 +503,13 @@ export default function LeadAssignmentSettingsPage() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {group.inactiveRules.map((rule) => (
-                        <Tag key={rule.id} className="m-0 py-1">
-                          <span>{rule.wardName}</span>
+                        <div
+                          key={rule.id}
+                          className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1"
+                        >
+                          <Tag className="m-0 border-0 bg-transparent px-0 font-medium">
+                            {rule.wardName}
+                          </Tag>
                           {canManage && (
                             <Popconfirm
                               title={`Mở lại quy tắc cho ${rule.wardName}?`}
@@ -511,16 +517,18 @@ export default function LeadAssignmentSettingsPage() {
                               cancelText="Hủy"
                               onConfirm={() => handleReactivate(rule)}
                             >
-                              <button
-                                type="button"
-                                className="ml-2 cursor-pointer border-0 bg-transparent p-0 text-gray-700"
+                              <Button
+                                size="small"
+                                type="primary"
+                                ghost
+                                icon={<ReloadOutlined />}
                                 aria-label={`Mở lại quy tắc ${rule.wardName}`}
                               >
                                 Mở lại
-                              </button>
+                              </Button>
                             </Popconfirm>
                           )}
-                        </Tag>
+                        </div>
                       ))}
                     </div>
                   </div>

@@ -1033,3 +1033,45 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 | Generated Task on deploy | Pass: Task was related to converted Opportunity and found by related Task list query |
 | Cleanup | Pass: QA template was deactivated through `DELETE /task-templates/:id` |
 | Frontend protected route | Pass smoke: `/dashboard/settings/task-templates` redirects logged-out users to `/login`, matching protected dashboard behavior |
+
+## Task Templates Browser QA On Deploy
+
+- Date: 2026-06-03
+- Frontend: `https://project-tttn.vercel.app`
+- Backend: `https://project-tttn.onrender.com`
+- Admin: `admin@example.com`
+- QA stamp: `1780480349935`
+
+### Browser Flow
+
+| Check | Result |
+|---|---|
+| Admin session | Pass: opened Dashboard UI as Admin on Vercel |
+| Open `/dashboard/settings/task-templates` | Pass |
+| Create template by UI | Pass: created `Quy trình chăm sóc Lead từ Website QA 1780480349935` |
+| Template groups/items | Pass: 2 groups and 4 active task items were saved |
+| Set default | Pass: template was set as default |
+| Edit template | Pass after fix `33d18a9`: editing the template name preserved groups/items |
+| Convert Wizard section | Pass: `Công việc sau chuyển đổi`, checkbox, and template dropdown appeared |
+| Default template selection | Pass: edited default template was selected automatically |
+| Convert Lead with template | Pass: Account/Contact/Opportunity were created and 4 Tasks were generated |
+| Generated Task owner | Pass: each generated Task `ownerId` and `assignedToId` matched the original Lead owner |
+| Generated Task relation | Pass: each generated Task used `relatedType = OPPORTUNITY` and `relatedId` of the converted Opportunity |
+| Generated Task title | Pass: titles include group prefixes such as `[Xác nhận thông tin khách hàng] ...` and `[Chuẩn bị tư vấn] ...` |
+| Generated Task due date/priority | Pass: due dates matched `dueAfterDays` 1, 2, and 3; priorities were `HIGH`, `NORMAL`, and `LOW` |
+| Convert Lead without template | Pass: conversion succeeded and no template Tasks were created |
+| Web-to-Lead | Pass: public submit still created a Website Lead |
+| Lead assignment by ward | Pass: Web-to-Lead with `Phường Sài Gòn` assigned owner `sales@example.com` |
+| Dashboard | Pass: Dashboard loaded on Vercel after generated Tasks existed |
+| Task list/detail | Pass: Tasks list and generated Task detail loaded on Vercel |
+| Cleanup | Pass: QA template was deactivated after Browser QA |
+
+### Issue Found And Fixed
+
+- Issue: Editing a Task Template from the UI could remove its groups/items when the nested Collapse panels had not been rendered.
+- Fix: Added `forceRender: true` to Task Template group Collapse items in `frontend/src/app/dashboard/settings/task-templates/page.tsx`.
+- Verification: `npm run lint` pass with existing warnings; `npm run build` pass; deploy Browser QA then passed with 2 groups / 4 active task items preserved after edit.
+
+### Result
+
+- Task Templates after Lead Conversion are ready for frontend demo on deploy.

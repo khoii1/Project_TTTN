@@ -1109,3 +1109,23 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 - Render must be configured with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET=task-attachments`, and `SUPABASE_SIGNED_URL_EXPIRES_SECONDS=900`.
 - Supabase private bucket `task-attachments` must exist.
 - After deploy, run browser QA: text comment, image upload/preview, PDF/Excel upload/download, invalid file rejection, permission checks.
+
+### Deploy Smoke
+
+- Backend: `https://project-tttn.onrender.com`
+- Frontend: `https://project-tttn.vercel.app`
+- Production migration: `npm run prisma:migrate:prod` applied `20260607000100_task_comments` successfully.
+
+| Check | Result |
+|---|---|
+| Backend `/health` | Pass |
+| `GET /tasks/:id/comments` | Pass, returned comment list |
+| `POST /tasks/:id/comments` text-only | Pass, created comment as `admin@example.com` |
+| `POST /tasks/:id/comments` with file | Blocked as expected until Render env is configured: returned Vietnamese `503` for missing `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` |
+| Frontend Task detail | Pass, deployed Task detail shows `Trao đổi` tab and comment form |
+
+Deploy action still required before attachment demo:
+
+- Set Supabase Storage env vars on Render.
+- Verify private bucket `task-attachments` exists.
+- Re-run upload QA for image preview, PDF/Excel download, and invalid file rejection.

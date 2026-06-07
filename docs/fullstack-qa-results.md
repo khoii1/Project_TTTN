@@ -1129,3 +1129,40 @@ Deploy action still required before attachment demo:
 - Set Supabase Storage env vars on Render.
 - Verify private bucket `task-attachments` exists.
 - Re-run upload QA for image preview, PDF/Excel download, and invalid file rejection.
+
+### Deploy QA After Supabase Env
+
+- Date: 2026-06-07
+- Backend: `https://project-tttn.onrender.com`
+- Frontend: `https://project-tttn.vercel.app`
+- Bucket: `task-attachments` private
+- Commits verified: `3e53633` feature, `4abf1de` permission/upload validation fix
+
+| Check | Result |
+|---|---|
+| Backend `/health` | Pass, returned `status = ok` |
+| Render Supabase env | Pass by behavior: upload no longer returns missing `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` |
+| Text comment | Pass: `POST /tasks/:id/comments` text-only returned `201`; comment stayed visible through `GET /tasks/:id/comments` |
+| Image upload | Pass: PNG upload returned `201`, one attachment metadata row was returned |
+| Image preview/signed URL | Pass: signed image URL returned HTTP `200`; Vercel Task detail UI displayed the uploaded image in tab `Trao đổi` |
+| PDF upload | Pass: PDF upload returned `201`, file metadata and signed URL were returned |
+| File download/open | Pass: PDF signed URL returned HTTP `200` |
+| Invalid file type | Pass: `.html` upload returned `400` with Vietnamese validation message |
+| Oversized file | Pass after `4abf1de`: 6MB upload returned `413` with Vietnamese message `File vượt quá giới hạn 5MB.` |
+| Too many files | Pass after `4abf1de`: 6 files returned `400` with Vietnamese message `Chỉ được đính kèm tối đa 5 file cho mỗi bình luận.` |
+| Database attachment metadata | Pass: comments endpoint returned 2 QA attachments for image/PDF upload |
+| Admin permission | Pass: Admin can read Task comments/files in organization |
+| Manager permission | Pass: Manager can read Task comments/files in organization |
+| Sales permission | Pass after `4abf1de`: Sales can read/comment on owned or assigned Task; Sales receives `404` for Task outside their owner/assignee scope |
+| Rival Org isolation | Pass: Rival Admin receives `404` for Sample Org Task comments/files |
+| Frontend smoke | Pass: Vercel Task detail opens, `Trao đổi` tab shows, comment + image upload by UI passed |
+| Task list/detail | Pass smoke |
+| Task search | Pass smoke |
+| Recycle Bin Task query | Pass smoke |
+| Dashboard | Pass smoke |
+| Web-to-Lead | Pass smoke: public lead capture returned `201` |
+
+Notes:
+
+- Signed URLs are issued only through `GET /tasks/:id/comments` after Task access checks. There is no public API that returns a signed URL without first verifying the user's Task visibility.
+- The Supabase service role key was previously shared in chat during setup. Rotate that key in Supabase and update Render before production/demo with real data.

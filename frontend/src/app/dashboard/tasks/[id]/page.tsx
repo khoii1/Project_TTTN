@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
 import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
 import type { EntityReferenceType } from "@/components/crm/EntityReferenceDisplay";
+import { TaskComments } from "@/components/crm/TaskComments";
 import {
   emptyValue,
   formatDate,
@@ -275,6 +276,11 @@ export default function TaskDetailPage({
               key: "activity",
               label: "Hoạt động",
               children: <ActivityTimeline relatedType="TASK" relatedId={id} />,
+            },
+            {
+              key: "comments",
+              label: "Trao đổi",
+              children: <TaskComments taskId={id} />,
             },
           ]}
         />

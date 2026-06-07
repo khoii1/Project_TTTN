@@ -32,6 +32,8 @@ model Organization {
   auditLogs AuditLog[]
   leadAssignmentRules LeadAssignmentRule[]
   taskTemplates TaskTemplate[]
+  taskComments TaskComment[]
+  taskCommentAttachments TaskCommentAttachment[]
 
   @@map("organizations")
 }
@@ -76,6 +78,8 @@ model User {
   restoredCases     Case[] @relation("CaseRestorer")
   convertedLeads    Lead[] @relation("LeadConverter")
   leadAssignmentRules LeadAssignmentRule[] @relation("LeadAssignmentAssignee")
+  taskComments      TaskComment[] @relation("TaskCommentAuthor")
+  uploadedTaskCommentAttachments TaskCommentAttachment[] @relation("TaskCommentAttachmentUploader")
   auditLogs         AuditLog[]
 
   @@index([organizationId])
@@ -341,6 +345,8 @@ model Task {
   completedBy     User? @relation("TaskCompleter", fields: [completedById], references: [id], onDelete: SetNull)
   deletedBy       User? @relation("TaskDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
   restoredBy      User? @relation("TaskRestorer", fields: [restoredById], references: [id], onDelete: SetNull)
+  comments        TaskComment[]
+  commentAttachments TaskCommentAttachment[]
 
   @@index([organizationId])
   @@index([ownerId])
@@ -350,6 +356,56 @@ model Task {
   @@index([deletedById])
   @@index([restoredById])
   @@map("tasks")
+}
+
+model TaskComment {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  taskId         String   @map("task_id")
+  authorId       String   @map("author_id")
+  content        String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task           Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author         User @relation("TaskCommentAuthor", fields: [authorId], references: [id])
+  attachments    TaskCommentAttachment[]
+
+  @@index([organizationId])
+  @@index([taskId])
+  @@index([authorId])
+  @@index([deletedAt])
+  @@map("task_comments")
+}
+
+model TaskCommentAttachment {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  taskId         String   @map("task_id")
+  commentId      String   @map("comment_id")
+  uploadedById   String   @map("uploaded_by_id")
+  fileName       String   @map("file_name")
+  originalName   String   @map("original_name")
+  mimeType       String   @map("mime_type")
+  fileSize       Int      @map("file_size")
+  storageBucket  String   @map("storage_bucket")
+  storagePath    String   @map("storage_path")
+  createdAt      DateTime @default(now()) @map("created_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task           Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  comment        TaskComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploadedBy     User @relation("TaskCommentAttachmentUploader", fields: [uploadedById], references: [id])
+
+  @@index([organizationId])
+  @@index([taskId])
+  @@index([commentId])
+  @@index([uploadedById])
+  @@index([deletedAt])
+  @@map("task_comment_attachments")
 }
 
 enum TaskStatus {

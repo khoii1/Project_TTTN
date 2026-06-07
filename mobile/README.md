@@ -86,6 +86,10 @@ Use the web CRM list pages to download sample CSV files, upload CSV files, and r
 
 Task Templates after Lead conversion are currently web-only. Mobile keeps the existing Lead conversion flow and does not send `createTasksFromTemplate` or `taskTemplateId`; this preserves the old mobile API contract and should not affect mobile demo flows.
 
+## Task Comments And Attachments Status
+
+Task comments and file attachments are currently web-only. The Flutter app can continue loading Task list/detail through the existing Task APIs, but it does not expose comment posting or file upload in this phase.
+
 ## Getting Started
 
 Install dependencies and check the project:

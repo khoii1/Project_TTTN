@@ -48,6 +48,12 @@ Use this checklist to validate the end-to-end CRM flow after backend/frontend co
 - [ ] Verify related lists show readable names/status labels and no raw UUIDs
 - [ ] Open Opportunity detail and update stage
 - [ ] Create Task for Opportunity
+- [ ] Open Task detail and verify `Trao đổi` tab appears
+- [ ] Add a text-only Task comment
+- [ ] Add a Task comment with an image attachment and verify preview
+- [ ] Add a Task comment with a PDF/Excel attachment and verify download/open link
+- [ ] Refresh Task detail and verify comments still appear
+- [ ] Try unsupported attachment type and verify Vietnamese validation
 - [ ] Create Task, select Related Type = Opportunity, search Opportunity by name, select Opportunity, submit, and verify `relatedId` is saved correctly
 - [ ] Open Task detail, verify Related To shows the related record name instead of UUID, then click it and verify navigation to the related detail page
 - [ ] Open Task detail edit mode and verify Related To is not editable because the current backend does not support updating task relation fields

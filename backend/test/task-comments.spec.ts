@@ -1,0 +1,198 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { TaskCommentService } from '../src/modules/tasks/application/services/task-comment.service';
+
+describe('Task Comments', () => {
+  const organizationId = 'org-1';
+  const taskId = 'task-1';
+  const authorId = 'user-1';
+
+  const mockPrisma = {
+    task: {
+      findFirst: jest.fn(),
+    },
+    taskComment: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+    },
+  };
+
+  const mockStorage = {
+    validateFiles: jest.fn(),
+    buildStoragePath: jest.fn(),
+    uploadFile: jest.fn(),
+    deleteFile: jest.fn(),
+    getBucket: jest.fn(),
+    isImage: jest.fn(),
+    createSignedUrl: jest.fn(),
+  };
+
+  const mockAuditLog = {
+    log: jest.fn(),
+  };
+
+  let service: TaskCommentService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new TaskCommentService(
+      mockPrisma as any,
+      mockStorage as any,
+      mockAuditLog as any,
+    );
+    mockPrisma.task.findFirst.mockResolvedValue({
+      id: taskId,
+      organizationId,
+      deletedAt: null,
+    });
+    mockStorage.getBucket.mockReturnValue('task-attachments');
+    mockStorage.isImage.mockImplementation((mimeType: string) => mimeType.startsWith('image/'));
+    mockStorage.createSignedUrl.mockResolvedValue('https://signed-url.example/file');
+  });
+
+  it('creates a text-only comment', async () => {
+    const created = {
+      id: 'comment-1',
+      taskId,
+      authorId,
+      content: 'Đã gọi khách và hẹn demo.',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      author: {
+        firstName: 'Nguyễn',
+        lastName: 'Quản Trị',
+        email: 'admin@example.com',
+      },
+      attachments: [],
+    };
+    mockPrisma.taskComment.create.mockResolvedValue(created);
+
+    const result = await service.create(
+      taskId,
+      organizationId,
+      authorId,
+      { content: '  Đã gọi khách và hẹn demo.  ' },
+      [],
+    );
+
+    expect(mockStorage.validateFiles).toHaveBeenCalledWith([]);
+    expect(mockPrisma.taskComment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          organizationId,
+          taskId,
+          authorId,
+          content: 'Đã gọi khách và hẹn demo.',
+        }),
+      }),
+    );
+    expect(result.content).toBe('Đã gọi khách và hẹn demo.');
+    expect(result.authorEmail).toBe('admin@example.com');
+  });
+
+  it('uploads files and stores attachment metadata', async () => {
+    const file = {
+      originalname: 'yeu-cau-khach-hang.pdf',
+      mimetype: 'application/pdf',
+      size: 1234,
+      buffer: Buffer.from('pdf'),
+    };
+    mockStorage.buildStoragePath.mockReturnValue(
+      'organizations/org-1/tasks/task-1/comments/comment-1/1-yeu-cau-khach-hang.pdf',
+    );
+    const created = {
+      id: 'comment-1',
+      taskId,
+      authorId,
+      content: 'Xem file đính kèm.',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      author: {
+        firstName: 'Nguyễn',
+        lastName: 'Quản Trị',
+        email: 'admin@example.com',
+      },
+      attachments: [
+        {
+          id: 'attachment-1',
+          fileName: '1-yeu-cau-khach-hang.pdf',
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          fileSize: file.size,
+          storagePath:
+            'organizations/org-1/tasks/task-1/comments/comment-1/1-yeu-cau-khach-hang.pdf',
+          createdAt: new Date(),
+        },
+      ],
+    };
+    mockPrisma.taskComment.create.mockResolvedValue(created);
+
+    const result = await service.create(
+      taskId,
+      organizationId,
+      authorId,
+      { content: 'Xem file đính kèm.' },
+      [file],
+    );
+
+    expect(mockStorage.uploadFile).toHaveBeenCalledWith(
+      file,
+      expect.stringContaining('organizations/org-1/tasks/task-1/comments/'),
+    );
+    expect(mockPrisma.taskComment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          attachments: {
+            create: [
+              expect.objectContaining({
+                organizationId,
+                taskId,
+                uploadedById: authorId,
+                originalName: file.originalname,
+                mimeType: file.mimetype,
+                fileSize: file.size,
+                storageBucket: 'task-attachments',
+              }),
+            ],
+          },
+        }),
+      }),
+    );
+    expect(result.attachments).toHaveLength(1);
+    expect(result.attachments[0].signedUrl).toBe('https://signed-url.example/file');
+  });
+
+  it('rejects empty comment without files', async () => {
+    await expect(
+      service.create(taskId, organizationId, authorId, { content: '   ' }, []),
+    ).rejects.toThrow(BadRequestException);
+    expect(mockPrisma.taskComment.create).not.toHaveBeenCalled();
+  });
+
+  it('propagates file validation errors before creating comment', async () => {
+    mockStorage.validateFiles.mockImplementation(() => {
+      throw new BadRequestException('File không đúng định dạng được hỗ trợ.');
+    });
+
+    await expect(
+      service.create(taskId, organizationId, authorId, { content: 'File' }, [
+        {
+          originalname: 'script.js',
+          mimetype: 'application/javascript',
+          size: 100,
+          buffer: Buffer.from('alert(1)'),
+        },
+      ]),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(mockPrisma.taskComment.create).not.toHaveBeenCalled();
+    expect(mockStorage.uploadFile).not.toHaveBeenCalled();
+  });
+
+  it('blocks comments for tasks outside the current organization', async () => {
+    mockPrisma.task.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.findAll(taskId, organizationId),
+    ).rejects.toThrow(NotFoundException);
+  });
+});

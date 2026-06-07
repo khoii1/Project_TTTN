@@ -108,6 +108,13 @@ BCRYPT_ROUNDS=10
 # Public Web-to-Lead capture
 PUBLIC_LEAD_ORGANIZATION_ID=
 PUBLIC_LEAD_OWNER_ID=
+
+# Supabase Storage for private Task attachments
+# Keep the service role key backend-only. Never expose it in frontend env.
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_STORAGE_BUCKET=task-attachments
+SUPABASE_SIGNED_URL_EXPIRES_SECONDS=900
 ```
 
 ---
@@ -306,6 +313,28 @@ On success, the backend updates `passwordHash`, clears `refreshTokenHash`, and r
 
 The response never includes `passwordHash`, `refreshTokenHash`, or token values.
 
+## Task Comments And Attachments
+
+Task detail supports internal comments and file attachments through the backend:
+
+- `GET /tasks/:id/comments`
+- `POST /tasks/:id/comments`
+
+`POST /tasks/:id/comments` uses `multipart/form-data`:
+
+- `content`: optional text.
+- `files`: optional multiple file field, max 5 files.
+
+Rules:
+
+- A comment must contain text or at least one file.
+- Max file size is 5MB.
+- Allowed file types: JPEG, PNG, WebP, PDF, Word, Excel, and CSV.
+- Files are uploaded to Supabase Storage private bucket `task-attachments`.
+- PostgreSQL stores only metadata in `task_comments` and `task_comment_attachments`.
+- `GET /tasks/:id/comments` returns temporary signed URLs; default expiry is 900 seconds.
+- `SUPABASE_SERVICE_ROLE_KEY` is used only in backend and is never returned to the frontend.
+
 ### Users (ADMIN mới có quyền write)
 
 | Method | Endpoint     | Mô tả            | Query Params              |
@@ -366,6 +395,8 @@ The response never includes `passwordHash`, `refreshTokenHash`, or token values.
 | POST   | `/tasks`              | —                                     |
 | GET    | `/tasks`              | page, limit, search, status, priority |
 | GET    | `/tasks/:id`          | —                                     |
+| GET    | `/tasks/:id/comments` | Bình luận và signed URL file tạm thời |
+| POST   | `/tasks/:id/comments` | Tạo bình luận, có thể kèm file        |
 | PATCH  | `/tasks/:id`          | —                                     |
 | PATCH  | `/tasks/:id/complete` | —                                     |
 | DELETE | `/tasks/:id`          | —                                     |

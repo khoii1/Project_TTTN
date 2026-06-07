@@ -16,4 +16,8 @@ export const validationSchema = Joi.object({
   BCRYPT_ROUNDS: Joi.number().default(10),
   PUBLIC_LEAD_ORGANIZATION_ID: Joi.string().allow('').optional(),
   PUBLIC_LEAD_OWNER_ID: Joi.string().allow('').optional(),
+  SUPABASE_URL: Joi.string().allow('').optional(),
+  SUPABASE_SERVICE_ROLE_KEY: Joi.string().allow('').optional(),
+  SUPABASE_STORAGE_BUCKET: Joi.string().default('task-attachments'),
+  SUPABASE_SIGNED_URL_EXPIRES_SECONDS: Joi.number().default(900),
 });

@@ -32,3 +32,26 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface TaskCommentAttachment {
+  id: string;
+  fileName: string;
+  originalName: string;
+  mimeType: string;
+  fileSize: number;
+  isImage: boolean;
+  signedUrl?: string;
+  createdAt: string;
+}
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  authorId: string;
+  authorName: string;
+  authorEmail: string;
+  content?: string;
+  attachments: TaskCommentAttachment[];
+  createdAt: string;
+  updatedAt: string;
+}

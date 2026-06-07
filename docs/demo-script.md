@@ -114,6 +114,9 @@ Dữ liệu gợi ý:
 ### H. Công việc
 
 - Mở Task đã tạo.
+- Mở tab `Trao đổi`.
+- Gửi một bình luận nội bộ, có thể đính kèm ảnh hoặc PDF nhỏ.
+- Nhấn mạnh file được lưu ở Supabase Storage private bucket, CRM chỉ lưu metadata và dùng signed URL tạm thời để xem/tải.
 - Bấm `Đánh dấu hoàn thành`.
 - Kiểm tra `Người hoàn thành` và `Thời gian hoàn thành`.
 
@@ -163,6 +166,7 @@ Dữ liệu case gợi ý:
 - Actor tracking
 - Lead Conversion Wizard
 - Task Templates sau chuyển đổi Lead
+- Bình luận và file đính kèm trong Task
 - Duplicate prevention
 - Related Lookup
 - ActivityTimeline
@@ -200,6 +204,7 @@ Dữ liệu case gợi ý:
 - [ ] Kiểm tra Account/Contact/Opportunity
 - [ ] Update Opportunity Stage
 - [ ] Complete Task
+- [ ] Task comments/attachments
 - [ ] Create/Close Case
 - [ ] Recycle Bin
 - [ ] Global Search

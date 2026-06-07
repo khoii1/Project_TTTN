@@ -402,10 +402,76 @@ Notes:
 - `POST /tasks`
 - `POST /tasks/import-csv`
 - `GET /tasks/:id`
+- `GET /tasks/:id/comments`
+- `POST /tasks/:id/comments`
 - `PATCH /tasks/:id`
 - `PATCH /tasks/:id/complete`
 - `PATCH /tasks/:id/restore`
 - `DELETE /tasks/:id`
+
+Task comments and attachments:
+
+- `GET /tasks/:id/comments` returns comments and temporary signed URLs for attachments.
+- `POST /tasks/:id/comments` accepts `multipart/form-data`.
+- Fields:
+  - `content`: optional string, max 5000 characters.
+  - `files`: optional multiple files, max 5 files.
+- A request must include either `content` or at least one file.
+- Files are uploaded by the backend to private Supabase Storage bucket `task-attachments`.
+- Frontend never calls Supabase directly and never receives `SUPABASE_SERVICE_ROLE_KEY`.
+- Attachment metadata is stored in PostgreSQL; file bytes are not stored in the database or Render filesystem.
+- Signed URLs are temporary and expire according to `SUPABASE_SIGNED_URL_EXPIRES_SECONDS`, default `900`.
+
+Supported attachment types:
+
+- `image/jpeg`
+- `image/png`
+- `image/webp`
+- `application/pdf`
+- `application/msword`
+- `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+- `application/vnd.ms-excel`
+- `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- `text/csv`
+
+Limits:
+
+- Max 5 files per comment.
+- Max 5MB per file.
+- Unsupported executable/script/html file types are rejected before upload.
+
+Comment response:
+
+```json
+{
+  "id": "comment-id",
+  "taskId": "task-id",
+  "authorId": "user-id",
+  "authorName": "Nguyễn Quản Trị",
+  "authorEmail": "admin@example.com",
+  "content": "Đã gọi khách và hẹn demo.",
+  "attachments": [
+    {
+      "id": "attachment-id",
+      "fileName": "1779-yeu-cau-khach-hang.pdf",
+      "originalName": "yeu-cau-khach-hang.pdf",
+      "mimeType": "application/pdf",
+      "fileSize": 12345,
+      "isImage": false,
+      "signedUrl": "https://...",
+      "createdAt": "2026-06-07T10:00:00.000Z"
+    }
+  ],
+  "createdAt": "2026-06-07T10:00:00.000Z",
+  "updatedAt": "2026-06-07T10:00:00.000Z"
+}
+```
+
+Storage path format:
+
+```text
+organizations/{organizationId}/tasks/{taskId}/comments/{commentId}/{timestamp}-{safeFileName}
+```
 
 ### Task Templates
 

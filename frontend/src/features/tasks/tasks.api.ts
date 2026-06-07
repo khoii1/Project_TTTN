@@ -1,6 +1,6 @@
 import { httpClient } from "@/lib/api/http-client";
 import { toPaginatedArray } from "@/lib/api/pagination";
-import { Task, TaskStatus } from "./tasks.types";
+import { Task, TaskComment, TaskStatus } from "./tasks.types";
 
 export const tasksApi = {
   getAll: async (
@@ -38,6 +38,29 @@ export const tasksApi = {
   },
   restore: async (id: string) => {
     const { data } = await httpClient.patch<Task>(`/tasks/${id}/restore`);
+    return data;
+  },
+  getComments: async (id: string) => {
+    const { data } = await httpClient.get<TaskComment[]>(`/tasks/${id}/comments`);
+    return data;
+  },
+  createComment: async (
+    id: string,
+    payload: { content?: string; files?: File[] },
+  ) => {
+    const formData = new FormData();
+    if (payload.content) {
+      formData.append("content", payload.content);
+    }
+    for (const file of payload.files || []) {
+      formData.append("files", file);
+    }
+
+    const { data } = await httpClient.post<TaskComment>(
+      `/tasks/${id}/comments`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
     return data;
   },
 };

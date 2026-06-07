@@ -216,6 +216,20 @@ Web-to-Lead env setup on Render:
 4. Save env vars on Render and redeploy/restart the backend.
 5. Recheck `POST /public/lead-capture`; a valid payload should return the thank-you response instead of `503`.
 
+Task attachments env setup on Render:
+
+1. Create a private Supabase Storage bucket named `task-attachments`.
+2. Set these backend environment variables on Render:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `SUPABASE_STORAGE_BUCKET=task-attachments`
+   - `SUPABASE_SIGNED_URL_EXPIRES_SECONDS=900`
+3. Keep `SUPABASE_SERVICE_ROLE_KEY` backend-only. Never set it on Vercel or expose it through `NEXT_PUBLIC_*`.
+4. Run `npm run prisma:migrate:prod` so `task_comments` and `task_comment_attachments` exist.
+5. Recheck Task detail on the deployed frontend: add text comment, upload an image/PDF, refresh, and verify signed URLs open before expiry.
+
+Security note: if a Supabase service role key was shared in chat, logs, screenshots, or committed by mistake, rotate it in Supabase and update Render immediately.
+
 ## 12. Known Deploy Risks
 
 - Supabase Free có giới hạn.

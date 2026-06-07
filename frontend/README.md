@@ -136,6 +136,7 @@ Shared contract docs:
 - CSV Import is available on the Leads, Accounts, Contacts, Opportunities, Tasks, and Cases list pages with reusable modal UI, sample CSV download, per-row result summary, and list reload after successful or partially successful imports.
 - Web-to-Lead is available at `/dang-ky-tu-van` as a public consultation form that creates a new Lead with `source = Website`.
 - Task Templates after Lead conversion are available at `/dashboard/settings/task-templates`; the Convert Wizard can create follow-up Tasks from an active/default template.
+- Task detail has a `Trao đổi` tab for internal comments and attachments. Files are uploaded through the backend to private Supabase Storage and displayed with temporary signed URLs.
 - Profile dropdown shows the signed-in user's name, email, role, current organization, a Settings shortcut, and Logout.
 - `/dashboard/settings` is organized into cards for Organization, Account, Website integration, and Change Password.
 - Actor Tracking is available for important actions such as completing tasks, converting leads, changing opportunity stage, closing cases, deleting, and restoring records.
@@ -265,6 +266,26 @@ Usage flow:
 5. Backend creates follow-up Tasks related to the converted Opportunity.
 
 The old conversion flow still works when no template is selected or the checkbox is off. This feature is web-only in this phase; mobile continues using the existing conversion contract without sending task template fields.
+
+## Task Comments And Attachments UI
+
+Task detail includes a `Trao đổi` tab.
+
+Users can:
+
+- Add a text-only comment.
+- Attach up to 5 files per comment.
+- Preview image attachments.
+- Open or download document attachments through backend-generated signed URLs.
+
+Frontend validation:
+
+- A comment must include text or at least one file.
+- Max 5 files.
+- Max 5MB per file.
+- Supported files: JPEG, PNG, WebP, PDF, Word, Excel, and CSV.
+
+The frontend never talks to Supabase directly and never receives the Supabase service role key. All upload and signed URL work goes through the backend.
 
 ## Test Credentials
 

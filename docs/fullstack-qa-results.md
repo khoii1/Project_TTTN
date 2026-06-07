@@ -1075,3 +1075,37 @@ The redeployed backend has the Web-to-Lead route, but Render is missing one or b
 ### Result
 
 - Task Templates after Lead Conversion are ready for frontend demo on deploy.
+
+## Task Comments And Attachments QA
+
+- Date: 2026-06-07
+- Scope: Backend Task comments/attachments metadata, Supabase Storage service integration, Task detail `Trao đổi` UI, docs/env updates
+
+### Checks
+
+| Area | Check | Result |
+|---|---|---|
+| Prisma | Added migration `20260607000100_task_comments` for `task_comments` and `task_comment_attachments` | Pass generate/build |
+| Backend API | Added `GET /tasks/:id/comments` and `POST /tasks/:id/comments` | Pass build/test |
+| Storage | Added backend-only Supabase Storage service for upload and signed URLs | Pass build/test with mocked storage |
+| Validation | Backend enforces content-or-file, max 5 files, max 5MB, and allowed MIME types | Pass unit tests |
+| Organization scope | Comments query first verifies Task by current `organizationId` | Pass unit tests |
+| Frontend UI | Added Task detail `Trao đổi` tab with text comment form, multi-file upload, image preview, and document download/open links | Pass lint/build |
+| Mobile impact | No mobile code changed; mobile remains on existing Task APIs | Documented |
+
+### Build And Test
+
+| Command | Result |
+|---|---|
+| Backend `npm run prisma:generate` | Pass |
+| Backend `npm run build` | Pass |
+| Backend `npm test -- --runInBand` | Pass, 13 suites / 106 tests |
+| Backend `npm run test:e2e -- --runInBand` | Pass, 13 suites / 106 tests |
+| Frontend `npm run lint` | Pass with existing non-blocking hook warnings |
+| Frontend `npm run build` | Pass |
+
+### Pending Deploy QA
+
+- Render must be configured with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET=task-attachments`, and `SUPABASE_SIGNED_URL_EXPIRES_SECONDS=900`.
+- Supabase private bucket `task-attachments` must exist.
+- After deploy, run browser QA: text comment, image upload/preview, PDF/Excel upload/download, invalid file rejection, permission checks.

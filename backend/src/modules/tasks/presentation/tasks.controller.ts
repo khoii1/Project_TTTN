@@ -1,4 +1,7 @@
 import {
+  ArgumentsHost,
+  BadRequestException,
+  Catch,
   Controller,
   Get,
   Post,
@@ -10,8 +13,10 @@ import {
   Query,
   UploadedFile,
   UploadedFiles,
+  UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
+import type { ExceptionFilter } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { TaskService } from '../application/services/task.service';
@@ -36,6 +41,60 @@ import {
   TASK_ATTACHMENT_MAX_FILE_SIZE_BYTES,
   TASK_ATTACHMENT_MAX_FILES,
 } from '../../../shared/storage/storage.service';
+
+@Catch()
+class TaskCommentUploadExceptionFilter implements ExceptionFilter {
+  catch(exception: any, host: ArgumentsHost) {
+    const response = host.switchToHttp().getResponse();
+    const status =
+      typeof exception?.getStatus === 'function' ? exception.getStatus() : 500;
+    const rawMessage =
+      typeof exception?.message === 'string' ? exception.message : 'Upload failed';
+    const path = host.switchToHttp().getRequest()?.url;
+
+    if (exception?.code === 'LIMIT_FILE_SIZE' || rawMessage === 'File too large') {
+      return response.status(413).json({
+        statusCode: 413,
+        message: 'File vượt quá giới hạn 5MB.',
+        error: 'Payload Too Large',
+        timestamp: new Date().toISOString(),
+        path,
+      });
+    }
+
+    if (
+      exception?.code === 'LIMIT_UNEXPECTED_FILE' ||
+      rawMessage === 'Unexpected field'
+    ) {
+      return response.status(400).json({
+        statusCode: 400,
+        message: `Chỉ được đính kèm tối đa ${TASK_ATTACHMENT_MAX_FILES} file cho mỗi bình luận.`,
+        error: 'Bad Request',
+        timestamp: new Date().toISOString(),
+        path,
+      });
+    }
+
+    if (exception instanceof BadRequestException) {
+      const body = exception.getResponse() as any;
+      return response.status(status).json({
+        statusCode: status,
+        message: body?.message || rawMessage,
+        error: body?.error || 'Bad Request',
+        timestamp: new Date().toISOString(),
+        path,
+      });
+    }
+
+    return response.status(status).json({
+      statusCode: status,
+      message: rawMessage,
+      error: exception?.name || 'Error',
+      timestamp: new Date().toISOString(),
+      path,
+    });
+  }
+}
 
 @ApiTags('Tasks')
 @Controller('tasks')
@@ -123,10 +182,11 @@ export class TasksController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload,
   ): Promise<TaskCommentResponseDto[]> {
-    return this.taskCommentService.findAll(id, user.organizationId);
+    return this.taskCommentService.findAll(id, user);
   }
 
   @Post(':id/comments')
+  @UseFilters(TaskCommentUploadExceptionFilter)
   @UseInterceptors(
     FilesInterceptor('files', TASK_ATTACHMENT_MAX_FILES, {
       limits: { fileSize: TASK_ATTACHMENT_MAX_FILE_SIZE_BYTES },
@@ -141,8 +201,7 @@ export class TasksController {
   ): Promise<TaskCommentResponseDto> {
     return this.taskCommentService.create(
       id,
-      user.organizationId,
-      user.sub,
+      user,
       dto,
       files,
     );

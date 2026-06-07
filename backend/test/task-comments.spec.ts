@@ -5,6 +5,12 @@ describe('Task Comments', () => {
   const organizationId = 'org-1';
   const taskId = 'task-1';
   const authorId = 'user-1';
+  const currentUser = {
+    sub: authorId,
+    email: 'admin@example.com',
+    organizationId,
+    role: 'ADMIN',
+  };
 
   const mockPrisma = {
     task: {
@@ -42,6 +48,8 @@ describe('Task Comments', () => {
     mockPrisma.task.findFirst.mockResolvedValue({
       id: taskId,
       organizationId,
+      ownerId: authorId,
+      assignedToId: authorId,
       deletedAt: null,
     });
     mockStorage.getBucket.mockReturnValue('task-attachments');
@@ -68,8 +76,7 @@ describe('Task Comments', () => {
 
     const result = await service.create(
       taskId,
-      organizationId,
-      authorId,
+      currentUser,
       { content: '  Đã gọi khách và hẹn demo.  ' },
       [],
     );
@@ -128,8 +135,7 @@ describe('Task Comments', () => {
 
     const result = await service.create(
       taskId,
-      organizationId,
-      authorId,
+      currentUser,
       { content: 'Xem file đính kèm.' },
       [file],
     );
@@ -163,7 +169,7 @@ describe('Task Comments', () => {
 
   it('rejects empty comment without files', async () => {
     await expect(
-      service.create(taskId, organizationId, authorId, { content: '   ' }, []),
+      service.create(taskId, currentUser, { content: '   ' }, []),
     ).rejects.toThrow(BadRequestException);
     expect(mockPrisma.taskComment.create).not.toHaveBeenCalled();
   });
@@ -174,7 +180,7 @@ describe('Task Comments', () => {
     });
 
     await expect(
-      service.create(taskId, organizationId, authorId, { content: 'File' }, [
+      service.create(taskId, currentUser, { content: 'File' }, [
         {
           originalname: 'script.js',
           mimetype: 'application/javascript',
@@ -192,7 +198,29 @@ describe('Task Comments', () => {
     mockPrisma.task.findFirst.mockResolvedValue(null);
 
     await expect(
-      service.findAll(taskId, organizationId),
+      service.findAll(taskId, currentUser),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  it('limits sales users to owned or assigned tasks before returning comments', async () => {
+    mockPrisma.taskComment.findMany.mockResolvedValue([]);
+
+    await service.findAll(taskId, {
+      sub: 'sales-user-1',
+      organizationId,
+      role: 'SALES',
+    });
+
+    expect(mockPrisma.task.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        id: taskId,
+        organizationId,
+        deletedAt: null,
+        OR: [
+          { ownerId: 'sales-user-1' },
+          { assignedToId: 'sales-user-1' },
+        ],
+      }),
+    });
   });
 });

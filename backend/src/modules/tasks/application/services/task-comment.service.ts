@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
 import { AuditAction, AuditLogService } from '../../../../infrastructure/audit/audit-log.service';
 import { StorageService } from '../../../../shared/storage/storage.service';
+import { TokenPayload } from '../../../../infrastructure/security/token.service';
 import {
   CreateTaskCommentDto,
   TaskCommentResponseDto,
@@ -15,6 +17,8 @@ type UploadedTaskFile = {
   buffer: Buffer;
 };
 
+type TaskCommentUser = Pick<TokenPayload, 'sub' | 'organizationId' | 'role'>;
+
 @Injectable()
 export class TaskCommentService {
   constructor(
@@ -25,12 +29,12 @@ export class TaskCommentService {
 
   async findAll(
     taskId: string,
-    organizationId: string,
+    user: TaskCommentUser,
   ): Promise<TaskCommentResponseDto[]> {
-    await this.assertTaskVisible(taskId, organizationId);
+    await this.assertTaskVisible(taskId, user);
 
     const comments = await this.prisma.taskComment.findMany({
-      where: { taskId, organizationId, deletedAt: null },
+      where: { taskId, organizationId: user.organizationId, deletedAt: null },
       include: {
         author: true,
         attachments: {
@@ -46,12 +50,11 @@ export class TaskCommentService {
 
   async create(
     taskId: string,
-    organizationId: string,
-    authorId: string,
+    user: TaskCommentUser,
     dto: CreateTaskCommentDto,
     files: UploadedTaskFile[] = [],
   ): Promise<TaskCommentResponseDto> {
-    await this.assertTaskVisible(taskId, organizationId);
+    await this.assertTaskVisible(taskId, user);
     this.storageService.validateFiles(files);
 
     const content = dto.content?.trim();
@@ -73,7 +76,7 @@ export class TaskCommentService {
     try {
       for (const file of files) {
         const storagePath = this.storageService.buildStoragePath({
-          organizationId,
+          organizationId: user.organizationId,
           taskId,
           commentId,
           originalName: file.originalname,
@@ -93,16 +96,16 @@ export class TaskCommentService {
       const comment = await this.prisma.taskComment.create({
         data: {
           id: commentId,
-          organizationId,
+          organizationId: user.organizationId,
           taskId,
-          authorId,
+          authorId: user.sub,
           content,
           attachments: {
             create: uploadedFiles.map((file) => ({
               id: file.id,
-              organizationId,
+              organizationId: user.organizationId,
               taskId,
-              uploadedById: authorId,
+              uploadedById: user.sub,
               fileName: file.fileName,
               originalName: file.originalName,
               mimeType: file.mimeType,
@@ -122,8 +125,8 @@ export class TaskCommentService {
       });
 
       await this.auditLog.log({
-        organizationId,
-        userId: authorId,
+        organizationId: user.organizationId,
+        userId: user.sub,
         action: AuditAction.CREATE,
         entityType: 'TaskComment',
         entityId: comment.id,
@@ -143,9 +146,22 @@ export class TaskCommentService {
     }
   }
 
-  private async assertTaskVisible(taskId: string, organizationId: string) {
+  private async assertTaskVisible(taskId: string, user: TaskCommentUser) {
+    const restrictedRoles = [UserRole.SALES, UserRole.SUPPORT] as string[];
     const task = await this.prisma.task.findFirst({
-      where: { id: taskId, organizationId, deletedAt: null },
+      where: {
+        id: taskId,
+        organizationId: user.organizationId,
+        deletedAt: null,
+        ...(restrictedRoles.includes(user.role)
+          ? {
+              OR: [
+                { ownerId: user.sub },
+                { assignedToId: user.sub },
+              ],
+            }
+          : {}),
+      },
     });
 
     if (!task) {

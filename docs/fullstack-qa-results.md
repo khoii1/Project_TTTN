@@ -1287,5 +1287,6 @@ Additional deploy checks:
 | Admin deletes Sales comment | Pass; response returns `isDeleted = true` and `deletedById` |
 | Deleted comment display data | Pass; API keeps placeholder content and returns no attachments/signed URLs |
 | Rival Org reads Sample Org Task comments | Pass; blocked with 404/403 |
+| Frontend Task detail `Trao đổi` tab on Vercel | Pass; Playwright opened Task detail and loaded the comments tab |
 
 Deploy smoke stamp: `TASK_COMMENT_EDIT_DELETE_DEPLOY_RERUN_1780890511646`.

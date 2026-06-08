@@ -21,6 +21,11 @@ import {
   taskPriorityLabels,
   taskStatusLabels,
 } from '../../../../common/import-csv/import-csv.utils';
+import {
+  isRestrictedOwnerRole,
+  RecordVisibilityUser,
+  taskVisibilityWhere,
+} from '../../../../common/security/record-visibility';
 
 @Injectable()
 export class TaskService {
@@ -32,8 +37,13 @@ export class TaskService {
   async create(
     organizationId: string,
     ownerId: string,
-    dto: CreateTaskDto
+    dto: CreateTaskDto,
+    user?: RecordVisibilityUser,
   ): Promise<TaskResponseDto> {
+    if (isRestrictedOwnerRole(user) && dto.assignedToId !== user!.sub) {
+      throw new BadRequestException('Bạn chỉ có thể giao công việc cho chính mình.');
+    }
+
     // Verify assigned user exists
     const assignedUser = await this.prisma.user.findFirst({
       where: {
@@ -197,12 +207,17 @@ export class TaskService {
     return result;
   }
 
-  async findById(taskId: string, organizationId: string): Promise<TaskResponseDto> {
+  async findById(
+    taskId: string,
+    organizationId: string,
+    user?: RecordVisibilityUser,
+  ): Promise<TaskResponseDto> {
     const task = await this.prisma.task.findFirst({
       where: {
         id: taskId,
         organizationId,
         deletedAt: null,
+        ...taskVisibilityWhere(user),
       },
     });
 
@@ -222,13 +237,15 @@ export class TaskService {
     priority?: string,
     relatedType?: string,
     relatedId?: string,
-    deleted: boolean = false
+    deleted: boolean = false,
+    user?: RecordVisibilityUser,
   ): Promise<PaginatedResponse<TaskResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
     const where: any = {
       organizationId,
       deletedAt: deleted ? { not: null } : null,
+      ...taskVisibilityWhere(user),
     };
 
     if (search) {
@@ -270,18 +287,24 @@ export class TaskService {
   async update(
     taskId: string,
     organizationId: string,
-    dto: UpdateTaskDto
+    dto: UpdateTaskDto,
+    user?: RecordVisibilityUser,
   ): Promise<TaskResponseDto> {
     const task = await this.prisma.task.findFirst({
       where: {
         id: taskId,
         organizationId,
         deletedAt: null,
+        ...taskVisibilityWhere(user),
       },
     });
 
     if (!task) {
       throw new NotFoundException('Task not found');
+    }
+
+    if (isRestrictedOwnerRole(user) && dto.assignedToId && dto.assignedToId !== user!.sub) {
+      throw new BadRequestException('Bạn chỉ có thể giao công việc cho chính mình.');
     }
 
     // Verify assigned user exists if updating
@@ -326,12 +349,14 @@ export class TaskService {
   async restore(
     taskId: string,
     organizationId: string,
-    restoredById: string
+    restoredById: string,
+    user?: RecordVisibilityUser,
   ): Promise<TaskResponseDto> {
     const task = await this.prisma.task.findFirst({
       where: {
         id: taskId,
         organizationId,
+        ...taskVisibilityWhere(user),
       },
     });
 
@@ -373,13 +398,15 @@ export class TaskService {
     taskId: string,
     organizationId: string,
     completedById: string,
-    dto: CompleteTaskDto
+    dto: CompleteTaskDto,
+    user?: RecordVisibilityUser,
   ): Promise<TaskResponseDto> {
     const task = await this.prisma.task.findFirst({
       where: {
         id: taskId,
         organizationId,
         deletedAt: null,
+        ...taskVisibilityWhere(user),
       },
     });
 
@@ -419,12 +446,18 @@ export class TaskService {
     return this.mapToResponseDto(updatedTask);
   }
 
-  async delete(taskId: string, organizationId: string, deletedById: string): Promise<void> {
+  async delete(
+    taskId: string,
+    organizationId: string,
+    deletedById: string,
+    user?: RecordVisibilityUser,
+  ): Promise<void> {
     const task = await this.prisma.task.findFirst({
       where: {
         id: taskId,
         organizationId,
         deletedAt: null,
+        ...taskVisibilityWhere(user),
       },
     });
 

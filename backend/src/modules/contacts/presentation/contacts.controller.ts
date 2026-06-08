@@ -40,7 +40,7 @@ export class ContactsController {
     @Body() dto: CreateContactDto,
     @CurrentUser() user: TokenPayload
   ): Promise<ContactResponseDto> {
-    return this.contactService.create(user.organizationId, user.sub, dto);
+    return this.contactService.create(user.organizationId, user.sub, dto, user);
   }
 
   @Post('import-csv')
@@ -83,7 +83,8 @@ export class ContactsController {
       search,
       source,
       deleted === 'true',
-      accountId
+      accountId,
+      user,
     );
   }
 
@@ -94,7 +95,7 @@ export class ContactsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<ContactResponseDto> {
-    return this.contactService.findById(id, user.organizationId);
+    return this.contactService.findById(id, user.organizationId, user);
   }
 
   @Patch(':id')
@@ -105,7 +106,7 @@ export class ContactsController {
     @Body() dto: UpdateContactDto,
     @CurrentUser() user: TokenPayload
   ): Promise<ContactResponseDto> {
-    return this.contactService.update(id, user.organizationId, dto);
+    return this.contactService.update(id, user.organizationId, dto, user);
   }
 
   @Patch(':id/restore')
@@ -115,7 +116,7 @@ export class ContactsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<ContactResponseDto> {
-    return this.contactService.restore(id, user.organizationId, user.sub);
+    return this.contactService.restore(id, user.organizationId, user.sub, user);
   }
 
   @Delete(':id')
@@ -125,7 +126,7 @@ export class ContactsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<{ message: string }> {
-    await this.contactService.delete(id, user.organizationId, user.sub);
+    await this.contactService.delete(id, user.organizationId, user.sub, user);
     return { message: 'Contact deleted successfully' };
   }
 }

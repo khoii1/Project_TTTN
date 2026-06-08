@@ -20,6 +20,18 @@ This document defines the shared contract between the NestJS backend and the Nex
 - Format: `Authorization: Bearer <accessToken>`
 - All protected requests must include the access token.
 
+## Owner-Based Visibility
+
+- Organization isolation remains the first security boundary for all CRM data.
+- `ADMIN` and `MANAGER` can see all records inside their organization.
+- `SALES` and `SUPPORT` can see only records assigned to them:
+  - Lead, Account, Contact, Opportunity, Case: `ownerId = currentUser.id`
+  - Task: `ownerId = currentUser.id` or `assignedToId = currentUser.id`
+- List, search, detail, update, soft delete, and restore endpoints apply the same visibility rules.
+- Dashboard summary/grouping/upcoming task endpoints apply the same visibility rules.
+- Recycle Bin uses the same deleted-list endpoints, so deleted records are also scoped by role.
+- Unauthorized direct detail access returns the same not-found style used by the existing APIs.
+
 ## Standard Paginated Response
 
 ```json

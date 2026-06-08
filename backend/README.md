@@ -15,6 +15,15 @@ Tài liệu liên quan:
 - Dashboard Analytics, Global Search, Recycle Bin, actor tracking, Lead Conversion Wizard, Task Templates after conversion, and VNĐ currency display are implemented.
 - Demo/staging deployment can use Supabase Free PostgreSQL; see [Deployment guide](../docs/deployment-guide.md).
 
+## Owner-Based Permission
+
+- All CRM records remain scoped by `organizationId`.
+- `ADMIN` and `MANAGER` can see all records in their organization.
+- `SALES` and `SUPPORT` only see records assigned to them:
+  - Lead, Account, Contact, Opportunity, Case: `ownerId = current user`
+  - Task: `ownerId = current user` or `assignedToId = current user`
+- The same scope is applied to list/search/detail/update/delete/restore, Dashboard metrics, Recycle Bin deleted lists, and Task comments/attachments.
+
 ---
 
 ## Mục lục

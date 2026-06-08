@@ -81,6 +81,7 @@ export class AccountsController {
       search,
       source,
       deleted === 'true',
+      user,
     );
   }
 
@@ -91,7 +92,7 @@ export class AccountsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<AccountResponseDto> {
-    return this.accountService.findById(id, user.organizationId);
+    return this.accountService.findById(id, user.organizationId, user);
   }
 
   @Patch(':id')
@@ -102,7 +103,7 @@ export class AccountsController {
     @Body() dto: UpdateAccountDto,
     @CurrentUser() user: TokenPayload
   ): Promise<AccountResponseDto> {
-    return this.accountService.update(id, user.organizationId, dto);
+    return this.accountService.update(id, user.organizationId, dto, user);
   }
 
   @Patch(':id/restore')
@@ -112,7 +113,7 @@ export class AccountsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<AccountResponseDto> {
-    return this.accountService.restore(id, user.organizationId, user.sub);
+    return this.accountService.restore(id, user.organizationId, user.sub, user);
   }
 
   @Delete(':id')
@@ -122,7 +123,7 @@ export class AccountsController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<{ message: string }> {
-    await this.accountService.delete(id, user.organizationId, user.sub);
+    await this.accountService.delete(id, user.organizationId, user.sub, user);
     return { message: 'Account deleted successfully' };
   }
 }

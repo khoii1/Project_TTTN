@@ -175,6 +175,19 @@ Use this checklist to validate the end-to-end CRM flow after backend/frontend co
 - [ ] Refresh Dashboard and verify Upcoming Tasks shows the task
 - [ ] Verify dashboard analytics do not show raw UUIDs
 
+## Owner-Based Permission QA
+
+- [ ] Create or find records owned by `sales@example.com` and `support@example.com` for Lead, Account, Contact, Opportunity, Task, and Case
+- [ ] Login Sales and verify list/search/detail only returns Sales-owned records; Task may also include tasks assigned to Sales
+- [ ] Login Sales and verify direct GET/update/delete/restore for Support-owned records returns not found/blocked
+- [ ] Login Support and verify list/search/detail only returns Support-owned records; Task may also include tasks assigned to Support
+- [ ] Login Admin and Manager and verify both can see all organization records
+- [ ] Login Rival Org and verify no Sample Org records are visible
+- [ ] Verify Dashboard totals/groups/upcoming tasks are scoped by role
+- [ ] Verify Global Search results are scoped through the same list/search APIs
+- [ ] Verify Recycle Bin deleted lists and restore actions are scoped by role
+- [ ] Verify Task Comment/File still follows Task visibility and signed URLs are only issued after permission checks
+
 ## Currency Display QA
 
 - [ ] Open Opportunities list

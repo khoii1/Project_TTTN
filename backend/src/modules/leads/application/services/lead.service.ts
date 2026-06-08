@@ -1,4 +1,4 @@
-﻿import { Injectable, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
 import {
   CreateLeadDto,
@@ -29,6 +29,7 @@ import {
 } from '../../../../common/import-csv/import-csv.utils';
 import { LeadAssignmentService } from '../../../lead-assignment/application/services/lead-assignment.service';
 import { TaskTemplateService } from '../../../task-templates/application/services/task-template.service';
+import { ownerVisibilityWhere } from '../../../../common/security/record-visibility';
 
 @Injectable()
 export class LeadService {
@@ -38,7 +39,6 @@ export class LeadService {
     @Optional()
     private leadAssignmentService: LeadAssignmentService = {
       resolveOwner: async ({ fallbackOwnerId }: { fallbackOwnerId: string }) => fallbackOwnerId,
-      getLeadVisibilityWhere: () => ({}),
     } as unknown as LeadAssignmentService,
     @Optional()
     private taskTemplateService?: TaskTemplateService,
@@ -239,7 +239,7 @@ export class LeadService {
         id: leadId,
         organizationId,
         deletedAt: null,
-        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -265,7 +265,7 @@ export class LeadService {
     const where: any = {
       organizationId,
       deletedAt: deleted ? { not: null } : null,
-      ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
+      ...ownerVisibilityWhere(user),
     };
 
     if (search) {
@@ -312,7 +312,7 @@ export class LeadService {
         id: leadId,
         organizationId,
         deletedAt: null,
-        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -374,7 +374,7 @@ export class LeadService {
         id: leadId,
         organizationId,
         deletedAt: null,
-        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -412,7 +412,7 @@ export class LeadService {
         id: leadId,
         organizationId,
         deletedAt: null,
-        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -678,7 +678,7 @@ export class LeadService {
         id: leadId,
         organizationId,
         deletedAt: null,
-        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -767,7 +767,7 @@ export class LeadService {
         id: leadId,
         organizationId,
         deletedAt: null,
-        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -803,7 +803,7 @@ export class LeadService {
       where: {
         id: leadId,
         organizationId,
-        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -875,5 +875,4 @@ export class LeadService {
     };
   }
 }
-
 

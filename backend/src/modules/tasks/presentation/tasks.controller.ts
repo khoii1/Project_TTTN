@@ -113,7 +113,7 @@ export class TasksController {
     @Body() dto: CreateTaskDto,
     @CurrentUser() user: TokenPayload
   ): Promise<TaskResponseDto> {
-    return this.taskService.create(user.organizationId, user.sub, dto);
+    return this.taskService.create(user.organizationId, user.sub, dto, user);
   }
 
   @Post('import-csv')
@@ -163,6 +163,7 @@ export class TasksController {
       relatedType,
       relatedId,
       deleted === 'true',
+      user,
     );
   }
 
@@ -173,7 +174,7 @@ export class TasksController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<TaskResponseDto> {
-    return this.taskService.findById(id, user.organizationId);
+    return this.taskService.findById(id, user.organizationId, user);
   }
 
   @Get(':id/comments')
@@ -215,7 +216,7 @@ export class TasksController {
     @Body() dto: UpdateTaskDto,
     @CurrentUser() user: TokenPayload
   ): Promise<TaskResponseDto> {
-    return this.taskService.update(id, user.organizationId, dto);
+    return this.taskService.update(id, user.organizationId, dto, user);
   }
 
   @Patch(':id/complete')
@@ -226,7 +227,7 @@ export class TasksController {
     @Body() dto: CompleteTaskDto,
     @CurrentUser() user: TokenPayload
   ): Promise<TaskResponseDto> {
-    return this.taskService.completeTask(id, user.organizationId, user.sub, dto);
+    return this.taskService.completeTask(id, user.organizationId, user.sub, dto, user);
   }
 
   @Patch(':id/restore')
@@ -236,7 +237,7 @@ export class TasksController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<TaskResponseDto> {
-    return this.taskService.restore(id, user.organizationId, user.sub);
+    return this.taskService.restore(id, user.organizationId, user.sub, user);
   }
 
   @Delete(':id')
@@ -246,7 +247,7 @@ export class TasksController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<{ message: string }> {
-    await this.taskService.delete(id, user.organizationId, user.sub);
+    await this.taskService.delete(id, user.organizationId, user.sub, user);
     return { message: 'Task deleted successfully' };
   }
 }

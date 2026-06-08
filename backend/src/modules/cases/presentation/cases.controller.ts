@@ -41,7 +41,7 @@ export class CasesController {
     @Body() dto: CreateCaseDto,
     @CurrentUser() user: TokenPayload
   ): Promise<CaseResponseDto> {
-    return this.caseService.create(user.organizationId, user.sub, dto);
+    return this.caseService.create(user.organizationId, user.sub, dto, user);
   }
 
   @Post('import-csv')
@@ -93,7 +93,8 @@ export class CasesController {
       source,
       deleted === 'true',
       accountId,
-      contactId
+      contactId,
+      user,
     );
   }
 
@@ -104,7 +105,7 @@ export class CasesController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<CaseResponseDto> {
-    return this.caseService.findById(id, user.organizationId);
+    return this.caseService.findById(id, user.organizationId, user);
   }
 
   @Patch(':id')
@@ -115,7 +116,7 @@ export class CasesController {
     @Body() dto: UpdateCaseDto,
     @CurrentUser() user: TokenPayload
   ): Promise<CaseResponseDto> {
-    return this.caseService.update(id, user.organizationId, dto);
+    return this.caseService.update(id, user.organizationId, dto, user);
   }
 
   @Patch(':id/status')
@@ -126,7 +127,7 @@ export class CasesController {
     @Body() dto: ChangeCaseStatusDto,
     @CurrentUser() user: TokenPayload
   ): Promise<CaseResponseDto> {
-    return this.caseService.changeStatus(id, user.organizationId, user.sub, dto);
+    return this.caseService.changeStatus(id, user.organizationId, user.sub, dto, user);
   }
 
   @Patch(':id/restore')
@@ -136,7 +137,7 @@ export class CasesController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<CaseResponseDto> {
-    return this.caseService.restore(id, user.organizationId, user.sub);
+    return this.caseService.restore(id, user.organizationId, user.sub, user);
   }
 
   @Delete(':id')
@@ -146,7 +147,7 @@ export class CasesController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<{ message: string }> {
-    await this.caseService.delete(id, user.organizationId, user.sub);
+    await this.caseService.delete(id, user.organizationId, user.sub, user);
     return { message: 'Case deleted successfully' };
   }
 }

@@ -37,14 +37,14 @@ export class DashboardController {
   @ApiOperation({ summary: 'Get opportunity counts and amounts grouped by stage' })
   @ApiResponse({ status: 200, type: [OpportunitiesByStageDto] })
   getOpportunitiesByStage(@CurrentUser() user: TokenPayload): Promise<OpportunitiesByStageDto[]> {
-    return this.dashboardService.getOpportunitiesByStage(user.organizationId);
+    return this.dashboardService.getOpportunitiesByStage(user.organizationId, user);
   }
 
   @Get('cases-by-priority')
   @ApiOperation({ summary: 'Get case counts grouped by priority' })
   @ApiResponse({ status: 200, type: [CasesByPriorityDto] })
   getCasesByPriority(@CurrentUser() user: TokenPayload): Promise<CasesByPriorityDto[]> {
-    return this.dashboardService.getCasesByPriority(user.organizationId);
+    return this.dashboardService.getCasesByPriority(user.organizationId, user);
   }
 
   @Get('upcoming-tasks')
@@ -55,6 +55,6 @@ export class DashboardController {
     @CurrentUser() user: TokenPayload,
     @Query('limit') limit?: number
   ): Promise<DashboardTaskDto[]> {
-    return this.dashboardService.getUpcomingTasks(user.organizationId, limit || 5);
+    return this.dashboardService.getUpcomingTasks(user.organizationId, limit || 5, user);
   }
 }

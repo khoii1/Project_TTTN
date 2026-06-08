@@ -1166,3 +1166,61 @@ Notes:
 
 - Signed URLs are issued only through `GET /tasks/:id/comments` after Task access checks. There is no public API that returns a signed URL without first verifying the user's Task visibility.
 - The Supabase service role key was previously shared in chat during setup. Rotate that key in Supabase and update Render before production/demo with real data.
+
+## Owner-Based Permission Expansion
+
+- Date: 2026-06-08
+- Baseline deploy stamp: `OWNER_SCOPE_BASELINE_1780883338536`
+- Scope: Lead, Account, Contact, Opportunity, Task, Case, Dashboard, Recycle Bin, Task Comment/File
+
+### Baseline Before Code Change
+
+| Module | Baseline result |
+|---|---|
+| Lead | Detail/update/delete were owner-scoped for Sales/Support, but list/search needed re-verification and was standardized with the shared visibility helper |
+| Account | Only organization isolation; Sales/Support could list/detail records owned by another user in the same org |
+| Contact | Only organization isolation; Sales/Support could list/detail records owned by another user in the same org |
+| Opportunity | Only organization isolation; Sales/Support could list/detail records owned by another user in the same org |
+| Task | Only organization isolation for Task list/detail/update/complete/delete/restore; Task Comment/File already had Task-based permission |
+| Case | Only organization isolation; Sales/Support could list/detail records owned by another user in the same org |
+| Dashboard | Lead metrics were scoped; Account/Contact/Opportunity/Task/Case metrics and groupings needed owner/assignee scope |
+| Recycle Bin | Uses deleted list endpoints, so non-Lead modules inherited the same missing owner scope |
+| Rival Org | Direct detail remained blocked by organization isolation |
+
+### Implemented Rule
+
+| Role | Visibility |
+|---|---|
+| ADMIN | All records inside current organization |
+| MANAGER | All records inside current organization |
+| SALES | Lead/Account/Contact/Opportunity/Case where `ownerId = currentUser.id`; Task where `ownerId` or `assignedToId` matches current user |
+| SUPPORT | Same as Sales |
+
+### Verification
+
+| Check | Result |
+|---|---|
+| Shared helper | Added `backend/src/common/security/record-visibility.ts` |
+| Account/Contact/Opportunity | List/search/detail/update/delete/restore now apply owner scope for Sales/Support |
+| Task | List/search/detail/update/complete/delete/restore now apply owner-or-assignee scope for Sales/Support |
+| Case | List/search/detail/update/status/delete/restore now apply owner scope for Sales/Support |
+| Dashboard | Summary, opportunities by stage, cases by priority, and upcoming tasks now apply matching role scope |
+| Recycle Bin | Deleted list and restore use the same scoped endpoints |
+| Task Comment/File | Existing permission remained aligned with Task owner/assignee scope |
+| Relation create guard | Sales/Support cannot create Contact/Opportunity/Case against Account/Contact outside their owner scope; Sales/Support cannot assign new Tasks to another user |
+| Tests | Added `backend/test/owner-based-permission.spec.ts` |
+
+### Build And Test
+
+| Command | Result |
+|---|---|
+| Backend `npm run build` | Pass |
+| Backend `npm test -- --runInBand` | Pass, 14 suites / 114 tests |
+| Backend `npm run test:e2e -- --runInBand` | Pass, 14 suites / 114 tests |
+| Frontend `npm run lint` | Pass with existing 17 hook warnings |
+| Frontend `npm run build` | Pass |
+
+### Notes
+
+- Import CSV still defaults `ownerId` to the authenticated user. Deep relation lookup scoping for CSV imports should be covered in a dedicated hardening pass if Sales/Support are allowed to import relational CSV files in production.
+- No database migration was required.

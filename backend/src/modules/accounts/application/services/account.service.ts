@@ -15,6 +15,7 @@ import {
   parseCsvBuffer,
   pickAllowedFields,
 } from '../../../../common/import-csv/import-csv.utils';
+import { ownerVisibilityWhere, RecordVisibilityUser } from '../../../../common/security/record-visibility';
 
 @Injectable()
 export class AccountService {
@@ -173,12 +174,17 @@ export class AccountService {
     return result;
   }
 
-  async findById(accountId: string, organizationId: string): Promise<AccountResponseDto> {
+  async findById(
+    accountId: string,
+    organizationId: string,
+    user?: RecordVisibilityUser,
+  ): Promise<AccountResponseDto> {
     const account = await this.prisma.account.findFirst({
       where: {
         id: accountId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -195,13 +201,15 @@ export class AccountService {
     limit: number = 10,
     search?: string,
     source?: string,
-    deleted: boolean = false
+    deleted: boolean = false,
+    user?: RecordVisibilityUser,
   ): Promise<PaginatedResponse<AccountResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
     const where: any = {
       organizationId,
       deletedAt: deleted ? { not: null } : null,
+      ...ownerVisibilityWhere(user),
     };
 
     if (search) {
@@ -234,13 +242,15 @@ export class AccountService {
   async update(
     accountId: string,
     organizationId: string,
-    dto: UpdateAccountDto
+    dto: UpdateAccountDto,
+    user?: RecordVisibilityUser,
   ): Promise<AccountResponseDto> {
     const account = await this.prisma.account.findFirst({
       where: {
         id: accountId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -291,12 +301,18 @@ export class AccountService {
     return this.mapToResponseDto(updatedAccount);
   }
 
-  async delete(accountId: string, organizationId: string, deletedById: string): Promise<void> {
+  async delete(
+    accountId: string,
+    organizationId: string,
+    deletedById: string,
+    user?: RecordVisibilityUser,
+  ): Promise<void> {
     const account = await this.prisma.account.findFirst({
       where: {
         id: accountId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -325,12 +341,14 @@ export class AccountService {
   async restore(
     accountId: string,
     organizationId: string,
-    restoredById: string
+    restoredById: string,
+    user?: RecordVisibilityUser,
   ): Promise<AccountResponseDto> {
     const account = await this.prisma.account.findFirst({
       where: {
         id: accountId,
         organizationId,
+        ...ownerVisibilityWhere(user),
       },
     });
 

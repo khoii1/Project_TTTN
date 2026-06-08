@@ -26,6 +26,7 @@ import {
   parseOptionalNumber,
   pickAllowedFields,
 } from '../../../../common/import-csv/import-csv.utils';
+import { ownerVisibilityWhere, RecordVisibilityUser } from '../../../../common/security/record-visibility';
 
 @Injectable()
 export class OpportunityService {
@@ -37,7 +38,8 @@ export class OpportunityService {
   async create(
     organizationId: string,
     ownerId: string,
-    dto: CreateOpportunityDto
+    dto: CreateOpportunityDto,
+    user?: RecordVisibilityUser,
   ): Promise<OpportunityResponseDto> {
     // Verify account exists
     const account = await this.prisma.account.findFirst({
@@ -45,6 +47,7 @@ export class OpportunityService {
         id: dto.accountId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -59,6 +62,7 @@ export class OpportunityService {
           id: dto.contactId,
           organizationId,
           deletedAt: null,
+          ...ownerVisibilityWhere(user),
         },
       });
 
@@ -219,12 +223,17 @@ export class OpportunityService {
     return result;
   }
 
-  async findById(opportunityId: string, organizationId: string): Promise<OpportunityResponseDto> {
+  async findById(
+    opportunityId: string,
+    organizationId: string,
+    user?: RecordVisibilityUser,
+  ): Promise<OpportunityResponseDto> {
     const opportunity = await this.prisma.opportunity.findFirst({
       where: {
         id: opportunityId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -244,13 +253,15 @@ export class OpportunityService {
     source?: string,
     deleted: boolean = false,
     accountId?: string,
-    contactId?: string
+    contactId?: string,
+    user?: RecordVisibilityUser,
   ): Promise<PaginatedResponse<OpportunityResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
     const where: any = {
       organizationId,
       deletedAt: deleted ? { not: null } : null,
+      ...ownerVisibilityWhere(user),
     };
 
     if (search) {
@@ -292,13 +303,15 @@ export class OpportunityService {
   async update(
     opportunityId: string,
     organizationId: string,
-    dto: UpdateOpportunityDto
+    dto: UpdateOpportunityDto,
+    user?: RecordVisibilityUser,
   ): Promise<OpportunityResponseDto> {
     const opportunity = await this.prisma.opportunity.findFirst({
       where: {
         id: opportunityId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -336,13 +349,15 @@ export class OpportunityService {
     opportunityId: string,
     organizationId: string,
     stageChangedById: string,
-    dto: ChangeOpportunityStageDto
+    dto: ChangeOpportunityStageDto,
+    user?: RecordVisibilityUser,
   ): Promise<OpportunityResponseDto> {
     const opportunity = await this.prisma.opportunity.findFirst({
       where: {
         id: opportunityId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -383,13 +398,15 @@ export class OpportunityService {
   async delete(
     opportunityId: string,
     organizationId: string,
-    deletedById: string
+    deletedById: string,
+    user?: RecordVisibilityUser,
   ): Promise<void> {
     const opportunity = await this.prisma.opportunity.findFirst({
       where: {
         id: opportunityId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -418,12 +435,14 @@ export class OpportunityService {
   async restore(
     opportunityId: string,
     organizationId: string,
-    restoredById: string
+    restoredById: string,
+    user?: RecordVisibilityUser,
   ): Promise<OpportunityResponseDto> {
     const opportunity = await this.prisma.opportunity.findFirst({
       where: {
         id: opportunityId,
         organizationId,
+        ...ownerVisibilityWhere(user),
       },
     });
 

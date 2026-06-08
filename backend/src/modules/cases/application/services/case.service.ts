@@ -25,6 +25,7 @@ import {
   parseCsvBuffer,
   pickAllowedFields,
 } from '../../../../common/import-csv/import-csv.utils';
+import { ownerVisibilityWhere, RecordVisibilityUser } from '../../../../common/security/record-visibility';
 
 @Injectable()
 export class CaseService {
@@ -36,7 +37,8 @@ export class CaseService {
   async create(
     organizationId: string,
     ownerId: string,
-    dto: CreateCaseDto
+    dto: CreateCaseDto,
+    user?: RecordVisibilityUser,
   ): Promise<CaseResponseDto> {
     // Verify account exists if provided
     if (dto.accountId) {
@@ -45,6 +47,7 @@ export class CaseService {
           id: dto.accountId,
           organizationId,
           deletedAt: null,
+          ...ownerVisibilityWhere(user),
         },
       });
 
@@ -60,6 +63,7 @@ export class CaseService {
           id: dto.contactId,
           organizationId,
           deletedAt: null,
+          ...ownerVisibilityWhere(user),
         },
       });
 
@@ -213,12 +217,17 @@ export class CaseService {
     return result;
   }
 
-  async findById(caseId: string, organizationId: string): Promise<CaseResponseDto> {
+  async findById(
+    caseId: string,
+    organizationId: string,
+    user?: RecordVisibilityUser,
+  ): Promise<CaseResponseDto> {
     const crmCase = await this.prisma.case.findFirst({
       where: {
         id: caseId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -239,13 +248,15 @@ export class CaseService {
     source?: string,
     deleted: boolean = false,
     accountId?: string,
-    contactId?: string
+    contactId?: string,
+    user?: RecordVisibilityUser,
   ): Promise<PaginatedResponse<CaseResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
     const where: any = {
       organizationId,
       deletedAt: deleted ? { not: null } : null,
+      ...ownerVisibilityWhere(user),
     };
 
     if (search) {
@@ -291,13 +302,15 @@ export class CaseService {
   async update(
     caseId: string,
     organizationId: string,
-    dto: UpdateCaseDto
+    dto: UpdateCaseDto,
+    user?: RecordVisibilityUser,
   ): Promise<CaseResponseDto> {
     const crmCase = await this.prisma.case.findFirst({
       where: {
         id: caseId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -333,13 +346,15 @@ export class CaseService {
     caseId: string,
     organizationId: string,
     closedById: string,
-    dto: ChangeCaseStatusDto
+    dto: ChangeCaseStatusDto,
+    user?: RecordVisibilityUser,
   ): Promise<CaseResponseDto> {
     const crmCase = await this.prisma.case.findFirst({
       where: {
         id: caseId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -377,12 +392,18 @@ export class CaseService {
     return this.mapToResponseDto(updatedCase);
   }
 
-  async delete(caseId: string, organizationId: string, deletedById: string): Promise<void> {
+  async delete(
+    caseId: string,
+    organizationId: string,
+    deletedById: string,
+    user?: RecordVisibilityUser,
+  ): Promise<void> {
     const crmCase = await this.prisma.case.findFirst({
       where: {
         id: caseId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -411,12 +432,14 @@ export class CaseService {
   async restore(
     caseId: string,
     organizationId: string,
-    restoredById: string
+    restoredById: string,
+    user?: RecordVisibilityUser,
   ): Promise<CaseResponseDto> {
     const crmCase = await this.prisma.case.findFirst({
       where: {
         id: caseId,
         organizationId,
+        ...ownerVisibilityWhere(user),
       },
     });
 

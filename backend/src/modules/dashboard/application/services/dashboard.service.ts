@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { CasePriority, CaseStatus, LeadStatus, OpportunityStage, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
-import { LeadAssignmentService } from '../../../lead-assignment/application/services/lead-assignment.service';
+import {
+  ownerVisibilityWhere,
+  taskVisibilityWhere,
+} from '../../../../common/security/record-visibility';
 import {
   CasesByPriorityDto,
   DashboardSummaryDto,
@@ -21,12 +24,7 @@ const openCaseStatuses: CaseStatus[] = [CaseStatus.NEW, CaseStatus.WORKING];
 
 @Injectable()
 export class DashboardService {
-  constructor(
-    private prisma: PrismaService,
-    private leadAssignmentService: LeadAssignmentService = {
-      getLeadVisibilityWhere: () => ({}),
-    } as unknown as LeadAssignmentService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async getSummary(
     organizationId: string,
@@ -50,17 +48,24 @@ export class DashboardService {
         where: {
           organizationId,
           deletedAt: null,
-          ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
+          ...ownerVisibilityWhere(user),
         },
       }),
-      this.prisma.account.count({ where: { organizationId, deletedAt: null } }),
-      this.prisma.contact.count({ where: { organizationId, deletedAt: null } }),
-      this.prisma.opportunity.count({ where: { organizationId, deletedAt: null } }),
+      this.prisma.account.count({
+        where: { organizationId, deletedAt: null, ...ownerVisibilityWhere(user) },
+      }),
+      this.prisma.contact.count({
+        where: { organizationId, deletedAt: null, ...ownerVisibilityWhere(user) },
+      }),
+      this.prisma.opportunity.count({
+        where: { organizationId, deletedAt: null, ...ownerVisibilityWhere(user) },
+      }),
       this.prisma.opportunity.aggregate({
         where: {
           organizationId,
           deletedAt: null,
           stage: { in: openOpportunityStages },
+          ...ownerVisibilityWhere(user),
         },
         _sum: { amount: true },
       }),
@@ -69,6 +74,7 @@ export class DashboardService {
           organizationId,
           deletedAt: null,
           stage: OpportunityStage.CLOSED_WON,
+          ...ownerVisibilityWhere(user),
         },
         _sum: { amount: true },
       }),
@@ -77,6 +83,7 @@ export class DashboardService {
           organizationId,
           deletedAt: null,
           status: { in: openTaskStatuses },
+          ...taskVisibilityWhere(user),
         },
       }),
       this.prisma.task.count({
@@ -85,6 +92,7 @@ export class DashboardService {
           deletedAt: null,
           status: { in: openTaskStatuses },
           dueDate: { lt: today },
+          ...taskVisibilityWhere(user),
         },
       }),
       this.prisma.case.count({
@@ -92,6 +100,7 @@ export class DashboardService {
           organizationId,
           deletedAt: null,
           status: { in: openCaseStatuses },
+          ...ownerVisibilityWhere(user),
         },
       }),
     ]);
@@ -118,7 +127,7 @@ export class DashboardService {
       where: {
         organizationId,
         deletedAt: null,
-        ...(user ? this.leadAssignmentService.getLeadVisibilityWhere(user) : {}),
+        ...ownerVisibilityWhere(user),
       },
       _count: { _all: true },
     });
@@ -129,10 +138,13 @@ export class DashboardService {
     }));
   }
 
-  async getOpportunitiesByStage(organizationId: string): Promise<OpportunitiesByStageDto[]> {
+  async getOpportunitiesByStage(
+    organizationId: string,
+    user?: { sub: string; role: string },
+  ): Promise<OpportunitiesByStageDto[]> {
     const groups = await this.prisma.opportunity.groupBy({
       by: ['stage'],
-      where: { organizationId, deletedAt: null },
+      where: { organizationId, deletedAt: null, ...ownerVisibilityWhere(user) },
       _count: { _all: true },
       _sum: { amount: true },
     });
@@ -147,10 +159,13 @@ export class DashboardService {
     });
   }
 
-  async getCasesByPriority(organizationId: string): Promise<CasesByPriorityDto[]> {
+  async getCasesByPriority(
+    organizationId: string,
+    user?: { sub: string; role: string },
+  ): Promise<CasesByPriorityDto[]> {
     const groups = await this.prisma.case.groupBy({
       by: ['priority'],
-      where: { organizationId, deletedAt: null },
+      where: { organizationId, deletedAt: null, ...ownerVisibilityWhere(user) },
       _count: { _all: true },
     });
 
@@ -160,7 +175,11 @@ export class DashboardService {
     }));
   }
 
-  async getUpcomingTasks(organizationId: string, limit: number = 5): Promise<DashboardTaskDto[]> {
+  async getUpcomingTasks(
+    organizationId: string,
+    limit: number = 5,
+    user?: { sub: string; role: string },
+  ): Promise<DashboardTaskDto[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -170,6 +189,7 @@ export class DashboardService {
         deletedAt: null,
         status: { in: openTaskStatuses },
         dueDate: { gte: today },
+        ...taskVisibilityWhere(user),
       },
       orderBy: { dueDate: 'asc' },
       take: Math.min(Math.max(limit, 1), 20),

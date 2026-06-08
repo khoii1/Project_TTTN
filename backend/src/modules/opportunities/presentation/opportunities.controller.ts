@@ -41,7 +41,7 @@ export class OpportunitiesController {
     @Body() dto: CreateOpportunityDto,
     @CurrentUser() user: TokenPayload
   ): Promise<OpportunityResponseDto> {
-    return this.opportunityService.create(user.organizationId, user.sub, dto);
+    return this.opportunityService.create(user.organizationId, user.sub, dto, user);
   }
 
   @Post('import-csv')
@@ -90,7 +90,8 @@ export class OpportunitiesController {
       source,
       deleted === 'true',
       accountId,
-      contactId
+      contactId,
+      user,
     );
   }
 
@@ -101,7 +102,7 @@ export class OpportunitiesController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<OpportunityResponseDto> {
-    return this.opportunityService.findById(id, user.organizationId);
+    return this.opportunityService.findById(id, user.organizationId, user);
   }
 
   @Patch(':id')
@@ -112,7 +113,7 @@ export class OpportunitiesController {
     @Body() dto: UpdateOpportunityDto,
     @CurrentUser() user: TokenPayload
   ): Promise<OpportunityResponseDto> {
-    return this.opportunityService.update(id, user.organizationId, dto);
+    return this.opportunityService.update(id, user.organizationId, dto, user);
   }
 
   @Patch(':id/stage')
@@ -127,7 +128,7 @@ export class OpportunitiesController {
     @Body() dto: ChangeOpportunityStageDto,
     @CurrentUser() user: TokenPayload
   ): Promise<OpportunityResponseDto> {
-    return this.opportunityService.changeStage(id, user.organizationId, user.sub, dto);
+    return this.opportunityService.changeStage(id, user.organizationId, user.sub, dto, user);
   }
 
   @Patch(':id/restore')
@@ -137,7 +138,7 @@ export class OpportunitiesController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<OpportunityResponseDto> {
-    return this.opportunityService.restore(id, user.organizationId, user.sub);
+    return this.opportunityService.restore(id, user.organizationId, user.sub, user);
   }
 
   @Delete(':id')
@@ -147,7 +148,7 @@ export class OpportunitiesController {
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload
   ): Promise<{ message: string }> {
-    await this.opportunityService.delete(id, user.organizationId, user.sub);
+    await this.opportunityService.delete(id, user.organizationId, user.sub, user);
     return { message: 'Opportunity deleted successfully' };
   }
 }

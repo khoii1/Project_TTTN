@@ -16,6 +16,7 @@ import {
   parseCsvBuffer,
   pickAllowedFields,
 } from '../../../../common/import-csv/import-csv.utils';
+import { ownerVisibilityWhere, RecordVisibilityUser } from '../../../../common/security/record-visibility';
 
 @Injectable()
 export class ContactService {
@@ -27,7 +28,8 @@ export class ContactService {
   async create(
     organizationId: string,
     ownerId: string,
-    dto: CreateContactDto
+    dto: CreateContactDto,
+    user?: RecordVisibilityUser,
   ): Promise<ContactResponseDto> {
     // Verify account exists
     const account = await this.prisma.account.findFirst({
@@ -35,6 +37,7 @@ export class ContactService {
         id: dto.accountId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -197,12 +200,17 @@ export class ContactService {
     return result;
   }
 
-  async findById(contactId: string, organizationId: string): Promise<ContactResponseDto> {
+  async findById(
+    contactId: string,
+    organizationId: string,
+    user?: RecordVisibilityUser,
+  ): Promise<ContactResponseDto> {
     const contact = await this.prisma.contact.findFirst({
       where: {
         id: contactId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -220,13 +228,15 @@ export class ContactService {
     search?: string,
     source?: string,
     deleted: boolean = false,
-    accountId?: string
+    accountId?: string,
+    user?: RecordVisibilityUser,
   ): Promise<PaginatedResponse<ContactResponseDto>> {
     const { skip } = calculatePagination({ page, limit });
 
     const where: any = {
       organizationId,
       deletedAt: deleted ? { not: null } : null,
+      ...ownerVisibilityWhere(user),
     };
 
     if (search) {
@@ -264,13 +274,15 @@ export class ContactService {
   async update(
     contactId: string,
     organizationId: string,
-    dto: UpdateContactDto
+    dto: UpdateContactDto,
+    user?: RecordVisibilityUser,
   ): Promise<ContactResponseDto> {
     const contact = await this.prisma.contact.findFirst({
       where: {
         id: contactId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -312,12 +324,18 @@ export class ContactService {
     return this.mapToResponseDto(updatedContact);
   }
 
-  async delete(contactId: string, organizationId: string, deletedById: string): Promise<void> {
+  async delete(
+    contactId: string,
+    organizationId: string,
+    deletedById: string,
+    user?: RecordVisibilityUser,
+  ): Promise<void> {
     const contact = await this.prisma.contact.findFirst({
       where: {
         id: contactId,
         organizationId,
         deletedAt: null,
+        ...ownerVisibilityWhere(user),
       },
     });
 
@@ -346,12 +364,14 @@ export class ContactService {
   async restore(
     contactId: string,
     organizationId: string,
-    restoredById: string
+    restoredById: string,
+    user?: RecordVisibilityUser,
   ): Promise<ContactResponseDto> {
     const contact = await this.prisma.contact.findFirst({
       where: {
         id: contactId,
         organizationId,
+        ...ownerVisibilityWhere(user),
       },
     });
 

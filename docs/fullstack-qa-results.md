@@ -1220,6 +1220,27 @@ Notes:
 | Frontend `npm run lint` | Pass with existing 17 hook warnings |
 | Frontend `npm run build` | Pass |
 
+### Deploy QA
+
+- Commit: `849e4e9`
+- Backend: `https://project-tttn.onrender.com`
+- Stamp: `OWNER_SCOPE_DEPLOY_1780884973669`
+
+| Module | Sales | Support | Admin/Manager | Rival Org |
+|---|---|---|---|---|
+| Lead | Own search `1`, Support-owned search `0`, direct Support detail `404` | Own search `1`, Sales-owned search `0`, direct Sales detail `404` | Both Sales and Support records visible | Search `0`, direct detail `404` |
+| Account | Own search `1`, Support-owned search `0`, direct Support detail `404` | Own search `1`, Sales-owned search `0`, direct Sales detail `404` | Both Sales and Support records visible | Search `0`, direct detail `404` |
+| Contact | Own search `1`, Support-owned search `0`, direct Support detail `404` | Own search `1`, Sales-owned search `0`, direct Sales detail `404` | Both Sales and Support records visible | Search `0`, direct detail `404` |
+| Opportunity | Own search `1`, Support-owned search `0`, direct Support detail `404` | Own search `1`, Sales-owned search `0`, direct Sales detail `404` | Both Sales and Support records visible | Search `0`, direct detail `404` |
+| Task | Own search `1`, Support-owned search `0`, direct Support detail `404` | Own search `1`, Sales-owned search `0`, direct Sales detail `404` | Both Sales and Support records visible | Search `0`, direct detail `404` |
+| Case | Own search `1`, Support-owned search `0`, direct Support detail `404` | Own search `1`, Sales-owned search `0`, direct Sales detail `404` | Both Sales and Support records visible | Search `0`, direct detail `404` |
+
+Additional deploy checks:
+
+- Dashboard summary returned `200` for Admin, Manager, Sales, Support, and Rival, with backend query scope covered by unit tests.
+- Sales created a Task comment on Sales-owned Task: `201`.
+- Sales attempted to access Support Task comments: `404`.
+
 ### Notes
 
 - Import CSV still defaults `ownerId` to the authenticated user. Deep relation lookup scoping for CSV imports should be covered in a dedicated hardening pass if Sales/Support are allowed to import relational CSV files in production.

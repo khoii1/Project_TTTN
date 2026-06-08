@@ -174,7 +174,7 @@ export function GlobalSearch() {
   };
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-xl">
+    <div ref={containerRef} className="relative z-[1001] w-full max-w-xl">
       <Input
         allowClear
         prefix={<SearchOutlined className="text-gray-400" />}
@@ -187,7 +187,7 @@ export function GlobalSearch() {
         className="bg-gray-50 shadow-sm"
       />
       {open && canSearch && (
-        <div className="absolute left-0 right-0 top-11 z-50 max-h-[70vh] overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div className="absolute left-0 right-0 top-11 z-[1002] max-h-[70vh] overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
           {loading ? (
             <div className="flex items-center justify-center gap-2 p-4 text-sm text-gray-500">
               <Spin size="small" />

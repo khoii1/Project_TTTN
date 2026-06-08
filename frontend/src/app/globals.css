@@ -77,6 +77,8 @@ body {
   backdrop-filter: blur(10px);
   height: 64px;
   line-height: normal;
+  position: relative;
+  z-index: 1000;
 }
 
 .crm-content {

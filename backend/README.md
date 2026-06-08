@@ -328,6 +328,8 @@ Task detail supports internal comments and file attachments through the backend:
 
 - `GET /tasks/:id/comments`
 - `POST /tasks/:id/comments`
+- `PATCH /tasks/:taskId/comments/:commentId`
+- `DELETE /tasks/:taskId/comments/:commentId`
 
 `POST /tasks/:id/comments` uses `multipart/form-data`:
 
@@ -343,6 +345,9 @@ Rules:
 - PostgreSQL stores only metadata in `task_comments` and `task_comment_attachments`.
 - `GET /tasks/:id/comments` returns temporary signed URLs; default expiry is 900 seconds.
 - `SUPABASE_SERVICE_ROLE_KEY` is used only in backend and is never returned to the frontend.
+- Comment authors can edit and delete their own comments.
+- `ADMIN` and `MANAGER` can delete comments in visible Tasks, but no role can edit another user's comment.
+- Deleted comments are soft-deleted with `deletedAt` / `deletedById`; attachments are hidden and no signed URL is generated for deleted comments.
 
 ### Users (ADMIN mới có quyền write)
 

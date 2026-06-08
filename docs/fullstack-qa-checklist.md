@@ -53,6 +53,12 @@ Use this checklist to validate the end-to-end CRM flow after backend/frontend co
 - [ ] Add a Task comment with an image attachment and verify preview
 - [ ] Add a Task comment with a PDF/Excel attachment and verify download/open link
 - [ ] Refresh Task detail and verify comments still appear
+- [ ] Edit own Task comment and verify updated content plus `Đã chỉnh sửa`
+- [ ] Verify Admin/Manager cannot edit another user's Task comment
+- [ ] Delete own Task comment and verify it becomes `Tin nhắn đã bị xóa`
+- [ ] Verify Admin/Manager can delete another user's Task comment in a visible Task
+- [ ] Verify Sales/Support cannot edit or delete another user's Task comment
+- [ ] Verify deleted comments do not show attachments or signed URLs
 - [ ] Try unsupported attachment type and verify Vietnamese validation
 - [ ] Create Task, select Related Type = Opportunity, search Opportunity by name, select Opportunity, submit, and verify `relatedId` is saved correctly
 - [ ] Open Task detail, verify Related To shows the related record name instead of UUID, then click it and verify navigation to the related detail page

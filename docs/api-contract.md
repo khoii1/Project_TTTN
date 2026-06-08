@@ -425,6 +425,8 @@ Task comments and attachments:
 
 - `GET /tasks/:id/comments` returns comments and temporary signed URLs for attachments.
 - `POST /tasks/:id/comments` accepts `multipart/form-data`.
+- `PATCH /tasks/:taskId/comments/:commentId` updates text content of the authenticated user's own comment.
+- `DELETE /tasks/:taskId/comments/:commentId` soft-deletes a comment.
 - Fields:
   - `content`: optional string, max 5000 characters.
   - `files`: optional multiple files, max 5 files.
@@ -452,6 +454,14 @@ Limits:
 - Max 5MB per file.
 - Unsupported executable/script/html file types are rejected before upload.
 
+Edit/delete authorization:
+
+- Comment author can edit and delete their own comment.
+- `ADMIN` and `MANAGER` can delete comments from other users in Tasks they can view.
+- No role can edit another user's comment.
+- `SALES` and `SUPPORT` cannot edit or delete comments from other users.
+- Deleted comments remain soft-deleted with `deletedAt` / `deletedById`; attachments are not returned and signed URLs are not generated for deleted comments.
+
 Comment response:
 
 ```json
@@ -462,6 +472,10 @@ Comment response:
   "authorName": "Nguyễn Quản Trị",
   "authorEmail": "admin@example.com",
   "content": "Đã gọi khách và hẹn demo.",
+  "isDeleted": false,
+  "isEdited": false,
+  "deletedAt": null,
+  "deletedById": null,
   "attachments": [
     {
       "id": "attachment-id",

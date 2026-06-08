@@ -1245,3 +1245,35 @@ Additional deploy checks:
 
 - Import CSV still defaults `ownerId` to the authenticated user. Deep relation lookup scoping for CSV imports should be covered in a dedicated hardening pass if Sales/Support are allowed to import relational CSV files in production.
 - No database migration was required.
+
+## Task Comment Edit And Delete
+
+- Date: 2026-06-08
+- Scope: Edit/delete comments in Task detail `Trao đổi` tab
+
+### Implementation
+
+| Area | Result |
+|---|---|
+| Backend API | Added `PATCH /tasks/:taskId/comments/:commentId` and `DELETE /tasks/:taskId/comments/:commentId` |
+| Database | Added nullable `deletedById` to `task_comments`; existing `deletedAt` and `updatedAt` are used for soft delete and edited state |
+| Edit permission | Only the comment author can edit their own comment; Admin/Manager cannot edit other users' comments |
+| Delete permission | Comment author can delete own comment; Admin/Manager can delete comments in visible Tasks; Sales/Support cannot delete other users' comments |
+| Deleted comments | Kept in the conversation as `Tin nhắn đã bị xóa.`; attachments are hidden and signed URLs are not generated |
+| Frontend | Added per-comment action menu, inline edit textarea, Vietnamese confirm dialog, edited label, and deleted message state |
+
+### Local Verification
+
+| Command | Result |
+|---|---|
+| Backend `npm run prisma:generate` | Pass |
+| Backend `npm run build` | Pass |
+| Backend `npm test -- --runInBand` | Pass, 14 suites / 119 tests |
+| Backend `npm run test:e2e -- --runInBand` | Pass, 14 suites / 119 tests |
+| Frontend `npm run lint` | Pass with existing 17 hook warnings |
+| Frontend `npm run build` | Pass |
+
+### Pending Deploy QA
+
+- Apply migration `20260608000100_task_comment_soft_delete_actor`.
+- Verify edit own comment, delete own comment, Admin/Manager delete other user's comment, Sales/Support blocked from other user's comment, deleted attachments hidden, and old upload/preview/download flows still pass.

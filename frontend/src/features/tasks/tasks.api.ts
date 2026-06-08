@@ -63,4 +63,17 @@ export const tasksApi = {
     );
     return data;
   },
+  updateComment: async (taskId: string, commentId: string, content: string) => {
+    const { data } = await httpClient.patch<TaskComment>(
+      `/tasks/${taskId}/comments/${commentId}`,
+      { content },
+    );
+    return data;
+  },
+  deleteComment: async (taskId: string, commentId: string) => {
+    const { data } = await httpClient.delete<TaskComment>(
+      `/tasks/${taskId}/comments/${commentId}`,
+    );
+    return data;
+  },
 };

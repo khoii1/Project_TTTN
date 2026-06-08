@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateTaskCommentDto {
   @ApiPropertyOptional({ example: 'Đã gọi khách, khách hẹn demo vào sáng mai.' })
@@ -7,6 +7,14 @@ export class CreateTaskCommentDto {
   @IsOptional()
   @MaxLength(5000)
   content?: string;
+}
+
+export class UpdateTaskCommentDto {
+  @ApiProperty({ example: 'Nội dung bình luận sau khi chỉnh sửa.' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(5000)
+  content: string;
 }
 
 export class TaskCommentAttachmentResponseDto {
@@ -53,6 +61,18 @@ export class TaskCommentResponseDto {
 
   @ApiPropertyOptional()
   content?: string;
+
+  @ApiProperty()
+  isDeleted: boolean;
+
+  @ApiProperty()
+  isEdited: boolean;
+
+  @ApiPropertyOptional()
+  deletedAt?: Date;
+
+  @ApiPropertyOptional()
+  deletedById?: string;
 
   @ApiProperty({ type: [TaskCommentAttachmentResponseDto] })
   attachments: TaskCommentAttachmentResponseDto[];

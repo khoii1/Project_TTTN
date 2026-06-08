@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
@@ -8,6 +8,7 @@ import { TokenPayload } from '../../../../infrastructure/security/token.service'
 import {
   CreateTaskCommentDto,
   TaskCommentResponseDto,
+  UpdateTaskCommentDto,
 } from '../dto/task-comment.dto';
 
 type UploadedTaskFile = {
@@ -34,7 +35,7 @@ export class TaskCommentService {
     await this.assertTaskVisible(taskId, user);
 
     const comments = await this.prisma.taskComment.findMany({
-      where: { taskId, organizationId: user.organizationId, deletedAt: null },
+      where: { taskId, organizationId: user.organizationId },
       include: {
         author: true,
         attachments: {
@@ -146,6 +147,121 @@ export class TaskCommentService {
     }
   }
 
+  async update(
+    taskId: string,
+    commentId: string,
+    user: TaskCommentUser,
+    dto: UpdateTaskCommentDto,
+  ): Promise<TaskCommentResponseDto> {
+    await this.assertTaskVisible(taskId, user);
+
+    const content = dto.content?.trim();
+    if (!content) {
+      throw new BadRequestException('Nội dung bình luận không được để trống.');
+    }
+
+    const comment = await this.prisma.taskComment.findFirst({
+      where: {
+        id: commentId,
+        taskId,
+        organizationId: user.organizationId,
+        deletedAt: null,
+      },
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Không tìm thấy bình luận.');
+    }
+
+    if (comment.authorId !== user.sub) {
+      throw new ForbiddenException('Bạn không có quyền chỉnh sửa bình luận này.');
+    }
+
+    const updatedComment = await this.prisma.taskComment.update({
+      where: { id: commentId },
+      data: { content },
+      include: {
+        author: true,
+        attachments: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    await this.auditLog.log({
+      organizationId: user.organizationId,
+      userId: user.sub,
+      action: AuditAction.UPDATE,
+      entityType: 'TaskComment',
+      entityId: commentId,
+      oldValues: { content: comment.content },
+      newValues: { content },
+    });
+
+    return this.mapToResponse(updatedComment);
+  }
+
+  async delete(
+    taskId: string,
+    commentId: string,
+    user: TaskCommentUser,
+  ): Promise<TaskCommentResponseDto> {
+    await this.assertTaskVisible(taskId, user);
+
+    const comment = await this.prisma.taskComment.findFirst({
+      where: {
+        id: commentId,
+        taskId,
+        organizationId: user.organizationId,
+        deletedAt: null,
+      },
+      include: {
+        author: true,
+        attachments: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Không tìm thấy bình luận.');
+    }
+
+    const canDeleteOther = user.role === UserRole.ADMIN || user.role === UserRole.MANAGER;
+    if (comment.authorId !== user.sub && !canDeleteOther) {
+      throw new ForbiddenException('Bạn không có quyền xóa bình luận này.');
+    }
+
+    const deletedComment = await this.prisma.taskComment.update({
+      where: { id: commentId },
+      data: {
+        deletedAt: new Date(),
+        deletedById: user.sub,
+      },
+      include: {
+        author: true,
+        attachments: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    await this.auditLog.log({
+      organizationId: user.organizationId,
+      userId: user.sub,
+      action: AuditAction.SOFT_DELETE,
+      entityType: 'TaskComment',
+      entityId: commentId,
+      oldValues: { content: comment.content, authorId: comment.authorId },
+      newValues: { deletedAt: deletedComment.deletedAt, deletedById: user.sub },
+    });
+
+    return this.mapToResponse(deletedComment);
+  }
+
   private async assertTaskVisible(taskId: string, user: TaskCommentUser) {
     const restrictedRoles = [UserRole.SALES, UserRole.SUPPORT] as string[];
     const task = await this.prisma.task.findFirst({
@@ -172,8 +288,9 @@ export class TaskCommentService {
   }
 
   private async mapToResponse(comment: any): Promise<TaskCommentResponseDto> {
+    const isDeleted = Boolean(comment.deletedAt);
     const attachments = await Promise.all(
-      (comment.attachments || []).map(async (attachment: any) => ({
+      (isDeleted ? [] : comment.attachments || []).map(async (attachment: any) => ({
         id: attachment.id,
         fileName: attachment.fileName,
         originalName: attachment.originalName,
@@ -193,7 +310,14 @@ export class TaskCommentService {
         .filter(Boolean)
         .join(' ') || 'Người dùng',
       authorEmail: comment.author?.email || '',
-      content: comment.content || undefined,
+      content: isDeleted ? 'Tin nhắn đã bị xóa.' : comment.content || undefined,
+      isDeleted,
+      isEdited:
+        !isDeleted &&
+        Boolean(comment.updatedAt && comment.createdAt) &&
+        new Date(comment.updatedAt).getTime() !== new Date(comment.createdAt).getTime(),
+      deletedAt: comment.deletedAt || undefined,
+      deletedById: comment.deletedById || undefined,
       attachments,
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,

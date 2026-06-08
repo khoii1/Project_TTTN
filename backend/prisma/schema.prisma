@@ -79,6 +79,7 @@ model User {
   convertedLeads    Lead[] @relation("LeadConverter")
   leadAssignmentRules LeadAssignmentRule[] @relation("LeadAssignmentAssignee")
   taskComments      TaskComment[] @relation("TaskCommentAuthor")
+  deletedTaskComments TaskComment[] @relation("TaskCommentDeleter")
   uploadedTaskCommentAttachments TaskCommentAttachment[] @relation("TaskCommentAttachmentUploader")
   auditLogs         AuditLog[]
 
@@ -367,15 +368,18 @@ model TaskComment {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
+  deletedById    String?  @map("deleted_by_id")
 
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   task           Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   author         User @relation("TaskCommentAuthor", fields: [authorId], references: [id])
+  deletedBy      User? @relation("TaskCommentDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
   attachments    TaskCommentAttachment[]
 
   @@index([organizationId])
   @@index([taskId])
   @@index([authorId])
+  @@index([deletedById])
   @@index([deletedAt])
   @@map("task_comments")
 }

@@ -30,6 +30,7 @@ import {
 import {
   CreateTaskCommentDto,
   TaskCommentResponseDto,
+  UpdateTaskCommentDto,
 } from '../application/dto/task-comment.dto';
 import { JwtGuard } from '../../../shared/guards/jwt.guard';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
@@ -206,6 +207,27 @@ export class TasksController {
       dto,
       files,
     );
+  }
+
+  @Patch(':id/comments/:commentId')
+  @ApiOperation({ summary: 'Update own task comment content' })
+  async updateComment(
+    @Param('id') id: string,
+    @Param('commentId') commentId: string,
+    @Body() dto: UpdateTaskCommentDto,
+    @CurrentUser() user: TokenPayload,
+  ): Promise<TaskCommentResponseDto> {
+    return this.taskCommentService.update(id, commentId, user, dto);
+  }
+
+  @Delete(':id/comments/:commentId')
+  @ApiOperation({ summary: 'Soft delete a task comment' })
+  async deleteComment(
+    @Param('id') id: string,
+    @Param('commentId') commentId: string,
+    @CurrentUser() user: TokenPayload,
+  ): Promise<TaskCommentResponseDto> {
+    return this.taskCommentService.delete(id, commentId, user);
   }
 
   @Patch(':id')

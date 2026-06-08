@@ -6,6 +6,7 @@ import {
   Avatar,
   Button,
   Card,
+  Dropdown,
   Empty,
   Image,
   List,
@@ -16,8 +17,11 @@ import {
 } from "antd";
 import type { UploadFile } from "antd";
 import {
+  DeleteOutlined,
   DownloadOutlined,
+  EditOutlined,
   FileOutlined,
+  MoreOutlined,
   SendOutlined,
   UserOutlined,
 } from "@ant-design/icons";
@@ -25,6 +29,7 @@ import { tasksApi } from "@/features/tasks/tasks.api";
 import { TaskComment } from "@/features/tasks/tasks.types";
 import { formatDateTime } from "./RecordSections";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { useAuthStore } from "@/features/auth/auth.store";
 
 const { Text, Paragraph } = Typography;
 
@@ -53,12 +58,17 @@ type TaskCommentsProps = {
 };
 
 export function TaskComments({ taskId }: TaskCommentsProps) {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
+  const { user } = useAuthStore();
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [content, setContent] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState("");
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [savingCommentId, setSavingCommentId] = useState<string | null>(null);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
 
   const files = useMemo(
     () => fileList.map((item) => item.originFileObj).filter(Boolean) as File[],
@@ -124,6 +134,93 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
     }
   };
 
+  const canDeleteOther = user?.role === "ADMIN" || user?.role === "MANAGER";
+
+  const startEdit = (comment: TaskComment) => {
+    setEditingCommentId(comment.id);
+    setEditingContent(comment.content || "");
+  };
+
+  const cancelEdit = () => {
+    setEditingCommentId(null);
+    setEditingContent("");
+  };
+
+  const handleSaveEdit = async (commentId: string) => {
+    const trimmedContent = editingContent.trim();
+    if (!trimmedContent) {
+      message.warning("Nội dung bình luận không được để trống.");
+      return;
+    }
+
+    try {
+      setSavingCommentId(commentId);
+      await tasksApi.updateComment(taskId, commentId, trimmedContent);
+      message.success("Đã cập nhật bình luận");
+      cancelEdit();
+      await fetchComments();
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, "Không thể cập nhật bình luận"));
+    } finally {
+      setSavingCommentId(null);
+    }
+  };
+
+  const confirmDelete = (comment: TaskComment) => {
+    modal.confirm({
+      title: "Xóa bình luận",
+      content: "Bạn có chắc muốn xóa bình luận này không?",
+      okText: "Xóa",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          setDeletingCommentId(comment.id);
+          await tasksApi.deleteComment(taskId, comment.id);
+          message.success("Đã xóa bình luận");
+          await fetchComments();
+        } catch (error: unknown) {
+          message.error(getApiErrorMessage(error, "Không thể xóa bình luận"));
+        } finally {
+          setDeletingCommentId(null);
+        }
+      },
+    });
+  };
+
+  const getCommentActions = (comment: TaskComment) => {
+    if (!user || comment.isDeleted) return [];
+
+    const isOwnComment = comment.authorId === user.id;
+    const items = [];
+
+    if (isOwnComment) {
+      items.push({
+        key: "edit",
+        icon: <EditOutlined />,
+        label: "Chỉnh sửa",
+        onClick: () => startEdit(comment),
+      });
+      items.push({
+        key: "delete",
+        icon: <DeleteOutlined />,
+        label: "Xóa",
+        danger: true,
+        onClick: () => confirmDelete(comment),
+      });
+    } else if (canDeleteOther) {
+      items.push({
+        key: "delete",
+        icon: <DeleteOutlined />,
+        label: "Xóa",
+        danger: true,
+        onClick: () => confirmDelete(comment),
+      });
+    }
+
+    return items;
+  };
+
   return (
     <Card title="Trao đổi công việc" className="shadow-sm">
       <div className="space-y-4">
@@ -137,70 +234,130 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
           <List
             itemLayout="vertical"
             dataSource={comments}
-            renderItem={(comment) => (
-              <List.Item key={comment.id}>
-                <List.Item.Meta
-                  avatar={<Avatar icon={<UserOutlined />} />}
-                  title={
-                    <Space wrap>
-                      <Text strong>{comment.authorName}</Text>
-                      <Text type="secondary">{comment.authorEmail}</Text>
-                    </Space>
-                  }
-                  description={formatDateTime(comment.createdAt)}
-                />
-                {comment.content && (
-                  <Paragraph className="whitespace-pre-wrap">
-                    {comment.content}
-                  </Paragraph>
-                )}
-                {comment.attachments.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-3">
-                    {comment.attachments.map((attachment) =>
-                      attachment.isImage && attachment.signedUrl ? (
-                        <div
-                          key={attachment.id}
-                          className="w-36 rounded border border-gray-200 p-2"
-                        >
-                          <Image
-                            src={attachment.signedUrl}
-                            alt={attachment.originalName}
-                            width="100%"
-                            height={88}
-                            className="object-cover"
-                          />
-                          <Text
-                            className="mt-2 block truncate text-xs"
-                            title={attachment.originalName}
+            renderItem={(comment) => {
+              const actions = getCommentActions(comment);
+              const isEditing = editingCommentId === comment.id;
+
+              return (
+                <List.Item key={comment.id}>
+                  <List.Item.Meta
+                    avatar={<Avatar icon={<UserOutlined />} />}
+                    title={
+                      <div className="flex items-start justify-between gap-3">
+                        <Space wrap>
+                          <Text strong>{comment.authorName}</Text>
+                          <Text type="secondary">{comment.authorEmail}</Text>
+                        </Space>
+                        {actions.length > 0 && (
+                          <Dropdown
+                            menu={{ items: actions }}
+                            trigger={["click"]}
+                            placement="bottomRight"
                           >
-                            {attachment.originalName}
+                            <Button
+                              aria-label="Thao tác bình luận"
+                              type="text"
+                              size="small"
+                              icon={<MoreOutlined />}
+                              loading={deletingCommentId === comment.id}
+                            />
+                          </Dropdown>
+                        )}
+                      </div>
+                    }
+                    description={
+                      <Space size="small" wrap>
+                        <Text type="secondary">{formatDateTime(comment.createdAt)}</Text>
+                        {comment.isEdited && (
+                          <Text type="secondary" className="text-xs">
+                            Đã chỉnh sửa
                           </Text>
-                        </div>
-                      ) : (
-                        <a
-                          key={attachment.id}
-                          href={attachment.signedUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex max-w-xs items-center gap-2 rounded border border-gray-200 px-3 py-2 text-gray-700 hover:border-blue-400"
+                        )}
+                      </Space>
+                    }
+                  />
+
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      <textarea
+                        className="min-h-24 w-full rounded border border-gray-300 bg-white p-3 outline-none focus:border-blue-500"
+                        value={editingContent}
+                        onChange={(event) => setEditingContent(event.target.value)}
+                        maxLength={5000}
+                      />
+                      <Space>
+                        <Button
+                          type="primary"
+                          loading={savingCommentId === comment.id}
+                          onClick={() => handleSaveEdit(comment.id)}
                         >
-                          <FileOutlined />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate">
+                          Lưu
+                        </Button>
+                        <Button onClick={cancelEdit}>Hủy</Button>
+                      </Space>
+                    </div>
+                  ) : (
+                    comment.content && (
+                      <Paragraph
+                        className={
+                          comment.isDeleted
+                            ? "whitespace-pre-wrap italic text-gray-500"
+                            : "whitespace-pre-wrap"
+                        }
+                      >
+                        {comment.content}
+                      </Paragraph>
+                    )
+                  )}
+
+                  {!comment.isDeleted && comment.attachments.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {comment.attachments.map((attachment) =>
+                        attachment.isImage && attachment.signedUrl ? (
+                          <div
+                            key={attachment.id}
+                            className="w-36 rounded border border-gray-200 p-2"
+                          >
+                            <Image
+                              src={attachment.signedUrl}
+                              alt={attachment.originalName}
+                              width="100%"
+                              height={88}
+                              className="object-cover"
+                            />
+                            <Text
+                              className="mt-2 block truncate text-xs"
+                              title={attachment.originalName}
+                            >
                               {attachment.originalName}
+                            </Text>
+                          </div>
+                        ) : (
+                          <a
+                            key={attachment.id}
+                            href={attachment.signedUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex max-w-xs items-center gap-2 rounded border border-gray-200 px-3 py-2 text-gray-700 hover:border-blue-400"
+                          >
+                            <FileOutlined />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate">
+                                {attachment.originalName}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {formatFileSize(attachment.fileSize)}
+                              </span>
                             </span>
-                            <span className="text-xs text-gray-500">
-                              {formatFileSize(attachment.fileSize)}
-                            </span>
-                          </span>
-                          <DownloadOutlined />
-                        </a>
-                      ),
-                    )}
-                  </div>
-                )}
-              </List.Item>
-            )}
+                            <DownloadOutlined />
+                          </a>
+                        ),
+                      )}
+                    </div>
+                  )}
+                </List.Item>
+              );
+            }}
           />
         )}
 

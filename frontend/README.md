@@ -136,7 +136,7 @@ Shared contract docs:
 - CSV Import is available on the Leads, Accounts, Contacts, Opportunities, Tasks, and Cases list pages with reusable modal UI, sample CSV download, per-row result summary, and list reload after successful or partially successful imports.
 - Web-to-Lead is available at `/dang-ky-tu-van` as a public consultation form that creates a new Lead with `source = Website`.
 - Task Templates after Lead conversion are available at `/dashboard/settings/task-templates`; the Convert Wizard can create follow-up Tasks from an active/default template.
-- Task detail has a `Trao đổi` tab for internal comments and attachments. Files are uploaded through the backend to private Supabase Storage and displayed with temporary signed URLs.
+- Task detail has a `Trao đổi` tab for internal comments and attachments. Files are uploaded through the backend to private Supabase Storage and displayed with temporary signed URLs. Users can edit/delete their own comments; Admin/Manager can delete comments from other users, and deleted comments hide attachments.
 - Profile dropdown shows the signed-in user's name, email, role, current organization, a Settings shortcut, and Logout.
 - `/dashboard/settings` is organized into cards for Organization, Account, Website integration, and Change Password.
 - Actor Tracking is available for important actions such as completing tasks, converting leads, changing opportunity stage, closing cases, deleting, and restoring records.

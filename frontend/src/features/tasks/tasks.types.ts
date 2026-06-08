@@ -51,6 +51,10 @@ export interface TaskComment {
   authorName: string;
   authorEmail: string;
   content?: string;
+  isDeleted: boolean;
+  isEdited: boolean;
+  deletedAt?: string;
+  deletedById?: string;
   attachments: TaskCommentAttachment[];
   createdAt: string;
   updatedAt: string;

@@ -1273,7 +1273,19 @@ Additional deploy checks:
 | Frontend `npm run lint` | Pass with existing 17 hook warnings |
 | Frontend `npm run build` | Pass |
 
-### Pending Deploy QA
+### Deploy Smoke Verification
 
-- Apply migration `20260608000100_task_comment_soft_delete_actor`.
-- Verify edit own comment, delete own comment, Admin/Manager delete other user's comment, Sales/Support blocked from other user's comment, deleted attachments hidden, and old upload/preview/download flows still pass.
+| Check | Result |
+|---|---|
+| Backend `GET /health` | Pass |
+| Production migration `20260608000100_task_comment_soft_delete_actor` | Applied successfully with `npm run prisma:migrate:prod` |
+| Sales creates a visible Task and comment | Pass |
+| Author edits own comment | Pass; response returns updated content and `isEdited = true` |
+| Admin attempts to edit another user's comment | Pass; blocked with 403 |
+| Admin creates a comment on visible Task | Pass |
+| Sales attempts to delete Admin comment | Pass; blocked with 403 |
+| Admin deletes Sales comment | Pass; response returns `isDeleted = true` and `deletedById` |
+| Deleted comment display data | Pass; API keeps placeholder content and returns no attachments/signed URLs |
+| Rival Org reads Sample Org Task comments | Pass; blocked with 404/403 |
+
+Deploy smoke stamp: `TASK_COMMENT_EDIT_DELETE_DEPLOY_RERUN_1780890511646`.

@@ -1,15 +1,20 @@
 ﻿"use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, Card, Descriptions, Form, Input, Popconfirm, Space, Spin, Tabs, Tag, App } from "antd";
+import { Button, Card, Form, Input, Popconfirm, Spin, Tag, App } from "antd";
+import { BankOutlined, EditOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
-import { PageHeader } from "@/components/common/PageHeader";
 import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
+import {
+  RecordInfoCard,
+  RecordInfoField,
+  RecordDetailGrid,
+  RecordHeader,
+  RelatedListCard,
+} from "@/components/crm/RecordDetailLayout";
 import {
   emptyValue,
   formatDateTime,
-  RelatedEmpty,
-  SectionCard,
 } from "@/components/crm/RecordSections";
 import { SourceFields } from "@/components/crm/SourceFields";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
@@ -128,14 +133,21 @@ export default function AccountDetailPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <RecordHeader
+        eyebrow="Khách hàng / Công ty"
         title={account.name}
-        subtitle={[account.type, account.phone].filter(Boolean).join(" - ")}
-        showBack
-        action={
-          <Space wrap>
+        icon={<BankOutlined />}
+        subtitleItems={[
+          <>Loại: {emptyValue(account.type)}</>,
+          <>Số điện thoại: {emptyValue(account.phone)}</>,
+          <>Người phụ trách: <UserReferenceDisplay userId={account.ownerId} /></>,
+        ]}
+        actions={
+          <>
             {!isEditing && (
-              <Button onClick={() => setIsEditing(true)}>Chỉnh sửa</Button>
+              <Button icon={<EditOutlined />} onClick={() => setIsEditing(true)}>
+                Chỉnh sửa
+              </Button>
             )}
             {!isEditing && (
               <Popconfirm
@@ -148,7 +160,7 @@ export default function AccountDetailPage({
                 <Button danger>Xóa</Button>
               </Popconfirm>
             )}
-          </Space>
+          </>
         }
       />
 
@@ -187,30 +199,25 @@ export default function AccountDetailPage({
           </Form>
         </Card>
       ) : (
-        <Tabs
-          defaultActiveKey="details"
-          items={[
-            {
-              key: "details",
-              label: "Chi tiết",
-              children: (
-                <div className="space-y-4">
-                  <SectionCard title="Thông tin chung">
-                    <Descriptions.Item label="Tên khách hàng / công ty">
+        <RecordDetailGrid
+          left={
+            <>
+                  <RecordInfoCard title="Thông tin chung">
+                    <RecordInfoField label="Tên khách hàng / công ty">
                       {account.name}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Loại">
+                    </RecordInfoField>
+                    <RecordInfoField label="Loại">
                       {emptyValue(account.type)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Số điện thoại">
+                    </RecordInfoField>
+                    <RecordInfoField label="Số điện thoại">
                       {emptyValue(account.phone)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Website">
+                    </RecordInfoField>
+                    <RecordInfoField label="Website">
                       {emptyValue(account.website)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin địa chỉ">
-                    <Descriptions.Item label="Địa chỉ thanh toán">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title="Thông tin địa chỉ">
+                    <RecordInfoField label="Địa chỉ thanh toán">
                       {[
                         account.billingStreet,
                         account.billingCity,
@@ -220,8 +227,8 @@ export default function AccountDetailPage({
                       ]
                         .filter(Boolean)
                         .join(", ") || "-"}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Địa chỉ giao hàng">
+                    </RecordInfoField>
+                    <RecordInfoField label="Địa chỉ giao hàng">
                       {[
                         account.shippingStreet,
                         account.shippingCity,
@@ -231,105 +238,70 @@ export default function AccountDetailPage({
                       ]
                         .filter(Boolean)
                         .join(", ") || "-"}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin nguồn">
-                    <Descriptions.Item label="Nguồn">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title="Thông tin nguồn">
+                    <RecordInfoField label="Nguồn">
                       {getSourceLabel(account.source)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Chi tiết nguồn">
+                    </RecordInfoField>
+                    <RecordInfoField label="Chi tiết nguồn">
                       {emptyValue(account.sourceDetail)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin hệ thống">
-                    <Descriptions.Item label="Người phụ trách">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title="Thông tin hệ thống">
+                    <RecordInfoField label="Người phụ trách">
                       <UserReferenceDisplay userId={account.ownerId} />
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày tạo">
+                    </RecordInfoField>
+                    <RecordInfoField label="Ngày tạo">
                       {formatDateTime(account.createdAt)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày cập nhật">
+                    </RecordInfoField>
+                    <RecordInfoField label="Ngày cập nhật">
                       {formatDateTime(account.updatedAt)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                </div>
-              ),
-            },
-            {
-              key: "related",
-              label: "Liên quan",
-              children: (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <Card
-                    title={`${SECTION_LABELS.relatedContacts} (${relatedContacts.length})`}
-                    className="shadow-sm"
-                  >
-                    {relatedContacts.length ? (
-                      relatedContacts.map((item) => (
-                        <RelatedRow
-                          key={item.id}
-                          title={[item.firstName, item.lastName]
-                            .filter(Boolean)
-                            .join(" ")}
-                          description={item.email}
-                          onView={() =>
-                            router.push(`/dashboard/contacts/${item.id}`)
-                          }
-                        />
-                      ))
-                    ) : (
-                      <RelatedEmpty description="Không có người liên hệ liên quan." />
-                    )}
-                  </Card>
-                  <Card
-                    title={`${SECTION_LABELS.relatedOpportunities} (${relatedOpps.length})`}
-                    className="shadow-sm"
-                  >
-                    {relatedOpps.length ? (
-                      relatedOpps.map((item) => (
-                        <RelatedRow
-                          key={item.id}
-                          title={item.name}
-                          description={`${FIELD_LABELS.stage}: ${getStatusLabel(item.stage)}`}
-                          onView={() =>
-                            router.push(`/dashboard/opportunities/${item.id}`)
-                          }
-                        />
-                      ))
-                    ) : (
-                      <RelatedEmpty description="Không có cơ hội liên quan." />
-                    )}
-                  </Card>
-                  <Card
-                    title={`${SECTION_LABELS.relatedCases} (${relatedCases.length})`}
-                    className="shadow-sm"
-                  >
-                    {relatedCases.length ? (
-                      relatedCases.map((item) => (
-                        <RelatedRow
-                          key={item.id}
-                          title={item.subject}
-                          description={`${FIELD_LABELS.status}: ${getStatusLabel(item.status)}`}
-                          onView={() =>
-                            router.push(`/dashboard/cases/${item.id}`)
-                          }
-                        />
-                      ))
-                    ) : (
-                      <RelatedEmpty description="Không có yêu cầu hỗ trợ liên quan." />
-                    )}
-                  </Card>
-                </div>
-              ),
-            },
-            {
-              key: "activity",
-              label: "Hoạt động",
-              children: (
-                <ActivityTimeline relatedType="ACCOUNT" relatedId={id} />
-              ),
-            },
-          ]}
+                    </RecordInfoField>
+                  </RecordInfoCard>
+            </>
+          }
+          middle={<ActivityTimeline relatedType="ACCOUNT" relatedId={id} />}
+          right={
+            <>
+              <RelatedListCard
+                title={SECTION_LABELS.relatedContacts}
+                items={relatedContacts}
+                emptyDescription="Không có người liên hệ liên quan."
+                renderItem={(item) => (
+                  <RelatedRow
+                    title={[item.firstName, item.lastName].filter(Boolean).join(" ")}
+                    description={item.email}
+                    onView={() => router.push(`/dashboard/contacts/${item.id}`)}
+                  />
+                )}
+              />
+              <RelatedListCard
+                title={SECTION_LABELS.relatedOpportunities}
+                items={relatedOpps}
+                emptyDescription="Không có cơ hội liên quan."
+                renderItem={(item) => (
+                  <RelatedRow
+                    title={item.name}
+                    description={`${FIELD_LABELS.stage}: ${getStatusLabel(item.stage)}`}
+                    onView={() => router.push(`/dashboard/opportunities/${item.id}`)}
+                  />
+                )}
+              />
+              <RelatedListCard
+                title={SECTION_LABELS.relatedCases}
+                items={relatedCases}
+                emptyDescription="Không có yêu cầu hỗ trợ liên quan."
+                renderItem={(item) => (
+                  <RelatedRow
+                    title={item.subject}
+                    description={`${FIELD_LABELS.status}: ${getStatusLabel(item.status)}`}
+                    onView={() => router.push(`/dashboard/cases/${item.id}`)}
+                  />
+                )}
+              />
+            </>
+          }
         />
       )}
 
@@ -337,3 +309,5 @@ export default function AccountDetailPage({
     </div>
   );
 }
+
+

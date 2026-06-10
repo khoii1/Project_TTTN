@@ -105,6 +105,68 @@ body {
     0 2px 10px rgba(15, 23, 42, 0.055);
 }
 
+.record-detail-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(320px, 0.9fr)
+    minmax(360px, 1fr)
+    minmax(280px, 0.75fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.record-info-fields {
+  display: flex;
+  flex-direction: column;
+}
+
+.record-info-field {
+  display: grid;
+  grid-template-columns: minmax(120px, 36%) minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.record-info-field:last-child {
+  border-bottom: 0;
+}
+
+.record-info-label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.record-info-value {
+  min-width: 0;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1279px) {
+  .record-detail-grid {
+    grid-template-columns: minmax(300px, 0.95fr) minmax(360px, 1.05fr);
+  }
+
+  .record-detail-sidebar {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 767px) {
+  .record-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .record-info-field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
+
 .crm-filter-bar {
   border: 1px solid #cbd5e1;
   border-radius: 8px;

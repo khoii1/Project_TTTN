@@ -5,29 +5,31 @@ import {
   Button,
   Card,
   DatePicker,
-  Descriptions,
   Form,
   Input,
   InputNumber,
   Popconfirm,
   Space,
   Spin,
-  Steps,
-  Tabs,
   Tag,
   App,
 } from "antd";
+import { BankOutlined, CalendarOutlined, DollarOutlined, EditOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
-import { PageHeader } from "@/components/common/PageHeader";
 import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
 import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
+import {
+  EmptyStateCard,
+  RecordDetailGrid,
+  RecordHeader,
+  StagePath,
+} from "@/components/crm/RecordDetailLayout";
 import {
   emptyValue,
   formatDate,
   formatDateTime,
   RelatedEmpty,
-  SectionCard,
 } from "@/components/crm/RecordSections";
 import { SourceFields } from "@/components/crm/SourceFields";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
@@ -46,6 +48,29 @@ import {
   SECTION_LABELS,
 } from "@/lib/constants/vi-labels";
 import { formatVndAmount } from "@/lib/utils/currency";
+
+type InfoCardProps = {
+  title: string;
+  children: React.ReactNode;
+};
+
+type InfoFieldProps = {
+  label: string;
+  children: React.ReactNode;
+};
+
+const InfoCard = ({ title, children }: InfoCardProps) => (
+  <Card title={title} size="small" className="shadow-sm">
+    <div className="record-info-fields">{children}</div>
+  </Card>
+);
+
+const InfoField = ({ label, children }: InfoFieldProps) => (
+  <div className="record-info-field">
+    <div className="record-info-label">{label}</div>
+    <div className="record-info-value">{children}</div>
+  </div>
+);
 
 export default function OpportunityDetailPage({
   params,
@@ -80,7 +105,7 @@ export default function OpportunityDetailPage({
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, message]);
 
   useEffect(() => {
     const timer = window.setTimeout(fetchOpportunity, 0);
@@ -143,18 +168,30 @@ export default function OpportunityDetailPage({
   if (!opportunity) return <div>{EMPTY_STATE_LABELS.recordNotFound}</div>;
 
   const stages = Object.values(OpportunityStage);
-  const currentStep = stages.indexOf(opportunity.stage);
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <RecordHeader
+        eyebrow="Cơ hội bán hàng"
         title={opportunity.name}
-        subtitle={`${getStatusLabel(opportunity.stage)} - ${formatDate(opportunity.closeDate)}`}
-        showBack
-        action={
-          <Space wrap>
+        icon={<DollarOutlined />}
+        testId="opportunity-record-header"
+        subtitleItems={[
+          <>
+            Giai đoạn:{" "}
+            <strong className="text-gray-800">
+              {getStatusLabel(opportunity.stage)}
+            </strong>
+          </>,
+          <>Ngày chốt dự kiến: {formatDate(opportunity.closeDate)}</>,
+          <>Giá trị: {formatVndAmount(opportunity.amount)}</>,
+        ]}
+        actions={
+          <>
             {!isEditing && (
-              <Button onClick={() => setIsEditing(true)}>Chỉnh sửa</Button>
+              <Button icon={<EditOutlined />} onClick={() => setIsEditing(true)}>
+                Chỉnh sửa
+              </Button>
             )}
             {!isEditing && (
               <Popconfirm
@@ -167,18 +204,17 @@ export default function OpportunityDetailPage({
                 <Button danger>Xóa</Button>
               </Popconfirm>
             )}
-          </Space>
+          </>
         }
       />
 
-      <Card className="shadow-sm">
-        <Steps
-          current={currentStep}
-          onChange={handleStageChange}
-          className="overflow-x-auto"
-          items={stages.map((stage) => ({ title: getStatusLabel(stage) }))}
-        />
-      </Card>
+      <StagePath
+        stages={stages}
+        currentStage={opportunity.stage}
+        getLabel={getStatusLabel}
+        onChange={handleStageChange}
+        testIdPrefix="opportunity-stage"
+      />
 
       {isEditing ? (
         <Card title="Chỉnh sửa cơ hội bán hàng" className="shadow-sm">
@@ -220,8 +256,8 @@ export default function OpportunityDetailPage({
             </div>
             <SourceFields />
             <div className="mt-3 text-sm text-gray-500">
-              Khách hàng / công ty và người liên hệ được hiển thị trong tab Liên
-              quan vì form này chưa hỗ trợ đổi các liên kết đó.
+              Khách hàng / công ty và người liên hệ được hiển thị trong phần
+              Liên kết chính vì form này chưa hỗ trợ đổi các liên kết đó.
             </div>
             <div className="flex justify-end space-x-2 mt-4">
               <Button onClick={() => setIsEditing(false)}>Hủy</Button>
@@ -232,125 +268,165 @@ export default function OpportunityDetailPage({
           </Form>
         </Card>
       ) : (
-        <Tabs
-          defaultActiveKey="details"
-          items={[
-            {
-              key: "details",
-              label: "Chi tiết",
-              children: (
-                <div className="space-y-4">
-                  <SectionCard title="Thông tin chung">
-                    <Descriptions.Item label="Tên">
-                      {opportunity.name}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Giai đoạn">
-                      <Tag color="blue">
-                        {getStatusLabel(opportunity.stage)}
-                      </Tag>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Giá trị">
+        <RecordDetailGrid
+          left={
+            <>
+            <InfoCard title="Thông tin chung">
+              <InfoField label="Tên">
+                {emptyValue(opportunity.name)}
+              </InfoField>
+              <InfoField label="Giai đoạn">
+                <Tag color="blue">{getStatusLabel(opportunity.stage)}</Tag>
+              </InfoField>
+              <InfoField label="Giá trị">
+                {formatVndAmount(opportunity.amount)}
+              </InfoField>
+              <InfoField label="Ngày chốt dự kiến">
+                {formatDate(opportunity.closeDate)}
+              </InfoField>
+              <InfoField label="Bước tiếp theo">
+                {emptyValue(opportunity.nextStep)}
+              </InfoField>
+              <InfoField label="Mô tả">
+                <span className="whitespace-pre-wrap">
+                  {emptyValue(opportunity.description)}
+                </span>
+              </InfoField>
+            </InfoCard>
+
+            <InfoCard title="Thông tin nguồn">
+              <InfoField label="Nguồn">
+                {getSourceLabel(opportunity.source)}
+              </InfoField>
+              <InfoField label="Chi tiết nguồn">
+                {emptyValue(opportunity.sourceDetail)}
+              </InfoField>
+            </InfoCard>
+
+            <InfoCard title="Thông tin hệ thống">
+              <InfoField label="Người phụ trách">
+                <UserReferenceDisplay userId={opportunity.ownerId} />
+              </InfoField>
+              <InfoField label="Người cập nhật giai đoạn gần nhất">
+                <UserReferenceDisplay userId={opportunity.stageChangedById} />
+              </InfoField>
+              <InfoField label="Thời gian cập nhật giai đoạn">
+                {formatDateTime(opportunity.stageChangedAt)}
+              </InfoField>
+              <InfoField label="Ngày tạo">
+                {formatDateTime(opportunity.createdAt)}
+              </InfoField>
+              <InfoField label="Ngày cập nhật">
+                {formatDateTime(opportunity.updatedAt)}
+              </InfoField>
+            </InfoCard>
+            </>
+          }
+          middle={
+            <ActivityTimeline relatedType="OPPORTUNITY" relatedId={id} />
+          }
+          right={
+            <>
+            <Card title="Liên kết chính" size="small" className="shadow-sm">
+              <div className="space-y-3">
+                <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
+                  <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase text-gray-500">
+                    <BankOutlined />
+                    Khách hàng / Công ty
+                  </div>
+                  <EntityReferenceDisplay
+                    entityType="ACCOUNT"
+                    entityId={opportunity.accountId}
+                    link
+                  />
+                </div>
+                <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
+                  <div className="mb-1 text-xs font-semibold uppercase text-gray-500">
+                    Người liên hệ
+                  </div>
+                  <EntityReferenceDisplay
+                    entityType="CONTACT"
+                    entityId={opportunity.contactId}
+                    link
+                  />
+                </div>
+              </div>
+            </Card>
+
+            <Card title="Tóm tắt cơ hội" size="small" className="shadow-sm">
+              <div className="space-y-3 text-sm">
+                <div className="flex items-start gap-3">
+                  <DollarOutlined className="mt-1 text-blue-600" />
+                  <div>
+                    <div className="font-semibold text-gray-900">
                       {formatVndAmount(opportunity.amount)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày chốt dự kiến">
+                    </div>
+                    <div className="text-gray-500">Giá trị dự kiến</div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CalendarOutlined className="mt-1 text-blue-600" />
+                  <div>
+                    <div className="font-semibold text-gray-900">
                       {formatDate(opportunity.closeDate)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Bước tiếp theo">
-                      {emptyValue(opportunity.nextStep)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin nguồn">
-                    <Descriptions.Item label="Nguồn">
-                      {getSourceLabel(opportunity.source)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Chi tiết nguồn">
-                      {emptyValue(opportunity.sourceDetail)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin hệ thống">
-                    <Descriptions.Item label="Người phụ trách">
-                      <UserReferenceDisplay userId={opportunity.ownerId} />
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Người cập nhật giai đoạn gần nhất">
-                      <UserReferenceDisplay
-                        userId={opportunity.stageChangedById}
-                      />
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Thời gian cập nhật giai đoạn">
-                      {formatDateTime(opportunity.stageChangedAt)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày tạo">
-                      {formatDateTime(opportunity.createdAt)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày cập nhật">
-                      {formatDateTime(opportunity.updatedAt)}
-                    </Descriptions.Item>
-                  </SectionCard>
+                    </div>
+                    <div className="text-gray-500">Ngày chốt dự kiến</div>
+                  </div>
                 </div>
-              ),
-            },
-            {
-              key: "related",
-              label: "Liên quan",
-              children: (
-                <div className="space-y-4">
-                  <SectionCard title="Liên kết chính">
-                    <Descriptions.Item label="Khách hàng / Công ty">
-                      <EntityReferenceDisplay
-                        entityType="ACCOUNT"
-                        entityId={opportunity.accountId}
-                        link
-                      />
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Người liên hệ">
-                      <EntityReferenceDisplay
-                        entityType="CONTACT"
-                        entityId={opportunity.contactId}
-                        link
-                      />
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <Card
-                    title={`${SECTION_LABELS.relatedTasks} (${relatedTasks.length})`}
-                    className="shadow-sm"
-                  >
-                    {relatedTasks.length ? (
-                      relatedTasks.map((task) => (
-                        <div
-                          key={task.id}
-                          className="flex items-center justify-between border-b border-gray-100 py-3 last:border-b-0"
+                <div className="rounded-md bg-gray-50 p-3">
+                  <div className="mb-1 font-semibold text-gray-700">
+                    Bước tiếp theo
+                  </div>
+                  <div className="text-gray-600">
+                    {emptyValue(opportunity.nextStep)}
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card
+              title={`${SECTION_LABELS.relatedTasks} (${relatedTasks.length})`}
+              size="small"
+              className="shadow-sm"
+            >
+              {relatedTasks.length ? (
+                <div className="divide-y divide-gray-100">
+                  {relatedTasks.map((task) => (
+                    <div key={task.id} className="py-3 first:pt-0 last:pb-0">
+                      <div className="font-medium text-gray-900">
+                        {task.subject}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                        <Tag
+                          color={
+                            task.status === "COMPLETED" ? "green" : "orange"
+                          }
                         >
-                          <div>
-                            <div className="font-medium">{task.subject}</div>
-                            <div className="text-sm text-gray-500">
-                              {getStatusLabel(task.status)}
-                            </div>
-                          </div>
-                          <Button
-                            type="link"
-                            onClick={() =>
-                              router.push(`/dashboard/tasks/${task.id}`)
-                            }
-                          >
-                            Xem
-                          </Button>
-                        </div>
-                      ))
-                    ) : (
-                      <RelatedEmpty description="Không có công việc liên quan." />
-                    )}
-                  </Card>
+                          {getStatusLabel(task.status)}
+                        </Tag>
+                        <span>{formatDate(task.dueDate)}</span>
+                      </div>
+                      <Button
+                        type="link"
+                        className="mt-1 p-0"
+                        onClick={() => router.push(`/dashboard/tasks/${task.id}`)}
+                      >
+                        Xem công việc
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ),
-            },
-            {
-              key: "activity",
-              label: "Hoạt động",
-              children: (
-                <ActivityTimeline relatedType="OPPORTUNITY" relatedId={id} />
-              ),
-            },
-          ]}
+              ) : (
+                <RelatedEmpty description="Không có công việc liên quan." />
+              )}
+            </Card>
+
+            <EmptyStateCard
+              title="Tệp đính kèm"
+              description="Chưa có tệp đính kèm cho cơ hội này."
+            />
+            </>
+          }
         />
       )}
     </div>

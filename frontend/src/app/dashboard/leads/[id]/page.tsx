@@ -1,16 +1,23 @@
 ﻿"use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, Card, Descriptions, Form, Input, Popconfirm, Space, Spin, Steps, Tabs, Tag, App } from "antd";
+import { Button, Card, Form, Input, Popconfirm, Spin, Tag, App } from "antd";
+import { EditOutlined, UserOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
-import { PageHeader } from "@/components/common/PageHeader";
 import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
 import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
 import { LeadConvertWizard } from "@/components/crm/LeadConvertWizard";
 import {
+  RecordInfoCard,
+  RecordInfoField,
+  EmptyStateCard,
+  RecordDetailGrid,
+  RecordHeader,
+  StagePath,
+} from "@/components/crm/RecordDetailLayout";
+import {
   emptyValue,
   formatDateTime,
-  SectionCard,
 } from "@/components/crm/RecordSections";
 import { SourceFields } from "@/components/crm/SourceFields";
 import { HcmWardSelect } from "@/components/crm/HcmWardSelect";
@@ -135,7 +142,6 @@ export default function LeadDetailPage({
   if (!lead) return <div>{EMPTY_STATE_LABELS.recordNotFound}</div>;
 
   const statuses = Object.values(LeadStatus);
-  const currentStep = statuses.indexOf(lead.status);
   const isConverted = lead.status === LeadStatus.CONVERTED;
   const isQualified = lead.status === LeadStatus.QUALIFIED;
   const leadName = [lead.firstName, lead.lastName].filter(Boolean).join(" ");
@@ -144,14 +150,21 @@ export default function LeadDetailPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <RecordHeader
+        eyebrow="Khách hàng tiềm năng"
         title={leadName}
-        subtitle={`${lead.company} - ${getStatusLabel(lead.status)}`}
-        showBack
-        action={
-          <Space wrap>
+        icon={<UserOutlined />}
+        subtitleItems={[
+          <>Trạng thái: <strong className="text-gray-800">{getStatusLabel(lead.status)}</strong></>,
+          <>Công ty: {lead.company}</>,
+          <>Người phụ trách: <UserReferenceDisplay userId={lead.ownerId} /></>,
+        ]}
+        actions={
+          <>
             {!isEditing && (
-              <Button onClick={() => setIsEditing(true)}>Chỉnh sửa</Button>
+              <Button icon={<EditOutlined />} onClick={() => setIsEditing(true)}>
+                Chỉnh sửa
+              </Button>
             )}
             {!isEditing && (
               <Popconfirm
@@ -174,18 +187,17 @@ export default function LeadDetailPage({
                 Chuyển đổi khách hàng tiềm năng
               </Button>
             )}
-          </Space>
+          </>
         }
       />
 
-      <Card className="shadow-sm">
-        <Steps
-          current={currentStep}
-          onChange={!isConverted ? handleStatusChange : undefined}
-          className="overflow-x-auto"
-          items={statuses.map((status) => ({ title: getStatusLabel(status) }))}
-        />
-      </Card>
+      <StagePath
+        stages={statuses}
+        currentStage={lead.status}
+        getLabel={getStatusLabel}
+        onChange={!isConverted ? handleStatusChange : undefined}
+        testIdPrefix="lead-status"
+      />
 
       {isEditing ? (
         <Card title="Chỉnh sửa khách hàng tiềm năng" className="shadow-sm">
@@ -249,62 +261,57 @@ export default function LeadDetailPage({
           </Form>
         </Card>
       ) : (
-        <Tabs
-          defaultActiveKey="details"
-          items={[
-            {
-              key: "details",
-              label: "Chi tiết",
-              children: (
-                <div className="space-y-4">
-                  <SectionCard title="Thông tin chung">
-                    <Descriptions.Item label="Tên">
+        <RecordDetailGrid
+          left={
+            <>
+                  <RecordInfoCard title="Thông tin chung">
+                    <RecordInfoField label="Tên">
                       {leadName}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Công ty">
+                    </RecordInfoField>
+                    <RecordInfoField label="Công ty">
                       {lead.company}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Chức danh">
+                    </RecordInfoField>
+                    <RecordInfoField label="Chức danh">
                       {emptyValue(lead.title)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Trạng thái">
+                    </RecordInfoField>
+                    <RecordInfoField label="Trạng thái">
                       <Tag color={isConverted ? "green" : "blue"}>
                         {getStatusLabel(lead.status)}
                       </Tag>
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin liên hệ">
-                    <Descriptions.Item label="Email">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title="Thông tin liên hệ">
+                    <RecordInfoField label="Email">
                       {emptyValue(lead.email)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Số điện thoại">
+                    </RecordInfoField>
+                    <RecordInfoField label="Số điện thoại">
                       {emptyValue(lead.phone)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Website">
+                    </RecordInfoField>
+                    <RecordInfoField label="Website">
                       {emptyValue(lead.website)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin nguồn">
-                    <Descriptions.Item label="Nguồn">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title="Thông tin nguồn">
+                    <RecordInfoField label="Nguồn">
                       {getSourceLabel(lead.source)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Chi tiết nguồn">
+                    </RecordInfoField>
+                    <RecordInfoField label="Chi tiết nguồn">
                       {emptyValue(lead.sourceDetail)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Khu vực phụ trách">
-                    <Descriptions.Item label="Tỉnh/Thành phố">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title="Khu vực phụ trách">
+                    <RecordInfoField label="Tỉnh/Thành phố">
                       {emptyValue(lead.provinceName)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Phường/Xã">
+                    </RecordInfoField>
+                    <RecordInfoField label="Phường/Xã">
                       {emptyValue(lead.wardName)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Địa chỉ chi tiết" span={2}>
+                    </RecordInfoField>
+                    <RecordInfoField label="Địa chỉ chi tiết">
                       {emptyValue(lead.addressDetail)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title={descriptionSectionTitle}>
-                    <Descriptions.Item label={FIELD_LABELS.description} span={2}>
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title={descriptionSectionTitle}>
+                    <RecordInfoField label={FIELD_LABELS.description}>
                       {lead.description ? (
                         <div className="whitespace-pre-wrap leading-6">
                           {lead.description}
@@ -314,69 +321,64 @@ export default function LeadDetailPage({
                           Chưa có thông tin nhu cầu tư vấn.
                         </span>
                       )}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin hệ thống">
-                    <Descriptions.Item label="Người phụ trách">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title="Thông tin hệ thống">
+                    <RecordInfoField label="Người phụ trách">
                       <UserReferenceDisplay userId={lead.ownerId} />
-                    </Descriptions.Item>
+                    </RecordInfoField>
                     {isConverted && (
                       <>
-                        <Descriptions.Item label="Người chuyển đổi">
+                        <RecordInfoField label="Người chuyển đổi">
                           <UserReferenceDisplay userId={lead.convertedById} />
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Thời gian chuyển đổi">
+                        </RecordInfoField>
+                        <RecordInfoField label="Thời gian chuyển đổi">
                           {formatDateTime(lead.convertedAt)}
-                        </Descriptions.Item>
+                        </RecordInfoField>
                       </>
                     )}
-                    <Descriptions.Item label="Ngày tạo">
+                    <RecordInfoField label="Ngày tạo">
                       {formatDateTime(lead.createdAt)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày cập nhật">
+                    </RecordInfoField>
+                    <RecordInfoField label="Ngày cập nhật">
                       {formatDateTime(lead.updatedAt)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                </div>
-              ),
-            },
-            {
-              key: "related",
-              label: "Liên quan",
-              children: isConverted ? (
-                <SectionCard title={SECTION_LABELS.convertedRecords}>
-                  <Descriptions.Item label="Khách hàng / Công ty">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+            </>
+          }
+          middle={<ActivityTimeline relatedType="LEAD" relatedId={id} />}
+          right={
+            isConverted ? (
+                <RecordInfoCard title={SECTION_LABELS.convertedRecords}>
+                  <RecordInfoField label="Khách hàng / Công ty">
                     <EntityReferenceDisplay
                       entityType="ACCOUNT"
                       entityId={lead.convertedAccountId}
                       link
                     />
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Người liên hệ">
+                  </RecordInfoField>
+                  <RecordInfoField label="Người liên hệ">
                     <EntityReferenceDisplay
                       entityType="CONTACT"
                       entityId={lead.convertedContactId}
                       link
                     />
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Cơ hội bán hàng">
+                  </RecordInfoField>
+                  <RecordInfoField label="Cơ hội bán hàng">
                     <EntityReferenceDisplay
                       entityType="OPPORTUNITY"
                       entityId={lead.convertedOpportunityId}
                       link
                     />
-                  </Descriptions.Item>
-                </SectionCard>
+                  </RecordInfoField>
+                </RecordInfoCard>
               ) : (
-                <Card className="shadow-sm">Chưa có bản ghi chuyển đổi.</Card>
-              ),
-            },
-            {
-              key: "activity",
-              label: "Hoạt động",
-              children: <ActivityTimeline relatedType="LEAD" relatedId={id} />,
-            },
-          ]}
+                <EmptyStateCard
+                  title={SECTION_LABELS.convertedRecords}
+                  description="Chưa có bản ghi chuyển đổi."
+                />
+              )
+          }
         />
       )}
 
@@ -390,3 +392,5 @@ export default function LeadDetailPage({
     </div>
   );
 }
+
+

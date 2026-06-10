@@ -1,15 +1,22 @@
 ﻿"use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, Card, Descriptions, Form, Input, Popconfirm, Select, Space, Spin, Steps, Tabs, Tag, App } from "antd";
+import { Button, Card, Form, Input, Popconfirm, Select, Spin, Tag, App } from "antd";
+import { EditOutlined, CustomerServiceOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
-import { PageHeader } from "@/components/common/PageHeader";
 import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
 import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
 import {
+  RecordInfoCard,
+  RecordInfoField,
+  EmptyStateCard,
+  RecordDetailGrid,
+  RecordHeader,
+  StagePath,
+} from "@/components/crm/RecordDetailLayout";
+import {
   emptyValue,
   formatDateTime,
-  SectionCard,
 } from "@/components/crm/RecordSections";
 import { SourceFields } from "@/components/crm/SourceFields";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
@@ -101,18 +108,23 @@ export default function CaseDetailPage({
   if (!caseItem) return <div>{EMPTY_STATE_LABELS.recordNotFound}</div>;
 
   const statuses = Object.values(CaseStatus);
-  const currentStep = statuses.indexOf(caseItem.status);
-
   return (
     <div className="space-y-6">
-      <PageHeader
+      <RecordHeader
+        eyebrow="Yêu cầu hỗ trợ"
         title={caseItem.subject}
-        subtitle={`${getStatusLabel(caseItem.status)} - ${getPriorityLabel(caseItem.priority)}`}
-        showBack
-        action={
-          <Space wrap>
+        icon={<CustomerServiceOutlined />}
+        subtitleItems={[
+          <>Trạng thái: <strong className="text-gray-800">{getStatusLabel(caseItem.status)}</strong></>,
+          <>Ưu tiên: {getPriorityLabel(caseItem.priority)}</>,
+          <>Người phụ trách: <UserReferenceDisplay userId={caseItem.ownerId} /></>,
+        ]}
+        actions={
+          <>
             {!isEditing && (
-              <Button onClick={() => setIsEditing(true)}>Chỉnh sửa</Button>
+              <Button icon={<EditOutlined />} onClick={() => setIsEditing(true)}>
+                Chỉnh sửa
+              </Button>
             )}
             {!isEditing && (
               <Popconfirm
@@ -125,18 +137,17 @@ export default function CaseDetailPage({
                 <Button danger>Xóa</Button>
               </Popconfirm>
             )}
-          </Space>
+          </>
         }
       />
 
-      <Card className="shadow-sm">
-        <Steps
-          current={currentStep}
-          onChange={handleStatusChange}
-          className="overflow-x-auto"
-          items={statuses.map((status) => ({ title: getStatusLabel(status) }))}
-        />
-      </Card>
+      <StagePath
+        stages={statuses}
+        currentStage={caseItem.status}
+        getLabel={getStatusLabel}
+        onChange={handleStatusChange}
+        testIdPrefix="case-status"
+      />
 
       {isEditing ? (
         <Card title="Chỉnh sửa yêu cầu hỗ trợ" className="shadow-sm">
@@ -180,86 +191,80 @@ export default function CaseDetailPage({
           </Form>
         </Card>
       ) : (
-        <Tabs
-          defaultActiveKey="details"
-          items={[
-            {
-              key: "details",
-              label: "Chi tiết",
-              children: (
-                <div className="space-y-4">
-                  <SectionCard title="Thông tin chung">
-                    <Descriptions.Item label="Tiêu đề" span={2}>
+        <RecordDetailGrid
+          left={
+            <>
+                  <RecordInfoCard title="Thông tin chung">
+                    <RecordInfoField label="Tiêu đề">
                       {caseItem.subject}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Trạng thái">
+                    </RecordInfoField>
+                    <RecordInfoField label="Trạng thái">
                       <Tag color="blue">{getStatusLabel(caseItem.status)}</Tag>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Mức độ ưu tiên">
+                    </RecordInfoField>
+                    <RecordInfoField label="Mức độ ưu tiên">
                       {getPriorityLabel(caseItem.priority)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Mô tả" span={2}>
+                    </RecordInfoField>
+                    <RecordInfoField label="Mô tả">
                       {emptyValue(caseItem.description)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin nguồn">
-                    <Descriptions.Item label="Nguồn">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title="Thông tin nguồn">
+                    <RecordInfoField label="Nguồn">
                       {getSourceLabel(caseItem.source)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Chi tiết nguồn">
+                    </RecordInfoField>
+                    <RecordInfoField label="Chi tiết nguồn">
                       {emptyValue(caseItem.sourceDetail)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin hệ thống">
-                    <Descriptions.Item label="Người phụ trách">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title="Thông tin hệ thống">
+                    <RecordInfoField label="Người phụ trách">
                       <UserReferenceDisplay userId={caseItem.ownerId} />
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Người đóng yêu cầu">
+                    </RecordInfoField>
+                    <RecordInfoField label="Người đóng yêu cầu">
                       <UserReferenceDisplay userId={caseItem.closedById} />
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Thời gian đóng">
+                    </RecordInfoField>
+                    <RecordInfoField label="Thời gian đóng">
                       {formatDateTime(caseItem.closedAt)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày tạo">
+                    </RecordInfoField>
+                    <RecordInfoField label="Ngày tạo">
                       {formatDateTime(caseItem.createdAt)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày cập nhật">
+                    </RecordInfoField>
+                    <RecordInfoField label="Ngày cập nhật">
                       {formatDateTime(caseItem.updatedAt)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                </div>
-              ),
-            },
-            {
-              key: "related",
-              label: "Liên quan",
-              children: (
-                <SectionCard title="Liên kết yêu cầu hỗ trợ">
-                  <Descriptions.Item label="Khách hàng / Công ty">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+            </>
+          }
+          middle={<ActivityTimeline relatedType="CASE" relatedId={id} />}
+          right={
+            <>
+                <RecordInfoCard title="Liên kết yêu cầu hỗ trợ">
+                  <RecordInfoField label="Khách hàng / Công ty">
                     <EntityReferenceDisplay
                       entityType="ACCOUNT"
                       entityId={caseItem.accountId}
                       link
                     />
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Người liên hệ">
+                  </RecordInfoField>
+                  <RecordInfoField label="Người liên hệ">
                     <EntityReferenceDisplay
                       entityType="CONTACT"
                       entityId={caseItem.contactId}
                       link
                     />
-                  </Descriptions.Item>
-                </SectionCard>
-              ),
-            },
-            {
-              key: "activity",
-              label: "Hoạt động",
-              children: <ActivityTimeline relatedType="CASE" relatedId={id} />,
-            },
-          ]}
+                  </RecordInfoField>
+                </RecordInfoCard>
+                <EmptyStateCard
+                  title="Tệp đính kèm"
+                  description="Chưa có khu vực tệp riêng cho yêu cầu hỗ trợ này."
+                />
+            </>
+          }
         />
       )}
     </div>
   );
 }
+
+
+

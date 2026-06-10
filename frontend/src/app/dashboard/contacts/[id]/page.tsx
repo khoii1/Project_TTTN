@@ -1,16 +1,21 @@
 ﻿"use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, Card, Descriptions, Form, Input, Popconfirm, Space, Spin, Tabs, App } from "antd";
+import { Button, Card, Form, Input, Popconfirm, Spin, App } from "antd";
+import { EditOutlined, IdcardOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
-import { PageHeader } from "@/components/common/PageHeader";
 import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
 import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
 import {
+  RecordInfoCard,
+  RecordInfoField,
+  RecordDetailGrid,
+  RecordHeader,
+  RelatedListCard,
+} from "@/components/crm/RecordDetailLayout";
+import {
   emptyValue,
   formatDateTime,
-  RelatedEmpty,
-  SectionCard,
 } from "@/components/crm/RecordSections";
 import { SourceFields } from "@/components/crm/SourceFields";
 import { UserReferenceDisplay } from "@/components/crm/UserReferenceDisplay";
@@ -129,14 +134,21 @@ export default function ContactDetailPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <RecordHeader
+        eyebrow="Người liên hệ"
         title={contactName}
-        subtitle={[contact.title, contact.email].filter(Boolean).join(" - ")}
-        showBack
-        action={
-          <Space wrap>
+        icon={<IdcardOutlined />}
+        subtitleItems={[
+          <>Chức danh: {emptyValue(contact.title)}</>,
+          <>Email: {emptyValue(contact.email)}</>,
+          <>Số điện thoại: {emptyValue(contact.phone)}</>,
+        ]}
+        actions={
+          <>
             {!isEditing && (
-              <Button onClick={() => setIsEditing(true)}>Chỉnh sửa</Button>
+              <Button icon={<EditOutlined />} onClick={() => setIsEditing(true)}>
+                Chỉnh sửa
+              </Button>
             )}
             {!isEditing && (
               <Popconfirm
@@ -149,7 +161,7 @@ export default function ContactDetailPage({
                 <Button danger>Xóa</Button>
               </Popconfirm>
             )}
-          </Space>
+          </>
         }
       />
 
@@ -195,117 +207,89 @@ export default function ContactDetailPage({
           </Form>
         </Card>
       ) : (
-        <Tabs
-          defaultActiveKey="details"
-          items={[
-            {
-              key: "details",
-              label: "Chi tiết",
-              children: (
-                <div className="space-y-4">
-                  <SectionCard title="Thông tin chung">
-                    <Descriptions.Item label="Tên">
+        <RecordDetailGrid
+          left={
+            <>
+                  <RecordInfoCard title="Thông tin chung">
+                    <RecordInfoField label="Tên">
                       {contactName}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Chức danh">
+                    </RecordInfoField>
+                    <RecordInfoField label="Chức danh">
                       {emptyValue(contact.title)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin liên hệ">
-                    <Descriptions.Item label="Email">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title="Thông tin liên hệ">
+                    <RecordInfoField label="Email">
                       {emptyValue(contact.email)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Số điện thoại">
+                    </RecordInfoField>
+                    <RecordInfoField label="Số điện thoại">
                       {emptyValue(contact.phone)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin nguồn">
-                    <Descriptions.Item label="Nguồn">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title="Thông tin nguồn">
+                    <RecordInfoField label="Nguồn">
                       {getSourceLabel(contact.source)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Chi tiết nguồn">
+                    </RecordInfoField>
+                    <RecordInfoField label="Chi tiết nguồn">
                       {emptyValue(contact.sourceDetail)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <SectionCard title="Thông tin hệ thống">
-                    <Descriptions.Item label="Người phụ trách">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RecordInfoCard title="Thông tin hệ thống">
+                    <RecordInfoField label="Người phụ trách">
                       <UserReferenceDisplay userId={contact.ownerId} />
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày tạo">
+                    </RecordInfoField>
+                    <RecordInfoField label="Ngày tạo">
                       {formatDateTime(contact.createdAt)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày cập nhật">
+                    </RecordInfoField>
+                    <RecordInfoField label="Ngày cập nhật">
                       {formatDateTime(contact.updatedAt)}
-                    </Descriptions.Item>
-                  </SectionCard>
-                </div>
-              ),
-            },
-            {
-              key: "related",
-              label: "Liên quan",
-              children: (
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                  <SectionCard title="Khách hàng / Công ty">
-                    <Descriptions.Item label="Khách hàng / Công ty">
+                    </RecordInfoField>
+                  </RecordInfoCard>
+            </>
+          }
+          middle={<ActivityTimeline relatedType="CONTACT" relatedId={id} />}
+          right={
+            <>
+                  <RecordInfoCard title="Khách hàng / Công ty">
+                    <RecordInfoField label="Khách hàng / Công ty">
                       <EntityReferenceDisplay
                         entityType="ACCOUNT"
                         entityId={contact.accountId}
                         link
                       />
-                    </Descriptions.Item>
-                  </SectionCard>
-                  <Card
-                    title={`${SECTION_LABELS.relatedOpportunities} (${relatedOpps.length})`}
-                    className="shadow-sm"
-                  >
-                    {relatedOpps.length ? (
-                      relatedOpps.map((item) => (
-                        <RelatedRow
-                          key={item.id}
-                          title={item.name}
-                          description={`${FIELD_LABELS.stage}: ${getStatusLabel(item.stage)}`}
-                          onView={() =>
-                            router.push(`/dashboard/opportunities/${item.id}`)
-                          }
-                        />
-                      ))
-                    ) : (
-                      <RelatedEmpty description="Không có cơ hội liên quan." />
+                    </RecordInfoField>
+                  </RecordInfoCard>
+                  <RelatedListCard
+                    title={SECTION_LABELS.relatedOpportunities}
+                    items={relatedOpps}
+                    emptyDescription="Không có cơ hội liên quan."
+                    renderItem={(item) => (
+                      <RelatedRow
+                        title={item.name}
+                        description={`${FIELD_LABELS.stage}: ${getStatusLabel(item.stage)}`}
+                        onView={() => router.push(`/dashboard/opportunities/${item.id}`)}
+                      />
                     )}
-                  </Card>
-                  <Card
-                    title={`${SECTION_LABELS.relatedCases} (${relatedCases.length})`}
-                    className="shadow-sm"
-                  >
-                    {relatedCases.length ? (
-                      relatedCases.map((item) => (
-                        <RelatedRow
-                          key={item.id}
-                          title={item.subject}
-                          description={`${FIELD_LABELS.status}: ${getStatusLabel(item.status)}`}
-                          onView={() =>
-                            router.push(`/dashboard/cases/${item.id}`)
-                          }
-                        />
-                      ))
-                    ) : (
-                      <RelatedEmpty description="Không có yêu cầu hỗ trợ liên quan." />
+                  />
+                  <RelatedListCard
+                    title={SECTION_LABELS.relatedCases}
+                    items={relatedCases}
+                    emptyDescription="Không có yêu cầu hỗ trợ liên quan."
+                    renderItem={(item) => (
+                      <RelatedRow
+                        title={item.subject}
+                        description={`${FIELD_LABELS.status}: ${getStatusLabel(item.status)}`}
+                        onView={() => router.push(`/dashboard/cases/${item.id}`)}
+                      />
                     )}
-                  </Card>
-                </div>
-              ),
-            },
-            {
-              key: "activity",
-              label: "Hoạt động",
-              children: (
-                <ActivityTimeline relatedType="CONTACT" relatedId={id} />
-              ),
-            },
-          ]}
+                  />
+            </>
+          }
         />
       )}
     </div>
   );
 }
+
+
+

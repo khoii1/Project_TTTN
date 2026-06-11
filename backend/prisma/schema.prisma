@@ -26,6 +26,12 @@ model Organization {
   accounts Account[]
   contacts Contact[]
   opportunities Opportunity[]
+  opportunityAttachments OpportunityAttachment[]
+  products Product[]
+  productPackages ProductPackage[]
+  opportunityProducts OpportunityProduct[]
+  quotes Quote[]
+  contracts Contract[]
   tasks    Task[]
   notes    Note[]
   cases    Case[]
@@ -81,6 +87,9 @@ model User {
   taskComments      TaskComment[] @relation("TaskCommentAuthor")
   deletedTaskComments TaskComment[] @relation("TaskCommentDeleter")
   uploadedTaskCommentAttachments TaskCommentAttachment[] @relation("TaskCommentAttachmentUploader")
+  uploadedOpportunityAttachments OpportunityAttachment[] @relation("OpportunityAttachmentUploader")
+  quotes Quote[] @relation("QuoteOwner")
+  contracts Contract[] @relation("ContractOwner")
   auditLogs         AuditLog[]
 
   @@index([organizationId])
@@ -211,6 +220,8 @@ model Account {
   contacts            Contact[]
   opportunities       Opportunity[]
   cases               Case[]
+  quotes              Quote[]
+  contracts           Contract[]
 
   @@index([organizationId])
   @@index([ownerId])
@@ -254,6 +265,8 @@ model Contact {
   account            Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   opportunities      Opportunity[]
   cases              Case[]
+  quotes             Quote[]
+  contracts          Contract[]
 
   @@index([organizationId])
   @@index([ownerId])
@@ -296,6 +309,10 @@ model Opportunity {
   restoredBy      User? @relation("OpportunityRestorer", fields: [restoredById], references: [id], onDelete: SetNull)
   account         Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   contact         Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  attachments     OpportunityAttachment[]
+  products        OpportunityProduct[]
+  quotes          Quote[]
+  contracts       Contract[]
 
   @@index([organizationId])
   @@index([ownerId])
@@ -308,12 +325,243 @@ model Opportunity {
   @@map("opportunities")
 }
 
+model OpportunityAttachment {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  opportunityId  String   @map("opportunity_id")
+  uploadedById   String   @map("uploaded_by_id")
+  fileName       String   @map("file_name")
+  originalName   String   @map("original_name")
+  mimeType       String   @map("mime_type")
+  fileSize       Int      @map("file_size")
+  storageBucket  String   @map("storage_bucket")
+  storagePath    String   @map("storage_path")
+  createdAt      DateTime @default(now()) @map("created_at")
+  deletedAt      DateTime? @map("deleted_at")
+  deletedById    String?  @map("deleted_by_id")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunity    Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  uploadedBy     User @relation("OpportunityAttachmentUploader", fields: [uploadedById], references: [id])
+
+  @@index([organizationId])
+  @@index([opportunityId])
+  @@index([uploadedById])
+  @@index([deletedAt])
+  @@map("opportunity_attachments")
+}
+
 enum OpportunityStage {
   QUALIFY
   PROPOSE
   NEGOTIATE
   CLOSED_WON
   CLOSED_LOST
+}
+
+model Product {
+  id             String      @id @default(uuid())
+  organizationId String      @map("organization_id")
+  name           String
+  code           String
+  type           ProductType @default(PRODUCT)
+  unit           String?
+  defaultPrice   Decimal     @default(0) @map("default_price") @db.Decimal(15, 2)
+  description    String?
+  isActive       Boolean     @default(true) @map("is_active")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  packageItems   ProductPackageItem[]
+  opportunityProducts OpportunityProduct[]
+  quoteItems     QuoteItem[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([isActive])
+  @@map("products")
+}
+
+enum ProductType {
+  PRODUCT
+  SERVICE
+  PACKAGE
+}
+
+model ProductPackage {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  code           String
+  description    String?
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items          ProductPackageItem[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([isActive])
+  @@map("product_packages")
+}
+
+model ProductPackageItem {
+  id          String   @id @default(uuid())
+  packageId   String   @map("package_id")
+  productId   String   @map("product_id")
+  quantity    Decimal  @default(1) @db.Decimal(12, 2)
+  unitPrice   Decimal? @map("unit_price") @db.Decimal(15, 2)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  package     ProductPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  product     Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([packageId])
+  @@index([productId])
+  @@map("product_package_items")
+}
+
+model OpportunityProduct {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  opportunityId  String   @map("opportunity_id")
+  productId      String   @map("product_id")
+  quantity       Decimal  @default(1) @db.Decimal(12, 2)
+  unitPrice      Decimal  @map("unit_price") @db.Decimal(15, 2)
+  discountAmount Decimal  @default(0) @map("discount_amount") @db.Decimal(15, 2)
+  lineTotal      Decimal  @map("line_total") @db.Decimal(15, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunity    Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([opportunityId])
+  @@index([productId])
+  @@map("opportunity_products")
+}
+
+model Quote {
+  id             String      @id @default(uuid())
+  organizationId String      @map("organization_id")
+  opportunityId  String      @map("opportunity_id")
+  accountId      String      @map("account_id")
+  contactId      String?     @map("contact_id")
+  ownerId        String      @map("owner_id")
+  quoteNumber    String      @map("quote_number")
+  status         QuoteStatus @default(DRAFT)
+  totalAmount    Decimal     @default(0) @map("total_amount") @db.Decimal(15, 2)
+  expiresAt      DateTime?   @map("expires_at")
+  notes          String?
+  paymentTerms   String?     @map("payment_terms")
+  pdfFileName    String?     @map("pdf_file_name")
+  pdfStorageBucket String?   @map("pdf_storage_bucket")
+  pdfStoragePath String?     @map("pdf_storage_path")
+  pdfGeneratedAt DateTime?   @map("pdf_generated_at")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunity    Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  account        Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  contact        Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  owner          User @relation("QuoteOwner", fields: [ownerId], references: [id])
+  items          QuoteItem[]
+  contracts      Contract[]
+
+  @@unique([organizationId, quoteNumber])
+  @@index([organizationId])
+  @@index([opportunityId])
+  @@index([accountId])
+  @@index([contactId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("quotes")
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model QuoteItem {
+  id             String   @id @default(uuid())
+  quoteId        String   @map("quote_id")
+  productId      String   @map("product_id")
+  productName    String   @map("product_name")
+  productCode    String   @map("product_code")
+  unit           String?
+  quantity       Decimal  @default(1) @db.Decimal(12, 2)
+  unitPrice      Decimal  @map("unit_price") @db.Decimal(15, 2)
+  discountAmount Decimal  @default(0) @map("discount_amount") @db.Decimal(15, 2)
+  lineTotal      Decimal  @map("line_total") @db.Decimal(15, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  quote          Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([quoteId])
+  @@index([productId])
+  @@map("quote_items")
+}
+
+model Contract {
+  id             String         @id @default(uuid())
+  organizationId String         @map("organization_id")
+  opportunityId  String         @map("opportunity_id")
+  quoteId        String         @map("quote_id")
+  accountId      String         @map("account_id")
+  contactId      String?        @map("contact_id")
+  ownerId        String         @map("owner_id")
+  contractNumber String         @map("contract_number")
+  name           String
+  status         ContractStatus @default(DRAFT)
+  totalAmount    Decimal        @default(0) @map("total_amount") @db.Decimal(15, 2)
+  startDate      DateTime       @map("start_date")
+  endDate        DateTime?      @map("end_date")
+  paymentTerms   String?        @map("payment_terms")
+  terms          String?
+  pdfFileName    String?        @map("pdf_file_name")
+  pdfStorageBucket String?      @map("pdf_storage_bucket")
+  pdfStoragePath String?        @map("pdf_storage_path")
+  pdfGeneratedAt DateTime?      @map("pdf_generated_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunity    Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  quote          Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  account        Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  contact        Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  owner          User @relation("ContractOwner", fields: [ownerId], references: [id])
+
+  @@unique([organizationId, contractNumber])
+  @@index([organizationId])
+  @@index([opportunityId])
+  @@index([quoteId])
+  @@index([accountId])
+  @@index([contactId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("contracts")
+}
+
+enum ContractStatus {
+  DRAFT
+  PDF_GENERATED
+  SENT
+  SIGNED
+  ACTIVE
+  CANCELLED
 }
 
 // ===== Task Model =====

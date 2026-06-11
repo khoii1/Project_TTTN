@@ -19,8 +19,9 @@ import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
 import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
 import { EntityReferenceDisplay } from "@/components/crm/EntityReferenceDisplay";
+import { OpportunitySalesCards } from "@/components/crm/OpportunitySalesCards";
+import { RecordAttachmentsCard } from "@/components/crm/RecordAttachmentsCard";
 import {
-  EmptyStateCard,
   RecordDetailGrid,
   RecordHeader,
   StagePath,
@@ -384,6 +385,8 @@ export default function OpportunityDetailPage({
               </div>
             </Card>
 
+            <OpportunitySalesCards opportunityId={id} />
+
             <Card
               title={`${SECTION_LABELS.relatedTasks} (${relatedTasks.length})`}
               size="small"
@@ -421,10 +424,7 @@ export default function OpportunityDetailPage({
               )}
             </Card>
 
-            <EmptyStateCard
-              title="Tệp đính kèm"
-              description="Chưa có tệp đính kèm cho cơ hội này."
-            />
+            <RecordAttachmentsCard entityType="OPPORTUNITY" recordId={id} />
             </>
           }
         />

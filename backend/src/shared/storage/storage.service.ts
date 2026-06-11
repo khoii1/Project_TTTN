@@ -57,7 +57,7 @@ export class StorageService {
   validateFiles(files: UploadableFile[] = []) {
     if (files.length > TASK_ATTACHMENT_MAX_FILES) {
       throw new BadRequestException(
-        `Chỉ được đính kèm tối đa ${TASK_ATTACHMENT_MAX_FILES} file cho mỗi bình luận.`,
+        `Chỉ được đính kèm tối đa ${TASK_ATTACHMENT_MAX_FILES} file mỗi lần.`,
       );
     }
 
@@ -95,6 +95,41 @@ export class StorageService {
       'comments',
       params.commentId,
       `${Date.now()}-${safeName}`,
+    ].join('/');
+  }
+
+  buildOpportunityAttachmentPath(params: {
+    organizationId: string;
+    opportunityId: string;
+    attachmentId: string;
+    originalName: string;
+  }) {
+    const safeName = this.safeFileName(params.originalName);
+    return [
+      'organizations',
+      params.organizationId,
+      'opportunities',
+      params.opportunityId,
+      'attachments',
+      `${Date.now()}-${params.attachmentId}-${safeName}`,
+    ].join('/');
+  }
+
+  buildSalesDocumentPath(params: {
+    organizationId: string;
+    opportunityId: string;
+    documentType: 'quotes' | 'contracts';
+    documentId: string;
+    originalName: string;
+  }) {
+    const safeName = this.safeFileName(params.originalName);
+    return [
+      'organizations',
+      params.organizationId,
+      'opportunities',
+      params.opportunityId,
+      params.documentType,
+      `${Date.now()}-${params.documentId}-${safeName}`,
     ].join('/');
   }
 

@@ -80,9 +80,13 @@ export default function ProductsPage() {
   }, [message]);
 
   useEffect(() => {
+    if (!canManage) {
+      return;
+    }
+
     const timer = window.setTimeout(loadData, 0);
     return () => window.clearTimeout(timer);
-  }, [loadData]);
+  }, [canManage, loadData]);
 
   const activeProductOptions = useMemo(
     () =>

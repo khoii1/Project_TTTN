@@ -248,8 +248,13 @@ export class OpportunitiesController {
   async findQuotes(
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload,
+    @Query('includeArchived') includeArchived?: string,
+    @Query('includeCanceled') includeCanceled?: string,
   ): Promise<QuoteResponseDto[]> {
-    return this.opportunitySalesService.findQuotes(id, user);
+    return this.opportunitySalesService.findQuotes(id, user, {
+      includeArchived: includeArchived === 'true',
+      includeCanceled: includeCanceled === 'true',
+    });
   }
 
   @Post(':id/quotes')
@@ -278,6 +283,26 @@ export class OpportunitiesController {
     );
   }
 
+  @Delete(':id/quotes/:quoteId')
+  @ApiOperation({ summary: 'Soft delete a draft quote' })
+  async deleteQuote(
+    @Param('id') id: string,
+    @Param('quoteId') quoteId: string,
+    @CurrentUser() user: TokenPayload,
+  ): Promise<{ message: string }> {
+    return this.opportunitySalesService.deleteQuote(id, quoteId, user);
+  }
+
+  @Patch(':id/quotes/:quoteId/cancel')
+  @ApiOperation({ summary: 'Cancel a quote without deleting historical files' })
+  async cancelQuote(
+    @Param('id') id: string,
+    @Param('quoteId') quoteId: string,
+    @CurrentUser() user: TokenPayload,
+  ): Promise<QuoteResponseDto> {
+    return this.opportunitySalesService.cancelQuote(id, quoteId, user);
+  }
+
   @Post(':id/quotes/:quoteId/pdf')
   @ApiOperation({ summary: 'Generate quote PDF and store it in private storage' })
   async generateQuotePdf(
@@ -303,8 +328,13 @@ export class OpportunitiesController {
   async findContracts(
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload,
+    @Query('includeArchived') includeArchived?: string,
+    @Query('includeCanceled') includeCanceled?: string,
   ): Promise<ContractResponseDto[]> {
-    return this.opportunitySalesService.findContracts(id, user);
+    return this.opportunitySalesService.findContracts(id, user, {
+      includeArchived: includeArchived === 'true',
+      includeCanceled: includeCanceled === 'true',
+    });
   }
 
   @Post(':id/contracts')
@@ -315,6 +345,26 @@ export class OpportunitiesController {
     @CurrentUser() user: TokenPayload,
   ): Promise<ContractResponseDto> {
     return this.opportunitySalesService.createContract(id, user, dto);
+  }
+
+  @Delete(':id/contracts/:contractId')
+  @ApiOperation({ summary: 'Soft delete a draft contract' })
+  async deleteContract(
+    @Param('id') id: string,
+    @Param('contractId') contractId: string,
+    @CurrentUser() user: TokenPayload,
+  ): Promise<{ message: string }> {
+    return this.opportunitySalesService.deleteContract(id, contractId, user);
+  }
+
+  @Patch(':id/contracts/:contractId/cancel')
+  @ApiOperation({ summary: 'Cancel a contract without deleting historical files' })
+  async cancelContract(
+    @Param('id') id: string,
+    @Param('contractId') contractId: string,
+    @CurrentUser() user: TokenPayload,
+  ): Promise<ContractResponseDto> {
+    return this.opportunitySalesService.cancelContract(id, contractId, user);
   }
 
   @Post(':id/contracts/:contractId/pdf')

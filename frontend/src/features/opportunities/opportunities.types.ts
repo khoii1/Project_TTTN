@@ -57,6 +57,7 @@ export enum QuoteStatus {
   ACCEPTED = "ACCEPTED",
   REJECTED = "REJECTED",
   EXPIRED = "EXPIRED",
+  CANCELLED = "CANCELLED",
 }
 
 export enum ContractStatus {
@@ -133,6 +134,8 @@ export interface Quote {
   paymentTerms?: string;
   pdfGeneratedAt?: string;
   pdfSignedUrl?: string;
+  canceledAt?: string;
+  deletedAt?: string;
   createdAt: string;
   updatedAt: string;
   items: QuoteItem[];
@@ -151,6 +154,8 @@ export interface Contract {
   terms?: string;
   pdfGeneratedAt?: string;
   pdfSignedUrl?: string;
+  canceledAt?: string;
+  deletedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -123,8 +123,13 @@ export const opportunitiesApi = {
   removeOpportunityProduct: async (id: string, rowId: string) => {
     await httpClient.delete(`/opportunities/${id}/products/${rowId}`);
   },
-  getQuotes: async (id: string) => {
-    const { data } = await httpClient.get<Quote[]>(`/opportunities/${id}/quotes`);
+  getQuotes: async (
+    id: string,
+    params?: { includeArchived?: boolean; includeCanceled?: boolean },
+  ) => {
+    const { data } = await httpClient.get<Quote[]>(`/opportunities/${id}/quotes`, {
+      params,
+    });
     return data;
   },
   createQuote: async (
@@ -144,6 +149,15 @@ export const opportunitiesApi = {
     );
     return data;
   },
+  deleteQuote: async (id: string, quoteId: string) => {
+    await httpClient.delete(`/opportunities/${id}/quotes/${quoteId}`);
+  },
+  cancelQuote: async (id: string, quoteId: string) => {
+    const { data } = await httpClient.patch<Quote>(
+      `/opportunities/${id}/quotes/${quoteId}/cancel`,
+    );
+    return data;
+  },
   generateQuotePdf: async (id: string, quoteId: string) => {
     const { data } = await httpClient.post<Quote>(
       `/opportunities/${id}/quotes/${quoteId}/pdf`,
@@ -156,9 +170,13 @@ export const opportunitiesApi = {
     );
     return data.signedUrl;
   },
-  getContracts: async (id: string) => {
+  getContracts: async (
+    id: string,
+    params?: { includeArchived?: boolean; includeCanceled?: boolean },
+  ) => {
     const { data } = await httpClient.get<Contract[]>(
       `/opportunities/${id}/contracts`,
+      { params },
     );
     return data;
   },
@@ -176,6 +194,15 @@ export const opportunitiesApi = {
     const { data } = await httpClient.post<Contract>(
       `/opportunities/${id}/contracts`,
       payload,
+    );
+    return data;
+  },
+  deleteContract: async (id: string, contractId: string) => {
+    await httpClient.delete(`/opportunities/${id}/contracts/${contractId}`);
+  },
+  cancelContract: async (id: string, contractId: string) => {
+    const { data } = await httpClient.patch<Contract>(
+      `/opportunities/${id}/contracts/${contractId}/cancel`,
     );
     return data;
   },

@@ -136,6 +136,8 @@ export class QuoteResponseDto {
   paymentTerms?: string;
   pdfGeneratedAt?: Date;
   pdfSignedUrl?: string;
+  canceledAt?: Date;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   items: Array<{
@@ -164,6 +166,8 @@ export class ContractResponseDto {
   terms?: string;
   pdfGeneratedAt?: Date;
   pdfSignedUrl?: string;
+  canceledAt?: Date;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

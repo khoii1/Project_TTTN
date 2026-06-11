@@ -7,6 +7,7 @@ import {
   Card,
   DatePicker,
   Divider,
+  Dropdown,
   Form,
   Input,
   InputNumber,
@@ -20,9 +21,11 @@ import {
 import {
   DeleteOutlined,
   FilePdfOutlined,
+  MoreOutlined,
   PlusOutlined,
   ShoppingCartOutlined,
 } from "@ant-design/icons";
+import type { MenuProps } from "antd";
 import dayjs from "dayjs";
 import { opportunitiesApi } from "@/features/opportunities/opportunities.api";
 import {
@@ -47,6 +50,7 @@ const quoteStatusLabels: Record<QuoteStatus, string> = {
   [QuoteStatus.ACCEPTED]: "Đã chấp nhận",
   [QuoteStatus.REJECTED]: "Đã từ chối",
   [QuoteStatus.EXPIRED]: "Hết hạn",
+  [QuoteStatus.CANCELLED]: "Đã hủy",
 };
 
 const contractStatusLabels: Record<ContractStatus, string> = {
@@ -65,8 +69,11 @@ const statusColor = (status: string) => {
   return "default";
 };
 
+const QUOTE_PREVIEW_LIMIT = 3;
+const CONTRACT_PREVIEW_LIMIT = 3;
+
 export function OpportunitySalesCards({ opportunityId }: Props) {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [products, setProducts] = useState<ProductCatalogItem[]>([]);
   const [packages, setPackages] = useState<ProductPackage[]>([]);
   const [rows, setRows] = useState<OpportunityProduct[]>([]);
@@ -77,10 +84,17 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
   const [packageModalOpen, setPackageModalOpen] = useState(false);
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
   const [contractModalOpen, setContractModalOpen] = useState(false);
+  const [allQuotesOpen, setAllQuotesOpen] = useState(false);
+  const [allContractsOpen, setAllContractsOpen] = useState(false);
+  const [selectedProductForForm, setSelectedProductForForm] =
+    useState<ProductCatalogItem | null>(null);
   const [productForm] = Form.useForm();
   const [packageForm] = Form.useForm();
   const [quoteForm] = Form.useForm();
   const [contractForm] = Form.useForm();
+  const watchedQuantity = Form.useWatch("quantity", productForm);
+  const watchedUnitPrice = Form.useWatch("unitPrice", productForm);
+  const watchedDiscountAmount = Form.useWatch("discountAmount", productForm);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -115,9 +129,24 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
     [rows],
   );
 
+  const productLinePreview = useMemo(() => {
+    const quantity = Number(watchedQuantity || 0);
+    const unitPrice = Number(watchedUnitPrice || 0);
+    const discount = Number(watchedDiscountAmount || 0);
+    return Math.max(quantity * unitPrice - discount, 0);
+  }, [watchedDiscountAmount, watchedQuantity, watchedUnitPrice]);
+
   const acceptedQuotes = useMemo(
     () => quotes.filter((quote) => quote.status === QuoteStatus.ACCEPTED),
     [quotes],
+  );
+  const visibleQuotes = useMemo(
+    () => quotes.slice(0, QUOTE_PREVIEW_LIMIT),
+    [quotes],
+  );
+  const visibleContracts = useMemo(
+    () => contracts.slice(0, CONTRACT_PREVIEW_LIMIT),
+    [contracts],
   );
 
   const handleAddProduct = async (values: {
@@ -130,11 +159,21 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
       await opportunitiesApi.addOpportunityProduct(opportunityId, values);
       message.success("Đã thêm sản phẩm vào cơ hội");
       productForm.resetFields();
+      setSelectedProductForForm(null);
       setProductModalOpen(false);
       load();
     } catch {
       message.error("Không thể thêm sản phẩm");
     }
+  };
+
+  const handleProductChange = (productId: string) => {
+    const product = products.find((item) => item.id === productId);
+    setSelectedProductForForm(product || null);
+    productForm.setFieldsValue({
+      productId,
+      unitPrice: product?.defaultPrice ?? 0,
+    });
   };
 
   const handleAddPackage = async (values: { packageId: string }) => {
@@ -201,6 +240,45 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
     }
   };
 
+  const confirmDeleteQuote = (quote: Quote) => {
+    modal.confirm({
+      title: "Xóa báo giá nháp?",
+      content: `Bạn có chắc muốn xóa báo giá nháp ${quote.quoteNumber} không?`,
+      okText: "Xóa",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await opportunitiesApi.deleteQuote(opportunityId, quote.id);
+          message.success("Đã xóa báo giá nháp");
+          load();
+        } catch {
+          message.error("Không thể xóa báo giá. Báo giá có lịch sử nên hãy dùng chức năng hủy.");
+        }
+      },
+    });
+  };
+
+  const confirmCancelQuote = (quote: Quote) => {
+    modal.confirm({
+      title: "Hủy báo giá?",
+      content:
+        "Báo giá sẽ được chuyển sang trạng thái Đã hủy. File PDF và hợp đồng đã tạo sẽ được giữ lại để bảo toàn lịch sử.",
+      okText: "Hủy báo giá",
+      cancelText: "Đóng",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await opportunitiesApi.cancelQuote(opportunityId, quote.id);
+          message.success("Đã hủy báo giá");
+          load();
+        } catch {
+          message.error("Không thể hủy báo giá");
+        }
+      },
+    });
+  };
+
   const handleCreateContract = async (values: {
     quoteId: string;
     name?: string;
@@ -237,6 +315,192 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
     }
   };
 
+  const confirmDeleteContract = (contract: Contract) => {
+    modal.confirm({
+      title: "Xóa hợp đồng nháp?",
+      content: `Bạn có chắc muốn xóa hợp đồng nháp ${contract.contractNumber} không?`,
+      okText: "Xóa",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await opportunitiesApi.deleteContract(opportunityId, contract.id);
+          message.success("Đã xóa hợp đồng nháp");
+          load();
+        } catch {
+          message.error("Không thể xóa hợp đồng. Hợp đồng có lịch sử nên hãy dùng chức năng hủy.");
+        }
+      },
+    });
+  };
+
+  const confirmCancelContract = (contract: Contract) => {
+    modal.confirm({
+      title: "Hủy hợp đồng?",
+      content:
+        "Hợp đồng sẽ được chuyển sang trạng thái Đã hủy. File PDF sẽ được giữ lại để bảo toàn lịch sử.",
+      okText: "Hủy hợp đồng",
+      cancelText: "Đóng",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await opportunitiesApi.cancelContract(opportunityId, contract.id);
+          message.success("Đã hủy hợp đồng");
+          load();
+        } catch {
+          message.error("Không thể hủy hợp đồng");
+        }
+      },
+    });
+  };
+
+  const quoteStatusOptions = Object.values(QuoteStatus)
+    .filter((status) => status !== QuoteStatus.CANCELLED)
+    .map((status) => ({
+      value: status,
+      label: quoteStatusLabels[status],
+    }));
+
+  const renderQuoteItem = (quote: Quote) => {
+    const shouldDelete = quote.status === QuoteStatus.DRAFT && !quote.pdfGeneratedAt;
+    const actionItems: MenuProps["items"] = [
+      {
+        key: "pdf",
+        label: quote.pdfGeneratedAt ? "Xem / tải PDF" : "Xuất PDF",
+        icon: <FilePdfOutlined />,
+      },
+      {
+        key: shouldDelete ? "delete" : "cancel",
+        label: shouldDelete ? "Xóa báo giá nháp" : "Hủy báo giá",
+        danger: true,
+        icon: <DeleteOutlined />,
+      },
+    ];
+
+    return (
+      <List.Item>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="truncate font-semibold text-gray-900">
+              {quote.quoteNumber}
+            </div>
+            <div className="text-sm text-gray-500">
+              Hết hạn: {formatDate(quote.expiresAt)}
+            </div>
+          </div>
+          <Space size={4}>
+            <Tag color={statusColor(quote.status)}>
+              {quoteStatusLabels[quote.status]}
+            </Tag>
+            <Dropdown
+              trigger={["click"]}
+              menu={{
+                items: actionItems,
+                onClick: ({ key }) => {
+                  if (key === "pdf") handleQuotePdf(quote);
+                  if (key === "delete") confirmDeleteQuote(quote);
+                  if (key === "cancel") confirmCancelQuote(quote);
+                },
+              }}
+            >
+              <Button size="small" icon={<MoreOutlined />} />
+            </Dropdown>
+          </Space>
+        </div>
+        <div className="mt-2 text-sm font-semibold">
+          {formatVndAmount(quote.totalAmount)}
+        </div>
+        <Space className="mt-3" wrap size={6}>
+          <Select
+            size="small"
+            value={quote.status}
+            onChange={(status) => handleQuoteStatus(quote.id, status)}
+            options={quoteStatusOptions}
+            className="min-w-32"
+          />
+          <Button
+            size="small"
+            icon={<FilePdfOutlined />}
+            onClick={() => handleQuotePdf(quote)}
+          >
+            {quote.pdfGeneratedAt ? "Tải PDF" : "Xuất PDF"}
+          </Button>
+        </Space>
+        {quote.pdfGeneratedAt ? (
+          <div className="mt-2 text-xs text-gray-500">
+            PDF: {formatDateTime(quote.pdfGeneratedAt)}
+          </div>
+        ) : null}
+      </List.Item>
+    );
+  };
+
+  const renderContractItem = (contract: Contract) => {
+    const shouldDelete =
+      contract.status === ContractStatus.DRAFT && !contract.pdfGeneratedAt;
+    const actionItems: MenuProps["items"] = [
+      {
+        key: "pdf",
+        label: contract.pdfGeneratedAt ? "Xem / tải PDF" : "Xuất PDF",
+        icon: <FilePdfOutlined />,
+      },
+      {
+        key: shouldDelete ? "delete" : "cancel",
+        label: shouldDelete ? "Xóa hợp đồng nháp" : "Hủy hợp đồng",
+        danger: true,
+        icon: <DeleteOutlined />,
+      },
+    ];
+
+    return (
+      <List.Item>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="truncate font-semibold text-gray-900">
+              {contract.name}
+            </div>
+            <div className="text-sm text-gray-500">
+              {contract.contractNumber}
+            </div>
+          </div>
+          <Space size={4}>
+            <Tag color={statusColor(contract.status)}>
+              {contractStatusLabels[contract.status]}
+            </Tag>
+            <Dropdown
+              trigger={["click"]}
+              menu={{
+                items: actionItems,
+                onClick: ({ key }) => {
+                  if (key === "pdf") handleContractPdf(contract);
+                  if (key === "delete") confirmDeleteContract(contract);
+                  if (key === "cancel") confirmCancelContract(contract);
+                },
+              }}
+            >
+              <Button size="small" icon={<MoreOutlined />} />
+            </Dropdown>
+          </Space>
+        </div>
+        <div className="mt-2 text-sm">
+          Hiệu lực: {formatDate(contract.startDate)}
+          {contract.endDate ? ` - ${formatDate(contract.endDate)}` : ""}
+        </div>
+        <div className="mt-1 font-semibold">
+          {formatVndAmount(contract.totalAmount)}
+        </div>
+        <Button
+          className="mt-3"
+          size="small"
+          icon={<FilePdfOutlined />}
+          onClick={() => handleContractPdf(contract)}
+        >
+          {contract.pdfGeneratedAt ? "Tải PDF" : "Xuất PDF"}
+        </Button>
+      </List.Item>
+    );
+  };
+
   return (
     <>
       <Card
@@ -248,8 +512,11 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
           <Space size={4}>
             <Button
               size="small"
-              icon={<PlusOutlined />}
-              onClick={() => setProductModalOpen(true)}
+            icon={<PlusOutlined />}
+              onClick={() => {
+                setSelectedProductForForm(null);
+                setProductModalOpen(true);
+              }}
             >
               Thêm
             </Button>
@@ -314,65 +581,29 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
         size="small"
         className="shadow-sm"
         extra={
-          rows.length > 0 ? (
-            <Button
-              size="small"
-              icon={<PlusOutlined />}
-              onClick={() => setQuoteModalOpen(true)}
-            >
-              Tạo báo giá
-            </Button>
-          ) : null
+          <Space size={4}>
+            {quotes.length > QUOTE_PREVIEW_LIMIT ? (
+              <Button size="small" onClick={() => setAllQuotesOpen(true)}>
+                Xem tất cả
+              </Button>
+            ) : null}
+            {rows.length > 0 ? (
+              <Button
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => setQuoteModalOpen(true)}
+              >
+                Tạo báo giá
+              </Button>
+            ) : null}
+          </Space>
         }
       >
         {quotes.length ? (
           <List
             itemLayout="vertical"
-            dataSource={quotes}
-            renderItem={(quote) => (
-              <List.Item>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="font-semibold text-gray-900">
-                      {quote.quoteNumber}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Hết hạn: {formatDate(quote.expiresAt)}
-                    </div>
-                  </div>
-                  <Tag color={statusColor(quote.status)}>
-                    {quoteStatusLabels[quote.status]}
-                  </Tag>
-                </div>
-                <div className="mt-2 text-sm font-semibold">
-                  {formatVndAmount(quote.totalAmount)}
-                </div>
-                <Space className="mt-3" wrap size={6}>
-                  <Select
-                    size="small"
-                    value={quote.status}
-                    onChange={(status) => handleQuoteStatus(quote.id, status)}
-                    options={Object.values(QuoteStatus).map((status) => ({
-                      value: status,
-                      label: quoteStatusLabels[status],
-                    }))}
-                    className="min-w-32"
-                  />
-                  <Button
-                    size="small"
-                    icon={<FilePdfOutlined />}
-                    onClick={() => handleQuotePdf(quote)}
-                  >
-                    {quote.pdfGeneratedAt ? "Tải PDF" : "Xuất PDF"}
-                  </Button>
-                </Space>
-                {quote.pdfGeneratedAt ? (
-                  <div className="mt-2 text-xs text-gray-500">
-                    PDF: {formatDateTime(quote.pdfGeneratedAt)}
-                  </div>
-                ) : null}
-              </List.Item>
-            )}
+            dataSource={visibleQuotes}
+            renderItem={renderQuoteItem}
           />
         ) : (
           <RelatedEmpty description="Chưa có báo giá cho cơ hội này." />
@@ -384,53 +615,29 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
         size="small"
         className="shadow-sm"
         extra={
-          acceptedQuotes.length > 0 ? (
-            <Button
-              size="small"
-              icon={<PlusOutlined />}
-              onClick={() => setContractModalOpen(true)}
-            >
-              Tạo hợp đồng
-            </Button>
-          ) : null
+          <Space size={4}>
+            {contracts.length > CONTRACT_PREVIEW_LIMIT ? (
+              <Button size="small" onClick={() => setAllContractsOpen(true)}>
+                Xem tất cả
+              </Button>
+            ) : null}
+            {acceptedQuotes.length > 0 ? (
+              <Button
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => setContractModalOpen(true)}
+              >
+                Tạo hợp đồng
+              </Button>
+            ) : null}
+          </Space>
         }
       >
         {contracts.length ? (
           <List
             itemLayout="vertical"
-            dataSource={contracts}
-            renderItem={(contract) => (
-              <List.Item>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="font-semibold text-gray-900">
-                      {contract.name}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {contract.contractNumber}
-                    </div>
-                  </div>
-                  <Tag color={statusColor(contract.status)}>
-                    {contractStatusLabels[contract.status]}
-                  </Tag>
-                </div>
-                <div className="mt-2 text-sm">
-                  Hiệu lực: {formatDate(contract.startDate)}
-                  {contract.endDate ? ` - ${formatDate(contract.endDate)}` : ""}
-                </div>
-                <div className="mt-1 font-semibold">
-                  {formatVndAmount(contract.totalAmount)}
-                </div>
-                <Button
-                  className="mt-3"
-                  size="small"
-                  icon={<FilePdfOutlined />}
-                  onClick={() => handleContractPdf(contract)}
-                >
-                  {contract.pdfGeneratedAt ? "Tải PDF" : "Xuất PDF"}
-                </Button>
-              </List.Item>
-            )}
+            dataSource={visibleContracts}
+            renderItem={renderContractItem}
           />
         ) : (
           <RelatedEmpty description="Chưa có hợp đồng từ báo giá đã chấp nhận." />
@@ -438,9 +645,48 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
       </Card>
 
       <Modal
+        title={`Tất cả báo giá (${quotes.length})`}
+        open={allQuotesOpen}
+        onCancel={() => setAllQuotesOpen(false)}
+        footer={null}
+        width={720}
+      >
+        {quotes.length ? (
+          <List
+            itemLayout="vertical"
+            dataSource={quotes}
+            renderItem={renderQuoteItem}
+          />
+        ) : (
+          <RelatedEmpty description="Chưa có báo giá cho cơ hội này." />
+        )}
+      </Modal>
+
+      <Modal
+        title={`Tất cả hợp đồng (${contracts.length})`}
+        open={allContractsOpen}
+        onCancel={() => setAllContractsOpen(false)}
+        footer={null}
+        width={720}
+      >
+        {contracts.length ? (
+          <List
+            itemLayout="vertical"
+            dataSource={contracts}
+            renderItem={renderContractItem}
+          />
+        ) : (
+          <RelatedEmpty description="Chưa có hợp đồng từ báo giá đã chấp nhận." />
+        )}
+      </Modal>
+
+      <Modal
         title="Thêm sản phẩm"
         open={productModalOpen}
-        onCancel={() => setProductModalOpen(false)}
+        onCancel={() => {
+          setSelectedProductForForm(null);
+          setProductModalOpen(false);
+        }}
         onOk={() => productForm.submit()}
         okText="Thêm sản phẩm"
         cancelText="Hủy"
@@ -456,6 +702,7 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
               showSearch
               placeholder="Chọn sản phẩm"
               optionFilterProp="label"
+              onChange={handleProductChange}
               options={products.map((product) => ({
                 value: product.id,
                 label: `${product.name} (${product.code})`,
@@ -465,12 +712,24 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
           <Form.Item name="quantity" label="Số lượng" rules={[{ required: true }]}>
             <InputNumber className="w-full" min={0.01} />
           </Form.Item>
-          <Form.Item name="unitPrice" label="Đơn giá tùy chỉnh">
-            <InputNumber className="w-full" min={0} addonAfter="VNĐ" />
+          {selectedProductForForm ? (
+            <div className="mb-3 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              Giá mặc định:{" "}
+              {formatVndAmount(selectedProductForForm.defaultPrice || 0)}
+            </div>
+          ) : null}
+          <Form.Item name="unitPrice" label="Đơn giá áp dụng (VNĐ)">
+            <InputNumber className="w-full" min={0} />
           </Form.Item>
-          <Form.Item name="discountAmount" label="Giảm giá">
-            <InputNumber className="w-full" min={0} addonAfter="VNĐ" />
+          <Form.Item name="discountAmount" label="Giảm giá (VNĐ)">
+            <InputNumber className="w-full" min={0} />
           </Form.Item>
+          <div className="rounded-md bg-gray-50 px-3 py-2 text-sm">
+            <span className="text-gray-500">Tạm tính: </span>
+            <span className="font-semibold text-gray-900">
+              {formatVndAmount(productLinePreview)}
+            </span>
+          </div>
         </Form>
       </Modal>
 

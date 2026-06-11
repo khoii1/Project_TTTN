@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -11,6 +12,7 @@ import {
   ProductPackage,
   Quote,
   QuoteStatus,
+  UserRole,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
@@ -94,10 +96,10 @@ export class OpportunitySalesService {
     await this.assertOpportunityVisible(opportunityId, user);
     const product = await this.assertProduct(dto.productId, user.organizationId);
     const quantity = Number(dto.quantity);
-    const unitPrice = dto.unitPrice !== undefined
+    const unitPrice = dto.unitPrice !== undefined && dto.unitPrice !== null
       ? Number(dto.unitPrice)
       : toNumber(product.defaultPrice);
-    const discountAmount = dto.discountAmount !== undefined
+    const discountAmount = dto.discountAmount !== undefined && dto.discountAmount !== null
       ? Number(dto.discountAmount)
       : 0;
     const lineTotal = this.calculateLineTotal(quantity, unitPrice, discountAmount);
@@ -150,7 +152,7 @@ export class OpportunitySalesService {
     const created = await this.prisma.$transaction(
       productPackage.items.map((item) => {
         const quantity = toNumber(item.quantity);
-        const unitPrice = item.unitPrice
+        const unitPrice = item.unitPrice !== null && item.unitPrice !== undefined
           ? toNumber(item.unitPrice)
           : toNumber(item.product.defaultPrice);
         const lineTotal = this.calculateLineTotal(quantity, unitPrice, 0);
@@ -217,15 +219,105 @@ export class OpportunitySalesService {
   async findQuotes(
     opportunityId: string,
     user: SalesUser,
+    options: { includeArchived?: boolean; includeCanceled?: boolean } = {},
   ): Promise<QuoteResponseDto[]> {
     await this.assertOpportunityVisible(opportunityId, user);
     const quotes = await this.prisma.quote.findMany({
-      where: { opportunityId, organizationId: user.organizationId },
-      include: { items: true },
+      where: {
+        opportunityId,
+        organizationId: user.organizationId,
+        ...(options.includeArchived ? {} : { deletedAt: null }),
+        ...(options.includeCanceled ? {} : { status: { not: QuoteStatus.CANCELLED } }),
+      },
+      include: { items: true, contracts: true },
       orderBy: { createdAt: 'desc' },
     });
 
     return Promise.all(quotes.map((quote) => this.mapQuote(quote)));
+  }
+
+  async deleteQuote(
+    opportunityId: string,
+    quoteId: string,
+    user: SalesUser,
+  ): Promise<{ message: string }> {
+    await this.assertOpportunityVisible(opportunityId, user);
+    const quote = await this.assertQuote(opportunityId, quoteId, user);
+    this.assertCanManageDocument(user, quote.ownerId);
+
+    if (quote.deletedAt || quote.status === QuoteStatus.CANCELLED) {
+      throw new NotFoundException('Không tìm thấy báo giá.');
+    }
+
+    const canSoftDeleteDraft =
+      quote.status === QuoteStatus.DRAFT &&
+      !quote.pdfGeneratedAt &&
+      quote.contracts.length === 0;
+
+    if (!canSoftDeleteDraft) {
+      throw new BadRequestException(
+        'Báo giá đã phát sinh lịch sử. Vui lòng hủy báo giá thay vì xóa.',
+      );
+    }
+
+    await this.prisma.quote.update({
+      where: { id: quote.id },
+      data: {
+        deletedAt: new Date(),
+        deletedById: user.sub,
+      },
+    });
+
+    await this.auditLog.log({
+      organizationId: user.organizationId,
+      userId: user.sub,
+      action: AuditAction.SOFT_DELETE,
+      entityType: 'Quote',
+      entityId: quote.id,
+      oldValues: { status: quote.status, quoteNumber: quote.quoteNumber },
+    });
+
+    return { message: 'Đã xóa báo giá nháp.' };
+  }
+
+  async cancelQuote(
+    opportunityId: string,
+    quoteId: string,
+    user: SalesUser,
+  ): Promise<QuoteResponseDto> {
+    await this.assertOpportunityVisible(opportunityId, user);
+    const quote = await this.assertQuote(opportunityId, quoteId, user);
+    this.assertCanManageDocument(user, quote.ownerId);
+
+    if (quote.deletedAt) {
+      throw new NotFoundException('Không tìm thấy báo giá.');
+    }
+
+    if (quote.status === QuoteStatus.CANCELLED) {
+      return this.mapQuote(quote);
+    }
+
+    const updated = await this.prisma.quote.update({
+      where: { id: quote.id },
+      data: {
+        status: QuoteStatus.CANCELLED,
+        canceledAt: new Date(),
+        canceledById: user.sub,
+      },
+      include: { items: true, contracts: true },
+    });
+
+    await this.auditLog.log({
+      organizationId: user.organizationId,
+      userId: user.sub,
+      action: AuditAction.STATUS_CHANGE,
+      entityType: 'Quote',
+      entityId: quote.id,
+      oldValues: { status: quote.status },
+      newValues: { status: QuoteStatus.CANCELLED },
+    });
+
+    return this.mapQuote(updated);
   }
 
   async createQuote(
@@ -275,7 +367,7 @@ export class OpportunitySalesService {
           })),
         },
       },
-      include: { items: true },
+      include: { items: true, contracts: true },
     });
 
     await this.auditLog.log({
@@ -298,10 +390,16 @@ export class OpportunitySalesService {
   ): Promise<QuoteResponseDto> {
     await this.assertOpportunityVisible(opportunityId, user);
     const quote = await this.assertQuote(opportunityId, quoteId, user);
+    if (quote.deletedAt || quote.status === QuoteStatus.CANCELLED) {
+      throw new BadRequestException('Không thể cập nhật báo giá đã xóa hoặc đã hủy.');
+    }
+    if (status === QuoteStatus.CANCELLED) {
+      throw new BadRequestException('Vui lòng dùng chức năng hủy báo giá.');
+    }
     const updated = await this.prisma.quote.update({
       where: { id: quote.id },
       data: { status },
-      include: { items: true },
+      include: { items: true, contracts: true },
     });
 
     await this.auditLog.log({
@@ -324,6 +422,9 @@ export class OpportunitySalesService {
   ): Promise<QuoteResponseDto> {
     const opportunity = await this.assertOpportunityVisible(opportunityId, user);
     const quote = await this.assertQuote(opportunityId, quoteId, user);
+    if (quote.deletedAt || quote.status === QuoteStatus.CANCELLED) {
+      throw new BadRequestException('Không thể xuất PDF cho báo giá đã xóa hoặc đã hủy.');
+    }
     const account = await this.prisma.account.findUnique({ where: { id: quote.accountId } });
     const contact = quote.contactId
       ? await this.prisma.contact.findUnique({ where: { id: quote.contactId } })
@@ -366,7 +467,7 @@ export class OpportunitySalesService {
         pdfStoragePath: storagePath,
         pdfGeneratedAt: new Date(),
       },
-      include: { items: true },
+      include: { items: true, contracts: true },
     });
 
     return this.mapQuote(updated);
@@ -380,6 +481,10 @@ export class OpportunitySalesService {
     await this.assertOpportunityVisible(opportunityId, user);
     const quote = await this.assertQuote(opportunityId, quoteId, user);
 
+    if (quote.deletedAt) {
+      throw new NotFoundException('Không tìm thấy báo giá.');
+    }
+
     if (!quote.pdfStoragePath) {
       throw new BadRequestException('Báo giá chưa có file PDF.');
     }
@@ -392,14 +497,108 @@ export class OpportunitySalesService {
   async findContracts(
     opportunityId: string,
     user: SalesUser,
+    options: { includeArchived?: boolean; includeCanceled?: boolean } = {},
   ): Promise<ContractResponseDto[]> {
     await this.assertOpportunityVisible(opportunityId, user);
     const contracts = await this.prisma.contract.findMany({
-      where: { opportunityId, organizationId: user.organizationId },
+      where: {
+        opportunityId,
+        organizationId: user.organizationId,
+        ...(options.includeArchived ? {} : { deletedAt: null }),
+        ...(options.includeCanceled ? {} : { status: { not: ContractStatus.CANCELLED } }),
+      },
       orderBy: { createdAt: 'desc' },
     });
 
     return Promise.all(contracts.map((contract) => this.mapContract(contract)));
+  }
+
+  async deleteContract(
+    opportunityId: string,
+    contractId: string,
+    user: SalesUser,
+  ): Promise<{ message: string }> {
+    await this.assertOpportunityVisible(opportunityId, user);
+    const contract = await this.assertContract(opportunityId, contractId, user);
+    this.assertCanManageDocument(user, contract.ownerId);
+
+    if (contract.deletedAt) {
+      throw new NotFoundException('Không tìm thấy hợp đồng.');
+    }
+
+    if (contract.status !== ContractStatus.DRAFT || contract.pdfGeneratedAt) {
+      throw new BadRequestException(
+        'Hợp đồng đã phát sinh lịch sử. Vui lòng hủy hợp đồng thay vì xóa.',
+      );
+    }
+
+    await this.prisma.contract.update({
+      where: { id: contract.id },
+      data: {
+        deletedAt: new Date(),
+        deletedById: user.sub,
+      },
+    });
+
+    await this.auditLog.log({
+      organizationId: user.organizationId,
+      userId: user.sub,
+      action: AuditAction.SOFT_DELETE,
+      entityType: 'Contract',
+      entityId: contract.id,
+      oldValues: { status: contract.status, contractNumber: contract.contractNumber },
+    });
+
+    return { message: 'Đã xóa hợp đồng nháp.' };
+  }
+
+  async cancelContract(
+    opportunityId: string,
+    contractId: string,
+    user: SalesUser,
+  ): Promise<ContractResponseDto> {
+    await this.assertOpportunityVisible(opportunityId, user);
+    const contract = await this.assertContract(opportunityId, contractId, user);
+    this.assertCanManageDocument(user, contract.ownerId);
+
+    if (contract.deletedAt) {
+      throw new NotFoundException('Không tìm thấy hợp đồng.');
+    }
+
+    if (
+      (contract.status === ContractStatus.SIGNED ||
+        contract.status === ContractStatus.ACTIVE) &&
+      !this.isAdminOrManager(user)
+    ) {
+      throw new ForbiddenException(
+        'Chỉ quản trị viên hoặc quản lý được hủy hợp đồng đã ký/đang hiệu lực.',
+      );
+    }
+
+    if (contract.status === ContractStatus.CANCELLED) {
+      return this.mapContract(contract);
+    }
+
+    const updated = await this.prisma.contract.update({
+      where: { id: contract.id },
+      data: {
+        status: ContractStatus.CANCELLED,
+        canceledAt: new Date(),
+        canceledById: user.sub,
+      },
+    });
+
+    await this.auditLog.log({
+      organizationId: user.organizationId,
+      userId: user.sub,
+      action: AuditAction.STATUS_CHANGE,
+      entityType: 'Contract',
+      entityId: contract.id,
+      oldValues: { status: contract.status },
+      newValues: { status: ContractStatus.CANCELLED },
+    });
+
+    return this.mapContract(updated);
   }
 
   async createContract(
@@ -412,6 +611,9 @@ export class OpportunitySalesService {
 
     if (quote.status !== QuoteStatus.ACCEPTED) {
       throw new BadRequestException('Chỉ có thể tạo hợp đồng từ báo giá đã chấp nhận.');
+    }
+    if (quote.deletedAt) {
+      throw new BadRequestException('Không thể tạo hợp đồng từ báo giá đã xóa hoặc đã hủy.');
     }
 
     const contractNumber = await this.nextCode(user.organizationId, 'C');
@@ -454,6 +656,9 @@ export class OpportunitySalesService {
   ): Promise<ContractResponseDto> {
     const opportunity = await this.assertOpportunityVisible(opportunityId, user);
     const contract = await this.assertContract(opportunityId, contractId, user);
+    if (contract.deletedAt || contract.status === ContractStatus.CANCELLED) {
+      throw new BadRequestException('Không thể xuất PDF cho hợp đồng đã xóa hoặc đã hủy.');
+    }
     const quote = await this.prisma.quote.findUnique({
       where: { id: contract.quoteId },
       include: { items: true },
@@ -515,6 +720,10 @@ export class OpportunitySalesService {
     await this.assertOpportunityVisible(opportunityId, user);
     const contract = await this.assertContract(opportunityId, contractId, user);
 
+    if (contract.deletedAt) {
+      throw new NotFoundException('Không tìm thấy hợp đồng.');
+    }
+
     if (!contract.pdfStoragePath) {
       throw new BadRequestException('Hợp đồng chưa có file PDF.');
     }
@@ -560,7 +769,7 @@ export class OpportunitySalesService {
         opportunityId,
         organizationId: user.organizationId,
       },
-      include: { items: true },
+      include: { items: true, contracts: true },
     });
 
     if (!quote) {
@@ -597,8 +806,23 @@ export class OpportunitySalesService {
     if (unitPrice < 0 || discountAmount < 0) {
       throw new BadRequestException('Đơn giá và giảm giá không được âm.');
     }
+    if (discountAmount > quantity * unitPrice) {
+      throw new BadRequestException('Giảm giá không được lớn hơn tổng tiền dòng sản phẩm.');
+    }
 
-    return Math.max(quantity * unitPrice - discountAmount, 0);
+    return quantity * unitPrice - discountAmount;
+  }
+
+  private isAdminOrManager(user: SalesUser) {
+    return user.role === UserRole.ADMIN || user.role === UserRole.MANAGER;
+  }
+
+  private assertCanManageDocument(user: SalesUser, ownerId: string) {
+    if (this.isAdminOrManager(user) || ownerId === user.sub) {
+      return;
+    }
+
+    throw new ForbiddenException('Bạn không có quyền thực hiện thao tác này.');
   }
 
   private async nextCode(organizationId: string, prefix: 'Q' | 'C') {
@@ -635,7 +859,10 @@ export class OpportunitySalesService {
         productName: item.product.name,
         productCode: item.product.code,
         quantity: toNumber(item.quantity),
-        unitPrice: item.unitPrice ? toNumber(item.unitPrice) : undefined,
+        unitPrice:
+          item.unitPrice !== null && item.unitPrice !== undefined
+            ? toNumber(item.unitPrice)
+            : undefined,
       })),
     };
   }

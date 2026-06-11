@@ -465,6 +465,10 @@ model Quote {
   pdfStorageBucket String?   @map("pdf_storage_bucket")
   pdfStoragePath String?     @map("pdf_storage_path")
   pdfGeneratedAt DateTime?   @map("pdf_generated_at")
+  canceledAt     DateTime?   @map("canceled_at")
+  canceledById   String?     @map("canceled_by_id")
+  deletedAt      DateTime?   @map("deleted_at")
+  deletedById    String?     @map("deleted_by_id")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
@@ -483,6 +487,8 @@ model Quote {
   @@index([contactId])
   @@index([ownerId])
   @@index([status])
+  @@index([deletedAt])
+  @@index([canceledAt])
   @@map("quotes")
 }
 
@@ -492,6 +498,7 @@ enum QuoteStatus {
   ACCEPTED
   REJECTED
   EXPIRED
+  CANCELLED
 }
 
 model QuoteItem {
@@ -535,6 +542,10 @@ model Contract {
   pdfStorageBucket String?      @map("pdf_storage_bucket")
   pdfStoragePath String?        @map("pdf_storage_path")
   pdfGeneratedAt DateTime?      @map("pdf_generated_at")
+  canceledAt     DateTime?      @map("canceled_at")
+  canceledById   String?        @map("canceled_by_id")
+  deletedAt      DateTime?      @map("deleted_at")
+  deletedById    String?        @map("deleted_by_id")
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
@@ -553,6 +564,8 @@ model Contract {
   @@index([contactId])
   @@index([ownerId])
   @@index([status])
+  @@index([deletedAt])
+  @@index([canceledAt])
   @@map("contracts")
 }
 

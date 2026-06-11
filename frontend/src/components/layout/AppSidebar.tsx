@@ -13,6 +13,7 @@ import {
   ExceptionOutlined,
   TeamOutlined,
   DeleteOutlined,
+  ShoppingOutlined,
 } from "@ant-design/icons";
 import { useAuthStore } from "@/features/auth/auth.store";
 import { ENTITY_LABELS } from "@/lib/constants/vi-labels";
@@ -59,6 +60,15 @@ export const AppSidebar = () => {
       icon: <LineChartOutlined />,
       label: ENTITY_LABELS.opportunities,
     },
+    ...(user?.role === "ADMIN" || user?.role === "MANAGER"
+      ? [
+          {
+            key: "/dashboard/products",
+            icon: <ShoppingOutlined />,
+            label: "Sản phẩm",
+          },
+        ]
+      : []),
     {
       key: "/dashboard/tasks",
       icon: <CheckSquareOutlined />,

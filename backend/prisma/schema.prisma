@@ -414,6 +414,7 @@ model ProductPackageItem {
   productId   String   @map("product_id")
   quantity    Decimal  @default(1) @db.Decimal(12, 2)
   unitPrice   Decimal? @map("unit_price") @db.Decimal(15, 2)
+  note        String?
   sortOrder   Int      @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at")
 

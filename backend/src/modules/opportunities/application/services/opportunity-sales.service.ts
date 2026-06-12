@@ -1084,7 +1084,7 @@ export class OpportunitySalesService {
 
     const left = doc.page.margins.left;
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-    const bottom = () => doc.page.height - doc.page.margins.bottom;
+    const bottom = () => doc.page.height - doc.page.margins.bottom - 45;
     const safe = (value?: string | null) => value?.trim() || '-';
     const contactName = [contact?.firstName, contact?.lastName].filter(Boolean).join(' ') || '-';
     const accountAddress =
@@ -1198,15 +1198,20 @@ export class OpportunitySalesService {
 
     heading('Điều 1: TÊN HÀNG - SỐ LƯỢNG - CHẤT LƯỢNG - GIÁ TRỊ HỢP ĐỒNG');
     this.drawContractItemsTable(doc, quote.items, left, pageWidth, ensureSpace);
-    doc.moveDown(0.35);
-    doc.font('NotoSans-Bold').fontSize(10).text(`Tổng cộng: ${this.formatVnd(totalAmount)}`, {
+    ensureSpace(52);
+    doc.moveDown(0.45);
+    doc.font('NotoSans-Bold').fontSize(10).text(`Tổng cộng: ${this.formatVnd(totalAmount)}`, left, doc.y, {
       width: pageWidth,
       align: 'right',
     });
+    doc.moveDown(0.25);
     doc.font('NotoSans').fontSize(10).text(
       `Bằng chữ: ${this.capitalizeFirst(this.numberToVietnameseCurrency(totalAmount))}`,
-      { width: pageWidth },
+      left,
+      doc.y,
+      { width: pageWidth, align: 'left', lineGap: 1 },
     );
+    doc.moveDown(0.35);
 
     heading('Điều 2: THANH TOÁN');
     paragraph('Bên B thanh toán cho Bên A số tiền ghi tại Điều 1 của Hợp đồng này.');
@@ -1357,7 +1362,7 @@ export class OpportunitySalesService {
       { key: 'note', label: 'Ghi chú', width: width - 408, align: 'left' as const },
     ];
     const headerHeight = 28;
-    const bottom = () => doc.page.height - doc.page.margins.bottom;
+    const bottom = () => doc.page.height - doc.page.margins.bottom - 45;
 
     const drawHeader = () => {
       ensureSpace(headerHeight + 20);
@@ -1450,9 +1455,11 @@ export class OpportunitySalesService {
     for (let i = range.start; i < range.start + range.count; i += 1) {
       doc.switchToPage(i);
       doc.font('NotoSans').fontSize(8).fillColor('#6b7280');
-      doc.text(`Trang ${i + 1}/${range.count}`, doc.page.margins.left, doc.page.height - 34, {
+      const footerY = doc.page.height - doc.page.margins.bottom - 35;
+      doc.text(`Trang ${i + 1}/${range.count}`, doc.page.margins.left, footerY, {
         width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
         align: 'center',
+        lineBreak: false,
       });
       doc.fillColor('#000000');
     }

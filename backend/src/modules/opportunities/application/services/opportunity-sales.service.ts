@@ -15,6 +15,7 @@ import {
   Product,
   ProductPackage,
   Quote,
+  QuoteItem,
   QuoteStatus,
   User,
   UserRole,
@@ -669,25 +670,26 @@ export class OpportunitySalesService {
       where: { id: contract.quoteId },
       include: { items: true },
     });
+    if (!quote) {
+      throw new NotFoundException('Không tìm thấy báo giá của hợp đồng.');
+    }
     const account = await this.prisma.account.findUnique({ where: { id: contract.accountId } });
-    const pdfBuffer = this.buildPdf([
-      `HOP DONG ${contract.contractNumber}`,
-      `Ten hop dong: ${contract.name}`,
-      `Co hoi: ${opportunity.name}`,
-      `Khach hang: ${account?.name || ''}`,
-      `Bao gia: ${quote?.quoteNumber || ''}`,
-      `Tong gia tri: ${toNumber(contract.totalAmount).toLocaleString('vi-VN')} VND`,
-      `Hieu luc tu: ${contract.startDate.toISOString().slice(0, 10)}`,
-      `Dieu khoan thanh toan: ${contract.paymentTerms || '-'}`,
-      'Danh sach san pham / dich vu:',
-      ...(quote?.items || []).map(
-        (item) =>
-          `- ${item.productName} x ${toNumber(item.quantity)} = ${toNumber(item.lineTotal).toLocaleString('vi-VN')} VND`,
-      ),
-      `Noi dung / dieu khoan: ${contract.terms || '-'}`,
-      'Chu ky ben cung cap: ____________________',
-      'Chu ky khach hang: ______________________',
+    const contact = contract.contactId
+      ? await this.prisma.contact.findUnique({ where: { id: contract.contactId } })
+      : null;
+    const [organization, owner] = await Promise.all([
+      this.prisma.organization.findUnique({ where: { id: user.organizationId } }),
+      this.prisma.user.findUnique({ where: { id: contract.ownerId } }),
     ]);
+    const pdfBuffer = await this.buildContractPdf({
+      contract,
+      quote,
+      opportunity,
+      account,
+      contact,
+      organization,
+      owner,
+    });
     const fileName = `${contract.contractNumber}.pdf`;
     const storagePath = this.storageService.buildSalesDocumentPath({
       organizationId: user.organizationId,
@@ -1056,6 +1058,207 @@ export class OpportunitySalesService {
     return done;
   }
 
+  private async buildContractPdf(params: {
+    contract: Contract;
+    quote: Quote & { items: QuoteItem[] };
+    opportunity: Opportunity;
+    account: Account | null;
+    contact: Contact | null;
+    organization: Organization | null;
+    owner: User | null;
+  }): Promise<Buffer> {
+    const { contract, quote, opportunity, account, contact, organization, owner } = params;
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 54,
+      bufferPages: true,
+      autoFirstPage: true,
+    });
+    this.registerVietnameseFonts(doc);
+
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+    const done = new Promise<Buffer>((resolve) => {
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+
+    const left = doc.page.margins.left;
+    const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const bottom = () => doc.page.height - doc.page.margins.bottom;
+    const safe = (value?: string | null) => value?.trim() || '-';
+    const contactName = [contact?.firstName, contact?.lastName].filter(Boolean).join(' ') || '-';
+    const accountAddress =
+      [
+        account?.billingStreet,
+        account?.billingCity,
+        account?.billingState,
+        account?.billingCountry,
+      ]
+        .filter(Boolean)
+        .join(', ') || '-';
+    const ownerName = [owner?.firstName, owner?.lastName].filter(Boolean).join(' ') || '-';
+    const signDate = contract.startDate || contract.createdAt;
+    const totalAmount = toNumber(contract.totalAmount);
+    const defaultPaymentTerms =
+      contract.paymentTerms ||
+      quote.paymentTerms ||
+      'Chuyển khoản hoặc theo thỏa thuận giữa hai bên trong quá trình thực hiện hợp đồng.';
+
+    const ensureSpace = (height: number) => {
+      if (doc.y + height > bottom()) {
+        doc.addPage();
+      }
+    };
+    const heading = (text: string) => {
+      ensureSpace(34);
+      doc.moveDown(0.55);
+      doc.font('NotoSans-Bold').fontSize(11).text(text, left, doc.y, {
+        width: pageWidth,
+      });
+      doc.moveDown(0.35);
+      doc.font('NotoSans').fontSize(10);
+    };
+    const paragraph = (text: string) => {
+      const height = doc.heightOfString(text, { width: pageWidth, align: 'justify', lineGap: 2 });
+      ensureSpace(height + 8);
+      doc.font('NotoSans').fontSize(10).text(text, {
+        width: pageWidth,
+        align: 'justify',
+        lineGap: 2,
+      });
+      doc.moveDown(0.35);
+    };
+    const bullet = (text: string) => paragraph(`- ${text}`);
+    const field = (label: string, value?: string | null) => {
+      const content = `${label}: ${safe(value)}`;
+      const height = doc.heightOfString(content, { width: pageWidth, lineGap: 1 });
+      ensureSpace(height + 4);
+      doc.font('NotoSans').fontSize(10).text(content, { width: pageWidth, lineGap: 1 });
+      doc.moveDown(0.15);
+    };
+
+    doc.font('NotoSans-Bold').fontSize(12).text('CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', {
+      width: pageWidth,
+      align: 'center',
+    });
+    doc.font('NotoSans-Bold').fontSize(11).text('Độc lập - Tự do - Hạnh phúc', {
+      width: pageWidth,
+      align: 'center',
+    });
+    const underlineY = doc.y + 2;
+    doc.moveTo(left + pageWidth / 2 - 58, underlineY).lineTo(left + pageWidth / 2 + 58, underlineY).stroke();
+    doc.moveDown(1.5);
+
+    doc.font('NotoSans-Bold').fontSize(14).text('HỢP ĐỒNG CUNG CẤP SẢN PHẨM/DỊCH VỤ', {
+      width: pageWidth,
+      align: 'center',
+    });
+    doc.moveDown(0.35);
+    doc.font('NotoSans').fontSize(10).text(`Số: ${contract.contractNumber}`, {
+      width: pageWidth,
+      align: 'center',
+    });
+    doc.text(`Ngày lập: ${this.formatDateVi(signDate)}`, {
+      width: pageWidth,
+      align: 'center',
+    });
+    doc.moveDown(1);
+
+    doc.font('NotoSans-Bold').fontSize(10).text('Căn cứ:', left, doc.y);
+    doc.moveDown(0.3);
+    bullet('Bộ luật Dân sự số 91/2015/QH13 ngày 24/11/2015 và các văn bản pháp luật liên quan;');
+    bullet('Luật Thương mại số 36/2005/QH11 ngày 14/06/2005 và các văn bản pháp luật liên quan;');
+    bullet('Nhu cầu và khả năng của các bên;');
+    bullet(`Báo giá số ${quote.quoteNumber} đã được chấp nhận;`);
+    paragraph(
+      `Hôm nay, ngày ${signDate.getDate()} tháng ${signDate.getMonth() + 1} năm ${signDate.getFullYear()}, các bên thống nhất ký kết hợp đồng với các nội dung sau.`,
+    );
+
+    heading('BÊN A: BÊN BÁN / BÊN CUNG CẤP');
+    field('Tên doanh nghiệp', organization?.name || 'CRM Pro');
+    field('Mã số doanh nghiệp', '-');
+    field('Địa chỉ trụ sở chính', '-');
+    field('Điện thoại', '-');
+    field('Email', owner?.email || '-');
+    field('Số tài khoản', '-');
+    field('Mở tại ngân hàng', '-');
+    field('Đại diện theo pháp luật', ownerName);
+    field('Chức vụ', '-');
+
+    heading('BÊN B: BÊN MUA / KHÁCH HÀNG');
+    field('Tên doanh nghiệp / khách hàng', account?.name);
+    field('Mã số doanh nghiệp', '-');
+    field('Địa chỉ trụ sở chính', accountAddress);
+    field('Điện thoại', account?.phone || contact?.phone || '-');
+    field('Email', contact?.email || '-');
+    field('Đại diện', contactName);
+    field('Chức vụ', contact?.title || '-');
+
+    paragraph('Trên cơ sở thỏa thuận, hai bên thống nhất ký kết hợp đồng với các điều khoản như sau:');
+
+    heading('Điều 1: TÊN HÀNG - SỐ LƯỢNG - CHẤT LƯỢNG - GIÁ TRỊ HỢP ĐỒNG');
+    this.drawContractItemsTable(doc, quote.items, left, pageWidth, ensureSpace);
+    doc.moveDown(0.35);
+    doc.font('NotoSans-Bold').fontSize(10).text(`Tổng cộng: ${this.formatVnd(totalAmount)}`, {
+      width: pageWidth,
+      align: 'right',
+    });
+    doc.font('NotoSans').fontSize(10).text(
+      `Bằng chữ: ${this.capitalizeFirst(this.numberToVietnameseCurrency(totalAmount))}`,
+      { width: pageWidth },
+    );
+
+    heading('Điều 2: THANH TOÁN');
+    paragraph('Bên B thanh toán cho Bên A số tiền ghi tại Điều 1 của Hợp đồng này.');
+    paragraph('Hình thức thanh toán: chuyển khoản hoặc theo thỏa thuận giữa hai bên.');
+    paragraph(`Thời hạn thanh toán: ${defaultPaymentTerms}`);
+
+    heading('Điều 3: THỜI GIAN, ĐỊA ĐIỂM VÀ PHƯƠNG THỨC BÀN GIAO');
+    paragraph('Bên A bàn giao sản phẩm/dịch vụ cho Bên B theo thời gian hai bên thống nhất.');
+    paragraph(`Địa điểm bàn giao: ${accountAddress !== '-' ? accountAddress : 'theo thông tin khách hàng hoặc theo thỏa thuận giữa hai bên'}.`);
+    paragraph('Chi phí vận chuyển/lắp đặt nếu có sẽ do hai bên thỏa thuận.');
+    paragraph('Khi nhận hàng hóa hoặc nghiệm thu dịch vụ, Bên B có trách nhiệm kiểm tra số lượng, chất lượng và xác nhận với Bên A.');
+
+    heading('Điều 4: TRÁCH NHIỆM CỦA CÁC BÊN');
+    paragraph('Bên A:');
+    bullet('Cung cấp sản phẩm/dịch vụ đúng thông tin đã thống nhất.');
+    bullet('Hỗ trợ Bên B trong quá trình bàn giao và sử dụng.');
+    bullet('Chịu trách nhiệm xử lý các vấn đề phát sinh thuộc phạm vi cung cấp của mình.');
+    paragraph('Bên B:');
+    bullet('Thanh toán đúng thời hạn đã thỏa thuận.');
+    bullet('Cung cấp đầy đủ thông tin cần thiết để Bên A thực hiện hợp đồng.');
+    bullet('Phối hợp nghiệm thu, tiếp nhận sản phẩm/dịch vụ.');
+
+    heading('Điều 5: BẢO HÀNH VÀ HỖ TRỢ SỬ DỤNG');
+    paragraph('Bên A thực hiện bảo hành hoặc hỗ trợ theo chính sách áp dụng cho từng sản phẩm/dịch vụ.');
+    paragraph('Trường hợp cần hướng dẫn sử dụng, Bên A có trách nhiệm hỗ trợ Bên B trong phạm vi đã thỏa thuận.');
+
+    heading('Điều 6: PHẠT VI PHẠM HỢP ĐỒNG');
+    paragraph('Hai bên cam kết thực hiện nghiêm túc các điều khoản đã thỏa thuận.');
+    paragraph('Trường hợp một bên vi phạm nghĩa vụ, hai bên sẽ ưu tiên thương lượng để xử lý.');
+    paragraph('Mức phạt hoặc bồi thường nếu có sẽ thực hiện theo thỏa thuận và quy định pháp luật liên quan.');
+
+    heading('Điều 7: BẤT KHẢ KHÁNG VÀ GIẢI QUYẾT TRANH CHẤP');
+    paragraph('Bất khả kháng là các sự kiện xảy ra khách quan, không thể lường trước và không thể khắc phục dù đã áp dụng các biện pháp cần thiết.');
+    paragraph('Khi xảy ra bất khả kháng, bên gặp sự kiện phải thông báo cho bên còn lại trong thời gian hợp lý.');
+    paragraph('Mọi tranh chấp phát sinh sẽ được ưu tiên giải quyết bằng thương lượng. Nếu không đạt được thỏa thuận, tranh chấp sẽ được giải quyết theo quy định pháp luật hiện hành.');
+
+    heading('Điều 8: ĐIỀU KHOẢN CHUNG');
+    paragraph('Hợp đồng có hiệu lực kể từ ngày ký.');
+    paragraph('Hợp đồng được lập thành 02 bản có giá trị pháp lý như nhau, mỗi bên giữ 01 bản.');
+    paragraph('Mọi sửa đổi, bổ sung hợp đồng phải được hai bên thống nhất bằng văn bản.');
+    paragraph('Hai bên cam kết thực hiện đúng các điều khoản đã ghi trong hợp đồng.');
+    if (contract.terms) {
+      paragraph(`Điều khoản bổ sung: ${contract.terms}`);
+    }
+
+    this.drawContractSignatureTable(doc, left, pageWidth, ensureSpace);
+    this.addPdfPageNumbers(doc);
+
+    doc.end();
+    return done;
+  }
+
   private registerVietnameseFonts(doc: PDFKit.PDFDocument) {
     const regularPath = join(process.cwd(), 'assets', 'fonts', 'NotoSans-Regular.ttf');
     const boldPath = join(process.cwd(), 'assets', 'fonts', 'NotoSans-Bold.ttf');
@@ -1135,6 +1338,124 @@ export class OpportunitySalesService {
       y += rowHeight;
     });
     return y;
+  }
+
+  private drawContractItemsTable(
+    doc: PDFKit.PDFDocument,
+    items: QuoteItem[],
+    x: number,
+    width: number,
+    ensureSpace: (height: number) => void,
+  ) {
+    const columns = [
+      { key: 'index', label: 'STT', width: 30, align: 'center' as const },
+      { key: 'name', label: 'Tên hàng hóa / dịch vụ', width: 132, align: 'left' as const },
+      { key: 'unit', label: 'Đơn vị', width: 44, align: 'center' as const },
+      { key: 'quantity', label: 'Số lượng', width: 48, align: 'center' as const },
+      { key: 'unitPrice', label: 'Đơn giá', width: 72, align: 'right' as const },
+      { key: 'lineTotal', label: 'Thành tiền', width: 82, align: 'right' as const },
+      { key: 'note', label: 'Ghi chú', width: width - 408, align: 'left' as const },
+    ];
+    const headerHeight = 28;
+    const bottom = () => doc.page.height - doc.page.margins.bottom;
+
+    const drawHeader = () => {
+      ensureSpace(headerHeight + 20);
+      let y = doc.y;
+      doc.rect(x, y, width, headerHeight).fillAndStroke('#f3f4f6', '#111827');
+      doc.fillColor('#000000').font('NotoSans-Bold').fontSize(8);
+      let currentX = x;
+      columns.forEach((column) => {
+        doc.rect(currentX, y, column.width, headerHeight).stroke('#111827');
+        doc.text(column.label, currentX + 3, y + 7, {
+          width: column.width - 6,
+          align: column.align,
+        });
+        currentX += column.width;
+      });
+      doc.y = y + headerHeight;
+    };
+
+    drawHeader();
+    doc.font('NotoSans').fontSize(8);
+    items.forEach((item, index) => {
+      const values: Record<string, string> = {
+        index: String(index + 1),
+        name: item.productName || '-',
+        unit: item.unit || '-',
+        quantity: this.formatQuantity(toNumber(item.quantity)),
+        unitPrice: this.formatNumber(toNumber(item.unitPrice)),
+        lineTotal: this.formatNumber(toNumber(item.lineTotal)),
+        note: item.discountAmount && toNumber(item.discountAmount) > 0
+          ? `Giảm ${this.formatNumber(toNumber(item.discountAmount))}`
+          : '',
+      };
+      const nameHeight = doc.heightOfString(values.name, { width: columns[1].width - 6 });
+      const noteHeight = doc.heightOfString(values.note || '-', { width: columns[6].width - 6 });
+      const rowHeight = Math.max(24, nameHeight + 10, noteHeight + 10);
+      if (doc.y + rowHeight > bottom()) {
+        doc.addPage();
+        drawHeader();
+      }
+
+      const y = doc.y;
+      let currentX = x;
+      doc.font('NotoSans').fontSize(8);
+      columns.forEach((column) => {
+        doc.rect(currentX, y, column.width, rowHeight).stroke('#111827');
+        doc.text(values[column.key] || '-', currentX + 3, y + 6, {
+          width: column.width - 6,
+          align: column.align,
+        });
+        currentX += column.width;
+      });
+      doc.y = y + rowHeight;
+    });
+  }
+
+  private drawContractSignatureTable(
+    doc: PDFKit.PDFDocument,
+    x: number,
+    width: number,
+    ensureSpace: (height: number) => void,
+  ) {
+    const height = 96;
+    ensureSpace(height + 16);
+    doc.moveDown(0.8);
+    const y = doc.y;
+    const columnWidth = width / 2;
+    doc.rect(x, y, width, height).stroke('#9ca3af');
+    doc.moveTo(x + columnWidth, y).lineTo(x + columnWidth, y + height).stroke('#9ca3af');
+    doc.moveTo(x, y + 28).lineTo(x + width, y + 28).stroke('#d1d5db');
+
+    doc.font('NotoSans-Bold').fontSize(10);
+    doc.text('ĐẠI DIỆN BÊN A', x, y + 8, { width: columnWidth, align: 'center' });
+    doc.text('ĐẠI DIỆN BÊN B', x + columnWidth, y + 8, {
+      width: columnWidth,
+      align: 'center',
+    });
+    doc.font('NotoSans').fontSize(9);
+    doc.text('Chức vụ', x, y + 38, { width: columnWidth, align: 'center' });
+    doc.text('Chức vụ', x + columnWidth, y + 38, { width: columnWidth, align: 'center' });
+    doc.text('(Ký tên, đóng dấu)', x, y + 62, { width: columnWidth, align: 'center' });
+    doc.text('(Ký tên, đóng dấu)', x + columnWidth, y + 62, {
+      width: columnWidth,
+      align: 'center',
+    });
+    doc.y = y + height;
+  }
+
+  private addPdfPageNumbers(doc: PDFKit.PDFDocument) {
+    const range = doc.bufferedPageRange();
+    for (let i = range.start; i < range.start + range.count; i += 1) {
+      doc.switchToPage(i);
+      doc.font('NotoSans').fontSize(8).fillColor('#6b7280');
+      doc.text(`Trang ${i + 1}/${range.count}`, doc.page.margins.left, doc.page.height - 34, {
+        width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
+        align: 'center',
+      });
+      doc.fillColor('#000000');
+    }
   }
 
 

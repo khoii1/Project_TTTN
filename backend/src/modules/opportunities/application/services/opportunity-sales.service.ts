@@ -7,14 +7,22 @@ import {
 import {
   Contract,
   ContractStatus,
+  Account,
+  Contact,
+  Organization,
+  Opportunity,
   Prisma,
   Product,
   ProductPackage,
   Quote,
   QuoteStatus,
+  User,
   UserRole,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { existsSync } from 'fs';
+import { join } from 'path';
+import PDFDocument = require('pdfkit');
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
 import { AuditAction, AuditLogService } from '../../../../infrastructure/audit/audit-log.service';
 import { TokenPayload } from '../../../../infrastructure/security/token.service';
@@ -429,20 +437,18 @@ export class OpportunitySalesService {
     const contact = quote.contactId
       ? await this.prisma.contact.findUnique({ where: { id: quote.contactId } })
       : null;
-    const pdfBuffer = this.buildPdf([
-      `BAO GIA ${quote.quoteNumber}`,
-      `Co hoi: ${opportunity.name}`,
-      `Khach hang: ${account?.name || ''}`,
-      `Lien he: ${[contact?.firstName, contact?.lastName].filter(Boolean).join(' ')}`,
-      `Tong tien: ${toNumber(quote.totalAmount).toLocaleString('vi-VN')} VND`,
-      'San pham / dich vu:',
-      ...quote.items.map(
-        (item) =>
-          `- ${item.productName} x ${toNumber(item.quantity)} = ${toNumber(item.lineTotal).toLocaleString('vi-VN')} VND`,
-      ),
-      `Ghi chu: ${quote.notes || '-'}`,
-      `Dieu khoan thanh toan: ${quote.paymentTerms || '-'}`,
+    const [organization, owner] = await Promise.all([
+      this.prisma.organization.findUnique({ where: { id: user.organizationId } }),
+      this.prisma.user.findUnique({ where: { id: quote.ownerId } }),
     ]);
+    const pdfBuffer = await this.buildQuotePdf({
+      quote,
+      opportunity,
+      account,
+      contact,
+      organization,
+      owner,
+    });
     const fileName = `${quote.quoteNumber}.pdf`;
     const storagePath = this.storageService.buildSalesDocumentPath({
       organizationId: user.organizationId,
@@ -925,6 +931,302 @@ export class OpportunitySalesService {
       createdAt: contract.createdAt,
       updatedAt: contract.updatedAt,
     };
+  }
+
+  private async buildQuotePdf(params: {
+    quote: Quote & { items: any[] };
+    opportunity: Opportunity;
+    account: Account | null;
+    contact: Contact | null;
+    organization: Organization | null;
+    owner: User | null;
+  }): Promise<Buffer> {
+    const { quote, opportunity, account, contact, organization, owner } = params;
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 36,
+      bufferPages: true,
+      autoFirstPage: true,
+    });
+    this.registerVietnameseFonts(doc);
+
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+    const done = new Promise<Buffer>((resolve) => {
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+
+    const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const left = doc.page.margins.left;
+    const companyName = organization?.name || 'CRM Pro';
+    const contactName = [contact?.firstName, contact?.lastName].filter(Boolean).join(' ') || '-';
+    const ownerName = [owner?.firstName, owner?.lastName].filter(Boolean).join(' ') || '-';
+    const issueDate = this.formatDateVi(quote.createdAt);
+    const expiresText = quote.expiresAt
+      ? this.formatDateVi(quote.expiresAt)
+      : '14 ngày kể từ ngày ban hành';
+
+    doc.font('NotoSans-Bold').fontSize(12);
+    doc.rect(left, 36, 154, 50).stroke('#b7b7b7');
+    doc.text('CRM Pro', left, 49, { width: 154, align: 'center' });
+    doc.font('NotoSans').fontSize(9).text('Hệ thống quản lý khách hàng', left, 67, {
+      width: 154,
+      align: 'center',
+    });
+
+    doc.rect(left + 158, 36, pageWidth - 158, 50).stroke('#b7b7b7');
+    doc.font('NotoSans-Bold').fontSize(10).text(`CÔNG TY: ${companyName}`, left + 170, 43, {
+      width: pageWidth - 188,
+    });
+    doc.font('NotoSans').fontSize(8);
+    doc.text('Địa chỉ: -', left + 170, 59, { width: pageWidth - 188 });
+    doc.text('Điện thoại / Email: -', left + 170, 73, { width: pageWidth - 188 });
+
+    doc.font('NotoSans-Bold').fontSize(15).text('BẢNG BÁO GIÁ', left, 100, {
+      width: pageWidth,
+      align: 'center',
+    });
+    doc.font('NotoSans').fontSize(8.5).text(`Số: ${quote.quoteNumber}`, left, 123, {
+      width: pageWidth,
+      align: 'center',
+    });
+    doc.text(`Ngày lập: ${issueDate}`, left, 138, { width: pageWidth, align: 'center' });
+
+    doc.font('NotoSans-Bold').fontSize(10).text(`Kính gửi: ${account?.name || '-'}`, left, 165);
+    doc.font('NotoSans').fontSize(9);
+    doc.text(`Người liên hệ: ${contactName}`, left, 181);
+    doc.text(`Cơ hội: ${opportunity.name}`, left, 197);
+
+    let y = 222;
+    y = this.drawQuoteItemsTable(doc, quote.items, left, y, pageWidth);
+
+    const totalAmount = toNumber(quote.totalAmount);
+    doc.font('NotoSans-Bold').fontSize(10);
+    doc.text(`Tổng cộng: ${this.formatVnd(totalAmount)}`, left, y + 6, {
+      width: pageWidth,
+      align: 'right',
+    });
+    y = doc.y + 7;
+    doc.font('NotoSans').fontSize(8.5).text(
+      `Bằng chữ: ${this.capitalizeFirst(this.numberToVietnameseCurrency(totalAmount))}`,
+      left,
+      y,
+      { width: pageWidth, height: 24 },
+    );
+    y = doc.y + 12;
+
+    doc.font('NotoSans-Bold').text('Ghi chú / Điều khoản:', left, y);
+    doc.font('NotoSans').fontSize(8.2);
+    doc.text(`- Ghi chú: ${quote.notes || '-'}`, left, y + 14, { width: pageWidth, height: 24 });
+    doc.text(
+      `- Điều khoản thanh toán: ${
+        quote.paymentTerms ||
+        'Đơn giá chưa bao gồm thuế VAT nếu chưa có thỏa thuận khác.'
+      }`,
+      left,
+      doc.y + 4,
+      { width: pageWidth, height: 24 },
+    );
+    doc.text(`- Báo giá có hiệu lực đến: ${expiresText}.`, left, doc.y + 4, {
+      width: pageWidth,
+    });
+    y = doc.y + 12;
+
+    doc.font('NotoSans-Bold').fontSize(10).text('Mọi chi tiết vui lòng xin liên hệ:', left, y);
+    doc.font('NotoSans').fontSize(8.2);
+    doc.text(`Người phụ trách: ${ownerName}`, left, y + 14);
+    doc.text(`Email: ${owner?.email || '-'}    Điện thoại: -`, left, doc.y + 3);
+    y = doc.y + 22;
+
+    const signatureWidth = (pageWidth - 40) / 2;
+    doc.font('NotoSans-Bold').fontSize(9);
+    doc.text('ĐẠI DIỆN KHÁCH HÀNG', left, y, { width: signatureWidth, align: 'center' });
+    doc.text('ĐẠI DIỆN CÔNG TY', left + signatureWidth + 40, y, {
+      width: signatureWidth,
+      align: 'center',
+    });
+    doc.font('NotoSans').fontSize(8);
+    doc.text('Ký và ghi rõ họ tên', left, y + 15, { width: signatureWidth, align: 'center' });
+    doc.text('Ký và ghi rõ họ tên', left + signatureWidth + 40, y + 15, {
+      width: signatureWidth,
+      align: 'center',
+    });
+
+    doc.end();
+    return done;
+  }
+
+  private registerVietnameseFonts(doc: PDFKit.PDFDocument) {
+    const regularPath = join(process.cwd(), 'assets', 'fonts', 'NotoSans-Regular.ttf');
+    const boldPath = join(process.cwd(), 'assets', 'fonts', 'NotoSans-Bold.ttf');
+    if (!existsSync(regularPath) || !existsSync(boldPath)) {
+      throw new Error('Không tìm thấy font Unicode để xuất PDF báo giá.');
+    }
+    doc.registerFont('NotoSans', regularPath);
+    doc.registerFont('NotoSans-Bold', boldPath);
+    doc.font('NotoSans');
+  }
+
+  private drawQuoteItemsTable(
+    doc: PDFKit.PDFDocument,
+    items: Array<{
+      productName: string;
+      unit?: string | null;
+      quantity: Prisma.Decimal | number | string;
+      unitPrice: Prisma.Decimal | number | string;
+      discountAmount: Prisma.Decimal | number | string;
+      lineTotal: Prisma.Decimal | number | string;
+    }>,
+    x: number,
+    y: number,
+    width: number,
+  ) {
+    const columns = [
+      { key: 'index', label: 'STT', width: 30, align: 'center' as const },
+      { key: 'name', label: 'Nội dung sản phẩm / dịch vụ', width: 158, align: 'left' as const },
+      { key: 'unit', label: 'ĐVT', width: 42, align: 'center' as const },
+      { key: 'quantity', label: 'SL', width: 42, align: 'right' as const },
+      { key: 'unitPrice', label: 'Đơn giá (VNĐ)', width: 86, align: 'right' as const },
+      { key: 'discount', label: 'Giảm giá', width: 76, align: 'right' as const },
+      { key: 'lineTotal', label: 'Thành tiền', width: width - 434, align: 'right' as const },
+    ];
+    const headerHeight = 26;
+    const drawHeader = () => {
+      doc.rect(x, y, width, headerHeight).fillAndStroke('#eef2f7', '#9ca3af');
+      doc.fillColor('#000000').font('NotoSans-Bold').fontSize(7.6);
+      let currentX = x;
+      columns.forEach((column) => {
+        doc.rect(currentX, y, column.width, headerHeight).stroke('#9ca3af');
+        doc.text(column.label, currentX + 4, y + 6, {
+          width: column.width - 8,
+          align: column.align,
+        });
+        currentX += column.width;
+      });
+      y += headerHeight;
+    };
+
+    drawHeader();
+    doc.font('NotoSans').fontSize(7.6);
+    items.forEach((item, index) => {
+      const nameHeight = doc.heightOfString(item.productName || '-', {
+        width: columns[1].width - 8,
+      });
+      const rowHeight = Math.max(19, nameHeight + 8);
+
+      const values: Record<string, string> = {
+        index: String(index + 1),
+        name: item.productName || '-',
+        unit: item.unit || '-',
+        quantity: this.formatQuantity(toNumber(item.quantity)),
+        unitPrice: this.formatNumber(toNumber(item.unitPrice)),
+        discount: this.formatNumber(toNumber(item.discountAmount)),
+        lineTotal: this.formatNumber(toNumber(item.lineTotal)),
+      };
+      let currentX = x;
+      columns.forEach((column) => {
+        doc.rect(currentX, y, column.width, rowHeight).stroke('#d1d5db');
+        doc.text(values[column.key], currentX + 4, y + 6, {
+          width: column.width - 8,
+          align: column.align,
+        });
+        currentX += column.width;
+      });
+      y += rowHeight;
+    });
+    return y;
+  }
+
+
+  private formatDateVi(value?: Date | null) {
+    if (!value) return '-';
+    return new Intl.DateTimeFormat('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(value);
+  }
+
+  private formatNumber(value: number) {
+    return Math.round(value).toLocaleString('vi-VN');
+  }
+
+  private formatVnd(value: number) {
+    return `${this.formatNumber(value)} VNĐ`;
+  }
+
+  private formatQuantity(value: number) {
+    return Number.isInteger(value) ? String(value) : value.toLocaleString('vi-VN');
+  }
+
+  private capitalizeFirst(value: string) {
+    return value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : value;
+  }
+
+  private numberToVietnameseCurrency(value: number) {
+    const rounded = Math.round(value);
+    if (rounded === 0) return 'không đồng';
+    return `${this.numberToVietnameseWords(rounded)} đồng`;
+  }
+
+  private numberToVietnameseWords(value: number): string {
+    const units = ['', 'nghìn', 'triệu', 'tỷ'];
+    const groups: number[] = [];
+    let remaining = Math.floor(Math.abs(value));
+    while (remaining > 0) {
+      groups.push(remaining % 1000);
+      remaining = Math.floor(remaining / 1000);
+    }
+
+    const words = groups
+      .map((group, index) => ({ group, index }))
+      .filter(({ group }) => group > 0)
+      .reverse()
+      .map(({ group, index }, position) => {
+        const prefix = this.readThreeDigits(group, position > 0);
+        return `${prefix}${units[index] ? ` ${units[index]}` : ''}`.trim();
+      })
+      .join(' ');
+
+    return words.trim();
+  }
+
+  private readThreeDigits(value: number, full: boolean) {
+    const digitWords = [
+      'không',
+      'một',
+      'hai',
+      'ba',
+      'bốn',
+      'năm',
+      'sáu',
+      'bảy',
+      'tám',
+      'chín',
+    ];
+    const hundred = Math.floor(value / 100);
+    const ten = Math.floor((value % 100) / 10);
+    const unit = value % 10;
+    const parts: string[] = [];
+
+    if (hundred > 0 || full) {
+      parts.push(`${digitWords[hundred]} trăm`);
+    }
+    if (ten > 1) {
+      parts.push(`${digitWords[ten]} mươi`);
+      if (unit === 1) parts.push('mốt');
+      else if (unit === 5) parts.push('lăm');
+      else if (unit > 0) parts.push(digitWords[unit]);
+    } else if (ten === 1) {
+      parts.push('mười');
+      if (unit === 5) parts.push('lăm');
+      else if (unit > 0) parts.push(digitWords[unit]);
+    } else if (unit > 0) {
+      if (hundred > 0 || full) parts.push('lẻ');
+      parts.push(unit === 5 && (hundred > 0 || full) ? 'năm' : digitWords[unit]);
+    }
+
+    return parts.join(' ');
   }
 
   private buildPdf(lines: string[]) {

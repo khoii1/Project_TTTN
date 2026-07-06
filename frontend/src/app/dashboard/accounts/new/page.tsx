@@ -1,11 +1,11 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { Form, Input, Button, Card, App } from "antd";
+import { Form, Input, Button, App } from "antd";
 import { useRouter } from "next/navigation";
 import { accountsApi } from "@/features/accounts/accounts.api";
 import { Account } from "@/features/accounts/accounts.types";
-import { PageHeader } from "@/components/common/PageHeader";
+import { FormPageLayout } from "@/components/common/FormPageLayout";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { SourceFields } from "@/components/crm/SourceFields";
 
@@ -30,9 +30,7 @@ export default function NewAccountPage() {
   };
 
   return (
-    <div>
-      <PageHeader title="Tạo khách hàng / công ty" showBack />
-      <Card className="max-w-2xl shadow-sm">
+    <FormPageLayout title="Tạo khách hàng / công ty">
         <Form layout="vertical" onFinish={onFinish}>
           <Form.Item
             name="name"
@@ -42,7 +40,7 @@ export default function NewAccountPage() {
             <Input placeholder="Acme Corporation" />
           </Form.Item>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="crm-form-grid">
             <Form.Item name="website" label="Website">
               <Input placeholder="www.example.com" />
             </Form.Item>
@@ -57,14 +55,13 @@ export default function NewAccountPage() {
 
           <SourceFields />
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="crm-form-actions">
             <Button onClick={() => router.back()}>Hủy</Button>
             <Button type="primary" htmlType="submit" loading={loading}>
               Lưu khách hàng / công ty
             </Button>
           </div>
         </Form>
-      </Card>
-    </div>
+    </FormPageLayout>
   );
 }

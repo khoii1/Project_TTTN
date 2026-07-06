@@ -1,12 +1,12 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { Form, Input, Button, Card, Select, App } from "antd";
+import { Form, Input, Button, Select, App } from "antd";
 import { useRouter } from "next/navigation";
 import { usersApi } from "@/features/users/users.api";
 import { User } from "@/features/auth/auth.types";
 import { UserRole } from "@/features/auth/auth.types";
-import { PageHeader } from "@/components/common/PageHeader";
+import { FormPageLayout } from "@/components/common/FormPageLayout";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { getRoleLabel } from "@/lib/constants/vi-labels";
 
@@ -31,15 +31,13 @@ export default function NewUserPage() {
   };
 
   return (
-    <div>
-      <PageHeader title="Tạo người dùng" showBack />
-      <Card className="max-w-2xl shadow-sm">
+    <FormPageLayout title="Tạo người dùng" size="compact">
         <Form
           layout="vertical"
           onFinish={onFinish}
           initialValues={{ role: UserRole.SALES }}
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="crm-form-grid">
             <Form.Item
               name="firstName"
               label="Tên"
@@ -78,14 +76,13 @@ export default function NewUserPage() {
             </Select>
           </Form.Item>
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="crm-form-actions">
             <Button onClick={() => router.back()}>Hủy</Button>
             <Button type="primary" htmlType="submit" loading={loading}>
               Lưu người dùng
             </Button>
           </div>
         </Form>
-      </Card>
-    </div>
+    </FormPageLayout>
   );
 }

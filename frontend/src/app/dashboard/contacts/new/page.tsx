@@ -1,13 +1,13 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
-import { Form, Input, Button, Card, Select, App } from "antd";
+import { Form, Input, Button, Select, App } from "antd";
 import { useRouter } from "next/navigation";
 import { contactsApi } from "@/features/contacts/contacts.api";
 import { accountsApi } from "@/features/accounts/accounts.api";
 import { Contact } from "@/features/contacts/contacts.types";
 import { Account } from "@/features/accounts/accounts.types";
-import { PageHeader } from "@/components/common/PageHeader";
+import { FormPageLayout } from "@/components/common/FormPageLayout";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { SourceFields } from "@/components/crm/SourceFields";
 
@@ -35,11 +35,9 @@ export default function NewContactPage() {
   };
 
   return (
-    <div>
-      <PageHeader title="Tạo người liên hệ" showBack />
-      <Card className="max-w-2xl shadow-sm">
+    <FormPageLayout title="Tạo người liên hệ">
         <Form layout="vertical" onFinish={onFinish}>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="crm-form-grid">
             <Form.Item
               name="firstName"
               label="Họ"
@@ -78,7 +76,7 @@ export default function NewContactPage() {
             <Input placeholder="john@example.com" />
           </Form.Item>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="crm-form-grid">
             <Form.Item name="phone" label="Số điện thoại">
               <Input placeholder="+1 234 567 8900" />
             </Form.Item>
@@ -89,14 +87,13 @@ export default function NewContactPage() {
 
           <SourceFields />
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="crm-form-actions">
             <Button onClick={() => router.back()}>Hủy</Button>
             <Button type="primary" htmlType="submit" loading={loading}>
               Lưu người liên hệ
             </Button>
           </div>
         </Form>
-      </Card>
-    </div>
+    </FormPageLayout>
   );
 }

@@ -9,7 +9,7 @@ interface SourceFieldsProps {
 }
 
 export const SourceFields = ({ disabled }: SourceFieldsProps) => (
-  <div className="grid grid-cols-2 gap-4">
+  <div className="crm-form-grid">
     <Form.Item name="source" label={FIELD_LABELS.source}>
       <Select
         allowClear

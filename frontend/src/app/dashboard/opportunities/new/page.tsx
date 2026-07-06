@@ -5,7 +5,6 @@ import {
   Form,
   Input,
   Button,
-  Card,
   Select,
   InputNumber,
   DatePicker,
@@ -22,7 +21,7 @@ import {
   Opportunity,
   OpportunityStage,
 } from "@/features/opportunities/opportunities.types";
-import { PageHeader } from "@/components/common/PageHeader";
+import { FormPageLayout } from "@/components/common/FormPageLayout";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { SourceFields } from "@/components/crm/SourceFields";
 import { getStatusLabel } from "@/lib/constants/vi-labels";
@@ -64,9 +63,7 @@ export default function NewOpportunityPage() {
   };
 
   return (
-    <div>
-      <PageHeader title="Tạo cơ hội bán hàng" showBack />
-      <Card className="max-w-2xl shadow-sm">
+    <FormPageLayout title="Tạo cơ hội bán hàng">
         <Form
           layout="vertical"
           onFinish={onFinish}
@@ -80,7 +77,7 @@ export default function NewOpportunityPage() {
             <Input placeholder="100 Laptops deal" />
           </Form.Item>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="crm-form-grid">
             <Form.Item label="Giá trị">
               <Space.Compact className="w-full">
                 <Form.Item name="amount" noStyle>
@@ -97,7 +94,7 @@ export default function NewOpportunityPage() {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="crm-form-grid">
             <Form.Item
               name="accountId"
               label="Khách hàng / Công ty"
@@ -143,14 +140,13 @@ export default function NewOpportunityPage() {
 
           <SourceFields />
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="crm-form-actions">
             <Button onClick={() => router.back()}>Hủy</Button>
             <Button type="primary" htmlType="submit" loading={loading}>
               Lưu cơ hội bán hàng
             </Button>
           </div>
         </Form>
-      </Card>
-    </div>
+    </FormPageLayout>
   );
 }

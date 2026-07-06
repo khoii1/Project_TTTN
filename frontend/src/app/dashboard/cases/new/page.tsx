@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
-import { Form, Input, Button, Card, Select, App } from "antd";
+import { Form, Input, Button, Select, App } from "antd";
 import { useRouter } from "next/navigation";
 import { casesApi } from "@/features/cases/cases.api";
 import { accountsApi } from "@/features/accounts/accounts.api";
@@ -10,7 +10,7 @@ import { Account } from "@/features/accounts/accounts.types";
 import { Contact } from "@/features/contacts/contacts.types";
 import { Case } from "@/features/cases/cases.types";
 import { CaseStatus, CasePriority } from "@/features/cases/cases.types";
-import { PageHeader } from "@/components/common/PageHeader";
+import { FormPageLayout } from "@/components/common/FormPageLayout";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { SourceFields } from "@/components/crm/SourceFields";
 import { getPriorityLabel, getStatusLabel } from "@/lib/constants/vi-labels";
@@ -50,9 +50,7 @@ export default function NewCasePage() {
   };
 
   return (
-    <div>
-      <PageHeader title="Tạo yêu cầu hỗ trợ" showBack />
-      <Card className="max-w-2xl shadow-sm">
+    <FormPageLayout title="Tạo yêu cầu hỗ trợ">
         <Form
           layout="vertical"
           onFinish={onFinish}
@@ -76,7 +74,7 @@ export default function NewCasePage() {
             />
           </Form.Item>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="crm-form-grid">
             <Form.Item
               name="accountId"
               label="Khách hàng / Công ty (không bắt buộc)"
@@ -110,7 +108,7 @@ export default function NewCasePage() {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="crm-form-grid">
             <Form.Item name="status" label="Trạng thái">
               <Select>
                 {Object.values(CaseStatus).map((s) => (
@@ -133,14 +131,13 @@ export default function NewCasePage() {
 
           <SourceFields />
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="crm-form-actions">
             <Button onClick={() => router.back()}>Hủy</Button>
             <Button type="primary" htmlType="submit" loading={loading}>
               Lưu yêu cầu hỗ trợ
             </Button>
           </div>
         </Form>
-      </Card>
-    </div>
+    </FormPageLayout>
   );
 }

@@ -178,7 +178,7 @@ export default function AccountDetailPage({
             >
               <Input />
             </Form.Item>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="crm-form-grid">
               <Form.Item name="type" label="Loại">
                 <Input />
               </Form.Item>
@@ -190,7 +190,7 @@ export default function AccountDetailPage({
               </Form.Item>
             </div>
             <SourceFields />
-            <div className="flex justify-end space-x-2 mt-4">
+            <div className="crm-form-actions">
               <Button onClick={() => setIsEditing(false)}>Hủy</Button>
               <Button type="primary" htmlType="submit" loading={saving}>
                 Lưu thay đổi

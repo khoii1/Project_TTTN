@@ -236,7 +236,7 @@ export default function OpportunityDetailPage({
             >
               <Input />
             </Form.Item>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="crm-form-grid">
               <Form.Item label="Giá trị">
                 <Space.Compact className="w-full">
                   <Form.Item name="amount" noStyle>
@@ -260,7 +260,7 @@ export default function OpportunityDetailPage({
               Khách hàng / công ty và người liên hệ được hiển thị trong phần
               Liên kết chính vì form này chưa hỗ trợ đổi các liên kết đó.
             </div>
-            <div className="flex justify-end space-x-2 mt-4">
+            <div className="crm-form-actions">
               <Button onClick={() => setIsEditing(false)}>Hủy</Button>
               <Button type="primary" htmlType="submit" loading={saving}>
                 Lưu thay đổi

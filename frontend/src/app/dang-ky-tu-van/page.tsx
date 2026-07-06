@@ -157,7 +157,7 @@ export default function LeadCapturePage() {
           </div>
         </section>
 
-        <Card className="shadow-sm" styles={{ body: { padding: 28 } }}>
+        <Card className="crm-public-form-card shadow-sm">
           <Space direction="vertical" size={4} className="mb-6 w-full">
             <Title level={3} className="!mb-0">
               Thông tin đăng ký

@@ -1,11 +1,11 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { Form, Input, Button, Card, Select, DatePicker, App } from "antd";
+import { Form, Input, Button, Select, DatePicker, App } from "antd";
 import { useRouter } from "next/navigation";
 import { tasksApi } from "@/features/tasks/tasks.api";
 import { Task, TaskPriority } from "@/features/tasks/tasks.types";
-import { PageHeader } from "@/components/common/PageHeader";
+import { FormPageLayout } from "@/components/common/FormPageLayout";
 import dayjs from "dayjs";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { useAuthStore } from "@/features/auth/auth.store";
@@ -49,9 +49,7 @@ export default function NewTaskPage() {
   };
 
   return (
-    <div>
-      <PageHeader title="Tạo công việc" showBack />
-      <Card className="max-w-2xl shadow-sm">
+    <FormPageLayout title="Tạo công việc">
         <Form
           form={form}
           layout="vertical"
@@ -75,7 +73,7 @@ export default function NewTaskPage() {
             />
           </Form.Item>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="crm-form-grid">
             <Form.Item name="dueDate" label="Hạn hoàn thành">
               <DatePicker className="w-full" />
             </Form.Item>
@@ -90,7 +88,7 @@ export default function NewTaskPage() {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="crm-form-grid">
             <Form.Item name="relatedType" label="Liên quan đến (loại)">
               <Select allowClear>
                 <Select.Option value="LEAD">Khách hàng tiềm năng</Select.Option>
@@ -109,14 +107,13 @@ export default function NewTaskPage() {
             </Form.Item>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="crm-form-actions">
             <Button onClick={() => router.back()}>Hủy</Button>
             <Button type="primary" htmlType="submit" loading={loading}>
               Lưu công việc
             </Button>
           </div>
         </Form>
-      </Card>
-    </div>
+    </FormPageLayout>
   );
 }

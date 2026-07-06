@@ -172,7 +172,7 @@ export default function ContactDetailPage({
             initialValues={contact}
             onFinish={handleUpdate}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="crm-form-grid">
               <Form.Item name="firstName" label="Họ">
                 <Input />
               </Form.Item>
@@ -198,7 +198,7 @@ export default function ContactDetailPage({
               Khách hàng / công ty được hiển thị trong tab Liên quan vì form này
               chưa hỗ trợ đổi khách hàng / công ty của người liên hệ.
             </div>
-            <div className="flex justify-end space-x-2 mt-4">
+            <div className="crm-form-actions">
               <Button onClick={() => setIsEditing(false)}>Hủy</Button>
               <Button type="primary" htmlType="submit" loading={saving}>
                 Lưu thay đổi

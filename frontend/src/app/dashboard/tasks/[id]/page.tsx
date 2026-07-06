@@ -174,7 +174,7 @@ export default function TaskDetailPage({
             <Form.Item name="description" label="Mô tả">
               <Input.TextArea rows={3} />
             </Form.Item>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="crm-form-grid">
               <Form.Item name="status" label="Trạng thái">
                 <Select>
                   {Object.values(TaskStatus).map((status) => (
@@ -201,7 +201,7 @@ export default function TaskDetailPage({
               Bản ghi liên quan được hiển thị trong tab Liên quan vì form này
               chưa hỗ trợ đổi liên kết công việc.
             </div>
-            <div className="flex justify-end space-x-2 mt-4">
+            <div className="crm-form-actions">
               <Button onClick={() => setIsEditing(false)}>Hủy</Button>
               <Button type="primary" htmlType="submit" loading={saving}>
                 Lưu thay đổi

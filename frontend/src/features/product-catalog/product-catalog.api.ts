@@ -22,7 +22,7 @@ export const productCatalogApi = {
     );
     return data;
   },
-  updateProduct: async (id: string, payload: ProductPayload) => {
+  updateProduct: async (id: string, payload: Partial<ProductPayload>) => {
     const { data } = await httpClient.patch<ProductCatalogItem>(
       `/products/${id}`,
       payload,
@@ -30,9 +30,14 @@ export const productCatalogApi = {
     return data;
   },
   deactivateProduct: async (id: string) => {
-    const { data } = await httpClient.delete<ProductCatalogItem>(
+    const { data } = await httpClient.patch<ProductCatalogItem>(
       `/products/${id}`,
+      { isActive: false },
     );
+    return data;
+  },
+  deleteProduct: async (id: string) => {
+    const { data } = await httpClient.delete<{ message: string }>(`/products/${id}`);
     return data;
   },
   getPackages: async () => {
@@ -52,7 +57,7 @@ export const productCatalogApi = {
     );
     return data;
   },
-  updatePackage: async (id: string, payload: ProductPackagePayload) => {
+  updatePackage: async (id: string, payload: Partial<ProductPackagePayload>) => {
     const { data } = await httpClient.patch<ProductPackage>(
       `/product-packages/${id}`,
       payload,
@@ -60,7 +65,14 @@ export const productCatalogApi = {
     return data;
   },
   deactivatePackage: async (id: string) => {
-    const { data } = await httpClient.delete<ProductPackage>(
+    const { data } = await httpClient.patch<ProductPackage>(
+      `/product-packages/${id}`,
+      { isActive: false },
+    );
+    return data;
+  },
+  deletePackage: async (id: string) => {
+    const { data } = await httpClient.delete<{ message: string }>(
       `/product-packages/${id}`,
     );
     return data;

@@ -126,6 +126,7 @@ export interface QuoteItem {
 
 export interface Quote {
   id: string;
+  name: string;
   quoteNumber: string;
   status: QuoteStatus;
   totalAmount: number;

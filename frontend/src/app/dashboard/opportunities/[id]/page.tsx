@@ -385,7 +385,10 @@ export default function OpportunityDetailPage({
               </div>
             </Card>
 
-            <OpportunitySalesCards opportunityId={id} />
+            <OpportunitySalesCards
+              opportunityId={id}
+              opportunityName={opportunity.name}
+            />
 
             <Card
               title={`${SECTION_LABELS.relatedTasks} (${relatedTasks.length})`}

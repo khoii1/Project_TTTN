@@ -71,11 +71,11 @@ export class ProductPackagesController {
 
   @Delete(':id')
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
-  @ApiOperation({ summary: 'Deactivate product package' })
-  deactivate(
+  @ApiOperation({ summary: 'Permanently delete an unused product package' })
+  remove(
     @Param('id') id: string,
     @CurrentUser() user: TokenPayload,
-  ): Promise<ProductPackageResponseDto> {
-    return this.productCatalogService.deactivatePackage(id, user.organizationId);
+  ): Promise<{ message: string }> {
+    return this.productCatalogService.deletePackage(id, user.organizationId);
   }
 }

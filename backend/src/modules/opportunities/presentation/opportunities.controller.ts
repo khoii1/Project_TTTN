@@ -39,6 +39,7 @@ import {
   ProductPackageResponseDto,
   ProductResponseDto,
   QuoteResponseDto,
+  UpdateQuoteDto,
   UpdateQuoteStatusDto,
 } from '../application/dto/sales-document.dto';
 import { JwtGuard } from '../../../shared/guards/jwt.guard';
@@ -265,6 +266,17 @@ export class OpportunitiesController {
     @CurrentUser() user: TokenPayload,
   ): Promise<QuoteResponseDto> {
     return this.opportunitySalesService.createQuote(id, user, dto);
+  }
+
+  @Patch(':id/quotes/:quoteId')
+  @ApiOperation({ summary: 'Rename a draft quote' })
+  async updateQuote(
+    @Param('id') id: string,
+    @Param('quoteId') quoteId: string,
+    @Body() dto: UpdateQuoteDto,
+    @CurrentUser() user: TokenPayload,
+  ): Promise<QuoteResponseDto> {
+    return this.opportunitySalesService.updateQuote(id, quoteId, user, dto);
   }
 
   @Patch(':id/quotes/:quoteId/status')

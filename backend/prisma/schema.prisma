@@ -456,6 +456,7 @@ model Quote {
   contactId      String?     @map("contact_id")
   ownerId        String      @map("owner_id")
   quoteNumber    String      @map("quote_number")
+  name           String      @db.VarChar(200)
   status         QuoteStatus @default(DRAFT)
   totalAmount    Decimal     @default(0) @map("total_amount") @db.Decimal(15, 2)
   expiresAt      DateTime?   @map("expires_at")

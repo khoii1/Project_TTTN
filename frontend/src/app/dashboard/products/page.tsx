@@ -19,10 +19,12 @@ import {
 } from "antd";
 import type { TableColumnsType } from "antd";
 import {
+  CheckCircleOutlined,
   DeleteOutlined,
   EditOutlined,
   PlusOutlined,
   ShoppingOutlined,
+  StopOutlined,
 } from "@ant-design/icons";
 import { PageHeader } from "@/components/common/PageHeader";
 import { useAuthStore } from "@/features/auth/auth.store";
@@ -35,6 +37,7 @@ import {
   ProductType,
 } from "@/features/product-catalog/product-catalog.types";
 import { formatVndAmount } from "@/lib/utils/currency";
+import { getApiErrorMessage } from "@/lib/api/error";
 
 const productTypeLabels: Record<ProductType, string> = {
   [ProductType.PRODUCT]: "Sản phẩm",
@@ -53,6 +56,21 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [packageModalOpen, setPackageModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("products");
+  const [deletingProductIds, setDeletingProductIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [deletingPackageIds, setDeletingPackageIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [productPagination, setProductPagination] = useState({
+    current: 1,
+    pageSize: 10,
+  });
+  const [packagePagination, setPackagePagination] = useState({
+    current: 1,
+    pageSize: 10,
+  });
   const [editingProduct, setEditingProduct] =
     useState<ProductCatalogItem | null>(null);
   const [editingPackage, setEditingPackage] = useState<ProductPackage | null>(
@@ -132,13 +150,46 @@ export default function ProductsPage() {
     }
   };
 
-  const deactivateProduct = async (product: ProductCatalogItem) => {
+  const toggleProduct = async (product: ProductCatalogItem) => {
     try {
-      await productCatalogApi.deactivateProduct(product.id);
-      message.success("Đã tắt hoạt động sản phẩm");
-      loadData();
-    } catch {
-      message.error("Không thể tắt hoạt động sản phẩm");
+      const updated = await productCatalogApi.updateProduct(product.id, {
+        isActive: !product.isActive,
+      });
+      setProducts((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      message.success(
+        updated.isActive ? "Đã bật hoạt động sản phẩm" : "Đã tắt hoạt động sản phẩm",
+      );
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "Không thể thay đổi trạng thái sản phẩm"));
+    }
+  };
+
+  const deleteProduct = async (product: ProductCatalogItem) => {
+    if (deletingProductIds.has(product.id)) return;
+
+    setDeletingProductIds((current) => new Set(current).add(product.id));
+    try {
+      await productCatalogApi.deleteProduct(product.id);
+      setProducts((current) => {
+        const next = current.filter((item) => item.id !== product.id);
+        const maxPage = Math.max(1, Math.ceil(next.length / productPagination.pageSize));
+        setProductPagination((pagination) => ({
+          ...pagination,
+          current: Math.min(pagination.current, maxPage),
+        }));
+        return next;
+      });
+      message.success("Đã xóa sản phẩm vĩnh viễn");
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "Không thể xóa sản phẩm"));
+    } finally {
+      setDeletingProductIds((current) => {
+        const next = new Set(current);
+        next.delete(product.id);
+        return next;
+      });
     }
   };
 
@@ -194,13 +245,50 @@ export default function ProductsPage() {
     }
   };
 
-  const deactivatePackage = async (productPackage: ProductPackage) => {
+  const togglePackage = async (productPackage: ProductPackage) => {
     try {
-      await productCatalogApi.deactivatePackage(productPackage.id);
-      message.success("Đã tắt hoạt động gói sản phẩm");
-      loadData();
-    } catch {
-      message.error("Không thể tắt hoạt động gói sản phẩm");
+      const updated = await productCatalogApi.updatePackage(productPackage.id, {
+        isActive: !productPackage.isActive,
+      });
+      setPackages((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      message.success(
+        updated.isActive
+          ? "Đã bật hoạt động gói sản phẩm"
+          : "Đã tắt hoạt động gói sản phẩm",
+      );
+    } catch (error) {
+      message.error(
+        getApiErrorMessage(error, "Không thể thay đổi trạng thái gói sản phẩm"),
+      );
+    }
+  };
+
+  const deletePackage = async (productPackage: ProductPackage) => {
+    if (deletingPackageIds.has(productPackage.id)) return;
+
+    setDeletingPackageIds((current) => new Set(current).add(productPackage.id));
+    try {
+      await productCatalogApi.deletePackage(productPackage.id);
+      setPackages((current) => {
+        const next = current.filter((item) => item.id !== productPackage.id);
+        const maxPage = Math.max(1, Math.ceil(next.length / packagePagination.pageSize));
+        setPackagePagination((pagination) => ({
+          ...pagination,
+          current: Math.min(pagination.current, maxPage),
+        }));
+        return next;
+      });
+      message.success("Đã xóa gói sản phẩm vĩnh viễn");
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "Không thể xóa gói sản phẩm"));
+    } finally {
+      setDeletingPackageIds((current) => {
+        const next = new Set(current);
+        next.delete(productPackage.id);
+        return next;
+      });
     }
   };
 
@@ -252,8 +340,9 @@ export default function ProductsPage() {
       title: "Thao tác",
       key: "actions",
       fixed: "right",
+      width: 260,
       render: (_, record) => (
-        <Space>
+        <Space wrap size={4}>
           <Button
             size="small"
             icon={<EditOutlined />}
@@ -261,16 +350,45 @@ export default function ProductsPage() {
           >
             Sửa
           </Button>
-          {record.isActive ? (
-            <Popconfirm
-              title="Tắt hoạt động sản phẩm này?"
-              description="Sản phẩm sẽ không còn xuất hiện trong popup Thêm sản phẩm."
-              okText="Tắt"
-              cancelText="Hủy"
-              onConfirm={() => deactivateProduct(record)}
+          <Popconfirm
+            title={`${record.isActive ? "Tắt" : "Bật"} hoạt động sản phẩm này?`}
+            description={
+              record.isActive
+                ? "Sản phẩm sẽ không còn xuất hiện trong popup Thêm sản phẩm."
+                : "Sản phẩm sẽ có thể được chọn trong nghiệp vụ mới."
+            }
+            okText={record.isActive ? "Tắt" : "Bật"}
+            cancelText="Hủy"
+            onConfirm={() => toggleProduct(record)}
+          >
+            <Button
+              size="small"
+              danger={record.isActive}
+              icon={record.isActive ? <StopOutlined /> : <CheckCircleOutlined />}
             >
-              <Button size="small" danger icon={<DeleteOutlined />}>
-                Tắt
+              {record.isActive ? "Tắt" : "Bật"}
+            </Button>
+          </Popconfirm>
+          {canManage ? (
+            <Popconfirm
+              title={`Bạn có chắc chắn muốn xóa sản phẩm '${record.name}' không?`}
+              description="Hành động này không thể hoàn tác."
+              okText="Xóa"
+              cancelText="Hủy"
+              okButtonProps={{
+                danger: true,
+                loading: deletingProductIds.has(record.id),
+              }}
+              onConfirm={() => deleteProduct(record)}
+            >
+              <Button
+                size="small"
+                danger
+                loading={deletingProductIds.has(record.id)}
+                icon={<DeleteOutlined />}
+                aria-label={`Xóa sản phẩm ${record.name}`}
+              >
+                Xóa
               </Button>
             </Popconfirm>
           ) : null}
@@ -319,8 +437,9 @@ export default function ProductsPage() {
       title: "Thao tác",
       key: "actions",
       fixed: "right",
+      width: 260,
       render: (_, record) => (
-        <Space>
+        <Space wrap size={4}>
           <Button
             size="small"
             icon={<EditOutlined />}
@@ -328,16 +447,45 @@ export default function ProductsPage() {
           >
             Sửa
           </Button>
-          {record.isActive ? (
-            <Popconfirm
-              title="Tắt hoạt động gói sản phẩm này?"
-              description="Gói sẽ không còn xuất hiện trong popup Chọn gói."
-              okText="Tắt"
-              cancelText="Hủy"
-              onConfirm={() => deactivatePackage(record)}
+          <Popconfirm
+            title={`${record.isActive ? "Tắt" : "Bật"} hoạt động gói sản phẩm này?`}
+            description={
+              record.isActive
+                ? "Gói sẽ không còn xuất hiện trong popup Chọn gói."
+                : "Gói sẽ có thể được chọn trong nghiệp vụ mới."
+            }
+            okText={record.isActive ? "Tắt" : "Bật"}
+            cancelText="Hủy"
+            onConfirm={() => togglePackage(record)}
+          >
+            <Button
+              size="small"
+              danger={record.isActive}
+              icon={record.isActive ? <StopOutlined /> : <CheckCircleOutlined />}
             >
-              <Button size="small" danger icon={<DeleteOutlined />}>
-                Tắt
+              {record.isActive ? "Tắt" : "Bật"}
+            </Button>
+          </Popconfirm>
+          {canManage ? (
+            <Popconfirm
+              title={`Bạn có chắc chắn muốn xóa gói sản phẩm '${record.name}' không?`}
+              description="Hành động này không thể hoàn tác."
+              okText="Xóa"
+              cancelText="Hủy"
+              okButtonProps={{
+                danger: true,
+                loading: deletingPackageIds.has(record.id),
+              }}
+              onConfirm={() => deletePackage(record)}
+            >
+              <Button
+                size="small"
+                danger
+                loading={deletingPackageIds.has(record.id)}
+                icon={<DeleteOutlined />}
+                aria-label={`Xóa gói sản phẩm ${record.name}`}
+              >
+                Xóa
               </Button>
             </Popconfirm>
           ) : null}
@@ -364,6 +512,8 @@ export default function ProductsPage() {
       />
 
       <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
         items={[
           {
             key: "products",
@@ -387,7 +537,12 @@ export default function ProductsPage() {
                   dataSource={products}
                   loading={loading}
                   scroll={{ x: 1100 }}
-                  pagination={{ pageSize: 10, showSizeChanger: true }}
+                  pagination={{
+                    ...productPagination,
+                    showSizeChanger: true,
+                    onChange: (current, pageSize) =>
+                      setProductPagination({ current, pageSize }),
+                  }}
                 />
               </Card>
             ),
@@ -414,7 +569,12 @@ export default function ProductsPage() {
                   dataSource={packages}
                   loading={loading}
                   scroll={{ x: 1000 }}
-                  pagination={{ pageSize: 10, showSizeChanger: true }}
+                  pagination={{
+                    ...packagePagination,
+                    showSizeChanger: true,
+                    onChange: (current, pageSize) =>
+                      setPackagePagination({ current, pageSize }),
+                  }}
                 />
               </Card>
             ),

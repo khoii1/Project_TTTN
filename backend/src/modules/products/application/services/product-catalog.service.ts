@@ -106,6 +106,61 @@ export class ProductCatalogService {
     return this.mapProduct(product);
   }
 
+  async deleteProduct(
+    id: string,
+    organizationId: string,
+  ): Promise<{ message: string }> {
+    try {
+      await this.prisma.$transaction(
+        async (tx) => {
+          const product = await tx.product.findFirst({
+            where: { id, organizationId },
+            select: { id: true },
+          });
+
+          if (!product) {
+            throw new NotFoundException('Không tìm thấy sản phẩm.');
+          }
+
+          const [packageItemCount, opportunityProductCount, quoteItemCount] =
+            await Promise.all([
+              tx.productPackageItem.count({ where: { productId: id } }),
+              tx.opportunityProduct.count({ where: { productId: id } }),
+              tx.quoteItem.count({ where: { productId: id } }),
+            ]);
+
+          if (packageItemCount > 0) {
+            throw new BadRequestException(
+              'Không thể xóa sản phẩm vì sản phẩm đang được sử dụng trong gói sản phẩm. Bạn có thể tắt sản phẩm thay vì xóa.',
+            );
+          }
+          if (opportunityProductCount > 0) {
+            throw new BadRequestException(
+              'Không thể xóa sản phẩm vì sản phẩm đang được sử dụng trong cơ hội bán hàng. Bạn có thể tắt sản phẩm thay vì xóa.',
+            );
+          }
+          if (quoteItemCount > 0) {
+            throw new BadRequestException(
+              'Không thể xóa sản phẩm vì sản phẩm đã xuất hiện trong báo giá. Bạn có thể tắt sản phẩm thay vì xóa.',
+            );
+          }
+
+          await tx.product.delete({ where: { id } });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (['P2003', 'P2034'].includes((error as { code?: string })?.code || '')) {
+        throw new BadRequestException(
+          'Không thể xóa sản phẩm vì sản phẩm đang được sử dụng trong dữ liệu bán hàng. Bạn có thể tắt sản phẩm thay vì xóa.',
+        );
+      }
+      throw error;
+    }
+
+    return { message: 'Đã xóa sản phẩm vĩnh viễn.' };
+  }
+
   async findPackages(organizationId: string): Promise<ProductPackageResponseDto[]> {
     const packages = await this.prisma.productPackage.findMany({
       where: { organizationId },
@@ -202,6 +257,39 @@ export class ProductCatalogService {
     });
 
     return this.mapPackage(productPackage);
+  }
+
+  async deletePackage(
+    id: string,
+    organizationId: string,
+  ): Promise<{ message: string }> {
+    try {
+      await this.prisma.$transaction(
+        async (tx) => {
+          const productPackage = await tx.productPackage.findFirst({
+            where: { id, organizationId },
+            select: { id: true },
+          });
+
+          if (!productPackage) {
+            throw new NotFoundException('Không tìm thấy gói sản phẩm.');
+          }
+
+          await tx.productPackageItem.deleteMany({ where: { packageId: id } });
+          await tx.productPackage.delete({ where: { id } });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (['P2003', 'P2034'].includes((error as { code?: string })?.code || '')) {
+        throw new BadRequestException(
+          'Không thể xóa gói sản phẩm vì gói đang được sử dụng trong dữ liệu nghiệp vụ. Bạn có thể tắt gói sản phẩm thay vì xóa.',
+        );
+      }
+      throw error;
+    }
+
+    return { message: 'Đã xóa gói sản phẩm vĩnh viễn.' };
   }
 
   private async findProductOrThrow(id: string, organizationId: string): Promise<Product> {

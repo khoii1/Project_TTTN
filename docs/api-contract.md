@@ -849,3 +849,32 @@ Lead conversion source propagation:
 - Recycle Bin supports Leads, Accounts, Contacts, Opportunities, Tasks, and Cases. Users and Notes are not part of the current Recycle Bin UI.
 - Some endpoints still allow raw-array fallback in the frontend for backward compatibility, but the preferred contract is paginated `{ data, meta }`.
 - Flutter mobile app exists for core CRM flows, but CSV import is currently web-only.
+
+# Báo giá
+
+Mỗi báo giá có `name` (tên nghiệp vụ, bắt buộc, tối đa 200 ký tự) và
+`quoteNumber` (mã tham chiếu duy nhất do backend tự sinh). Client không được
+gửi hoặc chỉnh sửa `quoteNumber`.
+
+- `POST /opportunities/:opportunityId/quotes`: tạo báo giá với `name`,
+  `expiresAt`, `paymentTerms`, `notes`.
+- `PATCH /opportunities/:opportunityId/quotes/:quoteId`: đổi `name` của báo
+  giá nháp chưa xuất PDF và chưa tạo hợp đồng.
+- Response báo giá luôn trả cả `name` và `quoteNumber`.
+
+Việc truy cập tiếp tục tuân theo organization, Opportunity visibility và quyền
+owner hiện có. PDF được lưu như snapshot cố định; tên và mã báo giá đều xuất
+hiện trên PDF.
+
+# Xóa sản phẩm và gói sản phẩm
+
+Các endpoint `DELETE /products/:id` và `DELETE /product-packages/:id` thực hiện
+xóa vĩnh viễn và chỉ dành cho `ADMIN`, `MANAGER`. Tắt/Bật sử dụng endpoint
+`PATCH` hiện có với trường `isActive`.
+
+- Product chỉ được xóa khi không thuộc `ProductPackageItem`,
+  `OpportunityProduct` hoặc `QuoteItem`.
+- Khi xóa ProductPackage, các item của chính gói được xóa cùng gói trong một
+  transaction; các Product bên trong không bị xóa.
+- ID ngoài organization trả not-found. Xung đột khóa ngoại hoặc transaction
+  cạnh tranh được chuyển thành thông báo nghiệp vụ, không trả lỗi database thô.

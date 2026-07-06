@@ -1,5 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { Transform } from 'class-transformer';
+import {
+  IsDateString,
+  IsDefined,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { ContractStatus, ProductType, QuoteStatus } from '@prisma/client';
 
 export class AddOpportunityProductDto {
@@ -32,6 +43,14 @@ export class AddOpportunityPackageDto {
 }
 
 export class CreateQuoteDto {
+  @ApiProperty({ example: 'Báo giá gói nhượng quyền tiêu chuẩn', maxLength: 200 })
+  @IsDefined({ message: 'Tên báo giá là bắt buộc.' })
+  @IsString({ message: 'Tên báo giá phải là chuỗi.' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsNotEmpty({ message: 'Tên báo giá không được để trống.' })
+  @MaxLength(200, { message: 'Tên báo giá không được vượt quá 200 ký tự.' })
+  name: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
@@ -46,6 +65,16 @@ export class CreateQuoteDto {
   @IsOptional()
   @IsString()
   paymentTerms?: string;
+}
+
+export class UpdateQuoteDto {
+  @ApiProperty({ example: 'Báo giá lần 2 sau điều chỉnh', maxLength: 200 })
+  @IsDefined({ message: 'Tên báo giá là bắt buộc.' })
+  @IsString({ message: 'Tên báo giá phải là chuỗi.' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsNotEmpty({ message: 'Tên báo giá không được để trống.' })
+  @MaxLength(200, { message: 'Tên báo giá không được vượt quá 200 ký tự.' })
+  name: string;
 }
 
 export class UpdateQuoteStatusDto {
@@ -128,6 +157,7 @@ export class OpportunityProductResponseDto {
 
 export class QuoteResponseDto {
   id: string;
+  name: string;
   quoteNumber: string;
   status: QuoteStatus;
   totalAmount: number;

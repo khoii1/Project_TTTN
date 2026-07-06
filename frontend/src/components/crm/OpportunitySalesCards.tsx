@@ -17,9 +17,11 @@ import {
   Select,
   Space,
   Tag,
+  Tooltip,
 } from "antd";
 import {
   DeleteOutlined,
+  EditOutlined,
   FilePdfOutlined,
   MoreOutlined,
   PlusOutlined,
@@ -39,9 +41,11 @@ import {
 } from "@/features/opportunities/opportunities.types";
 import { formatDate, formatDateTime, RelatedEmpty } from "./RecordSections";
 import { formatVndAmount } from "@/lib/utils/currency";
+import { getApiErrorMessage } from "@/lib/api/error";
 
 type Props = {
   opportunityId: string;
+  opportunityName: string;
 };
 
 const quoteStatusLabels: Record<QuoteStatus, string> = {
@@ -72,7 +76,7 @@ const statusColor = (status: string) => {
 const QUOTE_PREVIEW_LIMIT = 3;
 const CONTRACT_PREVIEW_LIMIT = 3;
 
-export function OpportunitySalesCards({ opportunityId }: Props) {
+export function OpportunitySalesCards({ opportunityId, opportunityName }: Props) {
   const { message, modal } = App.useApp();
   const [products, setProducts] = useState<ProductCatalogItem[]>([]);
   const [packages, setPackages] = useState<ProductPackage[]>([]);
@@ -86,11 +90,15 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
   const [contractModalOpen, setContractModalOpen] = useState(false);
   const [allQuotesOpen, setAllQuotesOpen] = useState(false);
   const [allContractsOpen, setAllContractsOpen] = useState(false);
+  const [quoteSubmitting, setQuoteSubmitting] = useState(false);
+  const [renameSubmitting, setRenameSubmitting] = useState(false);
+  const [quoteToRename, setQuoteToRename] = useState<Quote | null>(null);
   const [selectedProductForForm, setSelectedProductForForm] =
     useState<ProductCatalogItem | null>(null);
   const [productForm] = Form.useForm();
   const [packageForm] = Form.useForm();
   const [quoteForm] = Form.useForm();
+  const [renameQuoteForm] = Form.useForm();
   const [contractForm] = Form.useForm();
   const watchedQuantity = Form.useWatch("quantity", productForm);
   const watchedUnitPrice = Form.useWatch("unitPrice", productForm);
@@ -199,21 +207,79 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
   };
 
   const handleCreateQuote = async (values: {
+    name: string;
     expiresAt?: dayjs.Dayjs;
     notes?: string;
     paymentTerms?: string;
   }) => {
+    if (quoteSubmitting) return;
+    setQuoteSubmitting(true);
     try {
       await opportunitiesApi.createQuote(opportunityId, {
         ...values,
+        name: values.name.trim(),
         expiresAt: values.expiresAt?.toISOString(),
       });
       message.success("Đã tạo báo giá");
       quoteForm.resetFields();
       setQuoteModalOpen(false);
       load();
-    } catch {
-      message.error("Không thể tạo báo giá. Vui lòng kiểm tra sản phẩm đã chọn.");
+    } catch (error) {
+      message.error(
+        getApiErrorMessage(
+          error,
+          "Không thể tạo báo giá. Vui lòng kiểm tra sản phẩm đã chọn.",
+        ),
+      );
+    } finally {
+      setQuoteSubmitting(false);
+    }
+  };
+
+  const openCreateQuoteModal = () => {
+    quoteForm.resetFields();
+    quoteForm.setFieldsValue({
+      name: `Báo giá - ${opportunityName}`.slice(0, 200),
+    });
+    setQuoteModalOpen(true);
+  };
+
+  const closeCreateQuoteModal = () => {
+    quoteForm.resetFields();
+    setQuoteModalOpen(false);
+  };
+
+  const openRenameQuoteModal = (quote: Quote) => {
+    setQuoteToRename(quote);
+    renameQuoteForm.setFieldsValue({
+      name: quote.name || `Báo giá ${quote.quoteNumber}`,
+    });
+  };
+
+  const closeRenameQuoteModal = () => {
+    renameQuoteForm.resetFields();
+    setQuoteToRename(null);
+  };
+
+  const handleRenameQuote = async (values: { name: string }) => {
+    if (!quoteToRename || renameSubmitting) return;
+
+    setRenameSubmitting(true);
+    try {
+      const updated = await opportunitiesApi.updateQuote(
+        opportunityId,
+        quoteToRename.id,
+        { name: values.name.trim() },
+      );
+      setQuotes((current) =>
+        current.map((quote) => (quote.id === updated.id ? updated : quote)),
+      );
+      message.success("Đã đổi tên báo giá");
+      closeRenameQuoteModal();
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "Không thể đổi tên báo giá"));
+    } finally {
+      setRenameSubmitting(false);
     }
   };
 
@@ -363,7 +429,15 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
 
   const renderQuoteItem = (quote: Quote) => {
     const shouldDelete = quote.status === QuoteStatus.DRAFT && !quote.pdfGeneratedAt;
+    const canRename = quote.status === QuoteStatus.DRAFT && !quote.pdfGeneratedAt;
+    const quoteName = quote.name || `Báo giá ${quote.quoteNumber}`;
     const actionItems: MenuProps["items"] = [
+      {
+        key: "rename",
+        label: "Đổi tên báo giá",
+        icon: <EditOutlined />,
+        disabled: !canRename,
+      },
       {
         key: "pdf",
         label: quote.pdfGeneratedAt ? "Xem / tải PDF" : "Xuất PDF",
@@ -380,9 +454,14 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
     return (
       <List.Item>
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="truncate font-semibold text-gray-900">
-              {quote.quoteNumber}
+          <div className="min-w-0 flex-1">
+            <Tooltip title={quoteName}>
+              <div className="break-words font-semibold leading-5 text-gray-900">
+                {quoteName}
+              </div>
+            </Tooltip>
+            <div className="mt-0.5 break-all text-sm text-gray-500">
+              Mã: {quote.quoteNumber}
             </div>
             <div className="text-sm text-gray-500">
               Hết hạn: {formatDate(quote.expiresAt)}
@@ -397,6 +476,7 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
               menu={{
                 items: actionItems,
                 onClick: ({ key }) => {
+                  if (key === "rename") openRenameQuoteModal(quote);
                   if (key === "pdf") handleQuotePdf(quote);
                   if (key === "delete") confirmDeleteQuote(quote);
                   if (key === "cancel") confirmCancelQuote(quote);
@@ -591,7 +671,7 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
               <Button
                 size="small"
                 icon={<PlusOutlined />}
-                onClick={() => setQuoteModalOpen(true)}
+                onClick={openCreateQuoteModal}
               >
                 Tạo báo giá
               </Button>
@@ -759,12 +839,30 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
       <Modal
         title="Tạo báo giá"
         open={quoteModalOpen}
-        onCancel={() => setQuoteModalOpen(false)}
+        onCancel={closeCreateQuoteModal}
         onOk={() => quoteForm.submit()}
         okText="Tạo báo giá"
         cancelText="Hủy"
+        confirmLoading={quoteSubmitting}
+        okButtonProps={{ disabled: quoteSubmitting }}
       >
         <Form form={quoteForm} layout="vertical" onFinish={handleCreateQuote}>
+          <Form.Item
+            name="name"
+            label="Tên báo giá"
+            required
+            rules={[
+              { required: true, whitespace: true, message: "Tên báo giá là bắt buộc." },
+              { max: 200, message: "Tên báo giá không được vượt quá 200 ký tự." },
+            ]}
+          >
+            <Input
+              autoFocus
+              maxLength={200}
+              showCount
+              placeholder="Ví dụ: Báo giá gói nhượng quyền tiêu chuẩn"
+            />
+          </Form.Item>
           <Form.Item name="expiresAt" label="Ngày hết hạn">
             <DatePicker className="w-full" />
           </Form.Item>
@@ -773,6 +871,36 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
           </Form.Item>
           <Form.Item name="notes" label="Ghi chú">
             <Input.TextArea rows={3} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Đổi tên báo giá"
+        open={Boolean(quoteToRename)}
+        onCancel={closeRenameQuoteModal}
+        onOk={() => renameQuoteForm.submit()}
+        okText="Lưu thay đổi"
+        cancelText="Hủy"
+        confirmLoading={renameSubmitting}
+        okButtonProps={{ disabled: renameSubmitting }}
+        destroyOnHidden
+      >
+        <Form
+          form={renameQuoteForm}
+          layout="vertical"
+          onFinish={handleRenameQuote}
+        >
+          <Form.Item
+            name="name"
+            label="Tên báo giá"
+            required
+            rules={[
+              { required: true, whitespace: true, message: "Tên báo giá là bắt buộc." },
+              { max: 200, message: "Tên báo giá không được vượt quá 200 ký tự." },
+            ]}
+          >
+            <Input autoFocus maxLength={200} showCount />
           </Form.Item>
         </Form>
       </Modal>
@@ -797,10 +925,12 @@ export function OpportunitySalesCards({ opportunityId }: Props) {
             rules={[{ required: true }]}
           >
             <Select
+              showSearch
+              optionFilterProp="label"
               placeholder="Chọn báo giá"
               options={acceptedQuotes.map((quote) => ({
                 value: quote.id,
-                label: `${quote.quoteNumber} - ${formatVndAmount(quote.totalAmount)}`,
+                label: `${quote.name || `Báo giá ${quote.quoteNumber}`} — ${quote.quoteNumber} - ${formatVndAmount(quote.totalAmount)}`,
               }))}
             />
           </Form.Item>

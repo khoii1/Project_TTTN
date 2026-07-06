@@ -134,10 +134,17 @@ export const opportunitiesApi = {
   },
   createQuote: async (
     id: string,
-    payload: { expiresAt?: string; notes?: string; paymentTerms?: string },
+    payload: { name: string; expiresAt?: string; notes?: string; paymentTerms?: string },
   ) => {
     const { data } = await httpClient.post<Quote>(
       `/opportunities/${id}/quotes`,
+      payload,
+    );
+    return data;
+  },
+  updateQuote: async (id: string, quoteId: string, payload: { name: string }) => {
+    const { data } = await httpClient.patch<Quote>(
+      `/opportunities/${id}/quotes/${quoteId}`,
       payload,
     );
     return data;

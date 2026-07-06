@@ -39,6 +39,7 @@ import {
   ProductPackageResponseDto,
   ProductResponseDto,
   QuoteResponseDto,
+  UpdateQuoteDto,
 } from '../dto/sales-document.dto';
 
 type SalesUser = Pick<TokenPayload, 'sub' | 'organizationId' | 'role'>;
@@ -49,6 +50,24 @@ const toNumber = (value: Prisma.Decimal | number | string | null | undefined) =>
 const money = (value: number) => new Prisma.Decimal(value.toFixed(2));
 
 const clampText = (value?: string | null) => value?.trim() || undefined;
+
+export const buildQuotePdfFileName = (name: string, quoteNumber: string) => {
+  const safeName = name
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80);
+  const safeQuoteNumber =
+    quoteNumber.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') ||
+    'quote';
+
+  return `${safeName || 'Bao-gia'}-${safeQuoteNumber}.pdf`;
+};
 
 @Injectable()
 export class OpportunitySalesService {
@@ -358,6 +377,7 @@ export class OpportunitySalesService {
         contactId: opportunity.contactId,
         ownerId: user.sub,
         quoteNumber,
+        name: dto.name.trim(),
         totalAmount: money(totalAmount),
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
         notes: clampText(dto.notes),
@@ -385,10 +405,49 @@ export class OpportunitySalesService {
       action: AuditAction.CREATE,
       entityType: 'Quote',
       entityId: quote.id,
-      newValues: { opportunityId, quoteNumber, totalAmount },
+      newValues: { opportunityId, quoteNumber, name: quote.name, totalAmount },
     });
 
     return this.mapQuote(quote);
+  }
+
+  async updateQuote(
+    opportunityId: string,
+    quoteId: string,
+    user: SalesUser,
+    dto: UpdateQuoteDto,
+  ): Promise<QuoteResponseDto> {
+    await this.assertOpportunityVisible(opportunityId, user);
+    const quote = await this.assertQuote(opportunityId, quoteId, user);
+    this.assertCanManageDocument(user, quote.ownerId);
+
+    if (quote.deletedAt || quote.status === QuoteStatus.CANCELLED) {
+      throw new NotFoundException('Không tìm thấy báo giá.');
+    }
+    if (quote.status !== QuoteStatus.DRAFT || quote.pdfGeneratedAt || quote.contracts.length > 0) {
+      throw new BadRequestException(
+        'Chỉ có thể đổi tên báo giá nháp chưa xuất PDF và chưa tạo hợp đồng.',
+      );
+    }
+
+    const name = dto.name.trim();
+    const updated = await this.prisma.quote.update({
+      where: { id: quote.id },
+      data: { name },
+      include: { items: true, contracts: true },
+    });
+
+    await this.auditLog.log({
+      organizationId: user.organizationId,
+      userId: user.sub,
+      action: AuditAction.UPDATE,
+      entityType: 'Quote',
+      entityId: quote.id,
+      oldValues: { name: quote.name },
+      newValues: { name },
+    });
+
+    return this.mapQuote(updated);
   }
 
   async updateQuoteStatus(
@@ -450,7 +509,7 @@ export class OpportunitySalesService {
       organization,
       owner,
     });
-    const fileName = `${quote.quoteNumber}.pdf`;
+    const fileName = buildQuotePdfFileName(quote.name, quote.quoteNumber);
     const storagePath = this.storageService.buildSalesDocumentPath({
       organizationId: user.organizationId,
       opportunityId,
@@ -894,6 +953,7 @@ export class OpportunitySalesService {
   private async mapQuote(quote: Quote & { items: any[] }): Promise<QuoteResponseDto> {
     return {
       id: quote.id,
+      name: quote.name,
       quoteNumber: quote.quoteNumber,
       status: quote.status,
       totalAmount: toNumber(quote.totalAmount),
@@ -988,18 +1048,25 @@ export class OpportunitySalesService {
       width: pageWidth,
       align: 'center',
     });
-    doc.font('NotoSans').fontSize(8.5).text(`Số: ${quote.quoteNumber}`, left, 123, {
+    doc.font('NotoSans-Bold').fontSize(10.5).text(quote.name, left, 122, {
       width: pageWidth,
       align: 'center',
     });
-    doc.text(`Ngày lập: ${issueDate}`, left, 138, { width: pageWidth, align: 'center' });
+    const quoteCodeY = Math.max(doc.y + 3, 145);
+    doc.font('NotoSans').fontSize(8.5).text(`Mã báo giá: ${quote.quoteNumber}`, left, quoteCodeY, {
+      width: pageWidth,
+      align: 'center',
+    });
+    const quoteDateY = quoteCodeY + 15;
+    doc.text(`Ngày lập: ${issueDate}`, left, quoteDateY, { width: pageWidth, align: 'center' });
 
-    doc.font('NotoSans-Bold').fontSize(10).text(`Kính gửi: ${account?.name || '-'}`, left, 165);
+    const recipientY = quoteDateY + 27;
+    doc.font('NotoSans-Bold').fontSize(10).text(`Kính gửi: ${account?.name || '-'}`, left, recipientY);
     doc.font('NotoSans').fontSize(9);
-    doc.text(`Người liên hệ: ${contactName}`, left, 181);
-    doc.text(`Cơ hội: ${opportunity.name}`, left, 197);
+    doc.text(`Người liên hệ: ${contactName}`, left, recipientY + 16);
+    doc.text(`Cơ hội: ${opportunity.name}`, left, recipientY + 32);
 
-    let y = 222;
+    let y = recipientY + 57;
     y = this.drawQuoteItemsTable(doc, quote.items, left, y, pageWidth);
 
     const totalAmount = toNumber(quote.totalAmount);
@@ -1169,7 +1236,7 @@ export class OpportunitySalesService {
     bullet('Bộ luật Dân sự số 91/2015/QH13 ngày 24/11/2015 và các văn bản pháp luật liên quan;');
     bullet('Luật Thương mại số 36/2005/QH11 ngày 14/06/2005 và các văn bản pháp luật liên quan;');
     bullet('Nhu cầu và khả năng của các bên;');
-    bullet(`Báo giá số ${quote.quoteNumber} đã được chấp nhận;`);
+    bullet(`Báo giá ${quote.name} — mã ${quote.quoteNumber} đã được chấp nhận;`);
     paragraph(
       `Hôm nay, ngày ${signDate.getDate()} tháng ${signDate.getMonth() + 1} năm ${signDate.getFullYear()}, các bên thống nhất ký kết hợp đồng với các nội dung sau.`,
     );

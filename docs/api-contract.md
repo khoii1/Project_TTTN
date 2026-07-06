@@ -878,3 +878,22 @@ xóa vĩnh viễn và chỉ dành cho `ADMIN`, `MANAGER`. Tắt/Bật sử dụn
   transaction; các Product bên trong không bị xóa.
 - ID ngoài organization trả not-found. Xung đột khóa ngoại hoặc transaction
   cạnh tranh được chuyển thành thông báo nghiệp vụ, không trả lỗi database thô.
+
+# Xóa vĩnh viễn trong Thùng rác
+
+`DELETE /recycle-bin/:entity/:id/permanent` xóa vĩnh viễn từng bản ghi đã xóa
+mềm. `entity` hỗ trợ: `lead`, `account`, `contact`, `opportunity`, `task`,
+`case`.
+
+- Chỉ `ADMIN` được gọi endpoint.
+- Backend bắt buộc kiểm tra `organizationId` và `deletedAt`.
+- Account bị chặn khi còn dữ liệu con. Opportunity bị chặn khi còn Quote hoặc
+  Contract. Liên kết Task/Note polymorphic cũng được kiểm tra để không tạo
+  dangling reference.
+- Contact sử dụng `SetNull` cho các quan hệ lịch sử; xóa Contact không xóa
+  Opportunity, Case, Quote hoặc Contract.
+- Task và Opportunity xóa metadata attachment bằng cascade, đồng thời xóa file
+  vật lý trong Storage trước khi transaction database commit. Storage lỗi làm
+  transaction rollback.
+- Audit `PERMANENT_DELETE` được ghi trong cùng transaction trước khi xóa entity.
+- Các endpoint xóa mềm và khôi phục hiện tại không thay đổi.

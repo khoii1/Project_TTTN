@@ -25,6 +25,7 @@ import { PublicModule } from './modules/public/public.module';
 import { LeadAssignmentModule } from './modules/lead-assignment/lead-assignment.module';
 import { TaskTemplatesModule } from './modules/task-templates/task-templates.module';
 import { ProductsModule } from './modules/products/products.module';
+import { RecycleBinModule } from './modules/recycle-bin/recycle-bin.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { ProductsModule } from './modules/products/products.module';
     TasksModule,
     TaskTemplatesModule,
     ProductsModule,
+    RecycleBinModule,
     NotesModule,
     CasesModule,
     DashboardModule,

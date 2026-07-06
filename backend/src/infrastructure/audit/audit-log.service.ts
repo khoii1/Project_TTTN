@@ -22,6 +22,7 @@ export const AuditAction = {
   STATUS_CHANGE: 'STATUS_CHANGE',
   TASK_COMPLETION: 'TASK_COMPLETION',
   RESTORE: 'RESTORE',
+  PERMANENT_DELETE: 'PERMANENT_DELETE',
 } as const;
 
 @Injectable()

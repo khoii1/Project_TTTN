@@ -167,6 +167,21 @@ export class StorageService {
     await this.client.storage.from(this.bucket).remove([storagePath]);
   }
 
+  async deleteFilesStrict(storagePaths: string[]) {
+    const uniquePaths = [...new Set(storagePaths.filter(Boolean))];
+    if (uniquePaths.length === 0) {
+      return;
+    }
+
+    const client = this.getClient();
+    const { error } = await client.storage.from(this.bucket).remove(uniquePaths);
+    if (error) {
+      throw new ServiceUnavailableException(
+        'Không thể xóa file đính kèm khỏi Storage. Dữ liệu chưa bị xóa vĩnh viễn.',
+      );
+    }
+  }
+
   isImage(mimeType: string) {
     return mimeType.startsWith('image/');
   }

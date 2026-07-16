@@ -12,6 +12,7 @@ import { LeadCaptureDto } from '../dto/lead-capture.dto';
 const SUCCESS_MESSAGE =
   'Cảm ơn bạn đã đăng ký tư vấn. Chúng tôi sẽ liên hệ lại trong thời gian sớm nhất.';
 const WEBSITE_SOURCE = 'Website';
+const DEFAULT_PUBLIC_LEAD_OWNER_EMAIL = 'admin@example.com';
 const WEBSITE_SOURCE_DETAIL = 'Form đăng ký tư vấn trên website';
 
 export type LeadCaptureResponse = {
@@ -35,6 +36,10 @@ export class LeadCaptureService {
     }
 
     this.validatePayload(dto);
+
+    const publicLeadTarget = await this.resolvePublicLeadTarget();
+    process.env.PUBLIC_LEAD_ORGANIZATION_ID = publicLeadTarget.organizationId;
+    process.env.PUBLIC_LEAD_OWNER_ID = publicLeadTarget.ownerId;
 
     const organizationId = process.env.PUBLIC_LEAD_ORGANIZATION_ID?.trim();
     const ownerId = process.env.PUBLIC_LEAD_OWNER_ID?.trim();
@@ -109,6 +114,57 @@ export class LeadCaptureService {
     if (!dto.email?.trim() && !dto.phone?.trim()) {
       throw new BadRequestException('Vui lòng nhập email hoặc số điện thoại.');
     }
+  }
+
+  private async resolvePublicLeadTarget(): Promise<{ organizationId: string; ownerId: string }> {
+    const organizationId = process.env.PUBLIC_LEAD_ORGANIZATION_ID?.trim();
+    const ownerId = process.env.PUBLIC_LEAD_OWNER_ID?.trim();
+
+    if (organizationId && ownerId && (await this.isValidPublicLeadTarget(organizationId, ownerId))) {
+      return { organizationId, ownerId };
+    }
+
+    const ownerEmail =
+      process.env.PUBLIC_LEAD_OWNER_EMAIL?.trim() || DEFAULT_PUBLIC_LEAD_OWNER_EMAIL;
+    const owner = await this.prisma.user.findFirst({
+      where: {
+        email: ownerEmail,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        organizationId: true,
+      },
+    });
+
+    if (owner) {
+      return { organizationId: owner.organizationId, ownerId: owner.id };
+    }
+
+    throw new ServiceUnavailableException(
+      organizationId && ownerId
+        ? 'Cáº¥u hÃ¬nh nháº­n Lead tá»« website khÃ´ng há»£p lá»‡.'
+        : 'ChÆ°a cáº¥u hÃ¬nh tá»• chá»©c hoáº·c ngÆ°á»i phá»¥ trÃ¡ch nháº­n Lead tá»« website.',
+    );
+  }
+
+  private async isValidPublicLeadTarget(organizationId: string, ownerId: string): Promise<boolean> {
+    const [organization, owner] = await Promise.all([
+      this.prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { id: true },
+      }),
+      this.prisma.user.findFirst({
+        where: {
+          id: ownerId,
+          organizationId,
+          deletedAt: null,
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    return Boolean(organization && owner);
   }
 
   private async assertPublicLeadTarget(organizationId: string, ownerId: string): Promise<void> {

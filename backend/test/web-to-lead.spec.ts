@@ -18,7 +18,7 @@ describe('Web-to-Lead capture', () => {
         findUnique: jest.fn().mockResolvedValue({ id: ORG }),
       },
       user: {
-        findFirst: jest.fn().mockResolvedValue({ id: OWNER }),
+        findFirst: jest.fn().mockResolvedValue({ id: OWNER, organizationId: ORG }),
       },
       lead: {
         create: jest.fn().mockResolvedValue({
@@ -170,7 +170,10 @@ describe('Web-to-Lead capture', () => {
 
   it('rejects when the configured owner does not belong to the organization', async () => {
     const prisma = createPrisma();
-    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.findFirst.mockImplementation(({ where }: any) => {
+      if (where?.email) return Promise.resolve(null);
+      return Promise.resolve(null);
+    });
     const service = new LeadCaptureService(prisma, auditLog as any);
 
     await expect(
@@ -183,18 +186,63 @@ describe('Web-to-Lead capture', () => {
     ).rejects.toThrow(ServiceUnavailableException);
   });
 
-  it('rejects when public lead environment variables are missing', async () => {
+  it('falls back to the default public lead owner email when public lead IDs are missing', async () => {
     process.env.PUBLIC_LEAD_ORGANIZATION_ID = '';
     process.env.PUBLIC_LEAD_OWNER_ID = '';
-    const service = new LeadCaptureService(createPrisma(), auditLog as any);
+    const prisma = createPrisma();
+    const service = new LeadCaptureService(prisma, auditLog as any);
 
-    await expect(
-      service.capture({
-        fullName: 'Nguyen Minh An',
-        company: 'Noi That An Phat',
-        email: 'an@example.com',
-        message: 'Can tu van CRM.',
+    await service.capture({
+      fullName: 'Nguyen Minh An',
+      company: 'Noi That An Phat',
+      email: 'an@example.com',
+      message: 'Can tu van CRM.',
+    });
+
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ email: 'admin@example.com' }),
       }),
-    ).rejects.toThrow(ServiceUnavailableException);
+    );
+    expect(prisma.lead.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        organizationId: ORG,
+        ownerId: OWNER,
+      }),
+    });
+  });
+
+  it('falls back to PUBLIC_LEAD_OWNER_EMAIL when public lead IDs are stale after reseed', async () => {
+    process.env.PUBLIC_LEAD_ORGANIZATION_ID = 'old-org';
+    process.env.PUBLIC_LEAD_OWNER_ID = 'old-owner';
+    process.env.PUBLIC_LEAD_OWNER_EMAIL = 'admin@example.com';
+    const prisma = createPrisma();
+    prisma.organization.findUnique.mockImplementation(({ where }: any) =>
+      Promise.resolve(where?.id === ORG ? { id: ORG } : null),
+    );
+    prisma.user.findFirst.mockImplementation(({ where }: any) => {
+      if (where?.email === 'admin@example.com') {
+        return Promise.resolve({ id: OWNER, organizationId: ORG });
+      }
+      if (where?.id === OWNER && where?.organizationId === ORG) {
+        return Promise.resolve({ id: OWNER, organizationId: ORG });
+      }
+      return Promise.resolve(null);
+    });
+    const service = new LeadCaptureService(prisma, auditLog as any);
+
+    await service.capture({
+      fullName: 'Nguyen Minh An',
+      company: 'Noi That An Phat',
+      phone: '0908456789',
+      message: 'Can tu van CRM.',
+    });
+
+    expect(prisma.lead.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        organizationId: ORG,
+        ownerId: OWNER,
+      }),
+    });
   });
 });
